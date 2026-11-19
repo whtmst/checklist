@@ -22,6 +22,10 @@
       </div>
 
       <div class="topbar-actions">
+        <button type="button" class="btn btn-ghost btn-icon" id="openSearchModalBtn" title="Глобальный поиск по всем вкладкам (Ctrl+K)" aria-label="Поиск">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span class="btn-label-desktop">Поиск</span>
+        </button>
         <button type="button" class="btn btn-ghost btn-icon" id="openCreditsModalBtn" title="Кредиты и лимит карты" aria-label="Кредиты">
           <svg class="ico ico-mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
           <span class="btn-label-desktop">Кредиты</span>
@@ -83,7 +87,13 @@
       </div>
 
       <div class="toolbar-filters">
-        <input type="search" class="input input-search" id="searchInput" placeholder="Поиск по названию или заметке..." aria-label="Поиск">
+        <select class="select" id="sortFilter" aria-label="Сортировка позиций">
+          <option value="priority">По приоритету</option>
+          <option value="price_desc">Сначала дорогие</option>
+          <option value="price_asc">Сначала дешёвые</option>
+          <option value="newest">Сначала новые</option>
+          <option value="alpha">По алфавиту (А–Я)</option>
+        </select>
         <select class="select" id="statusFilter" aria-label="Фильтр по статусу">
           <option value="all">Все статусы</option>
           <option value="unchecked">Не куплено</option>
@@ -161,6 +171,20 @@
         </div>
       </div>
     </aside>
+  </div>
+
+  <!-- МОДАЛКА: Глобальный Spotlight-поиск по всем вкладкам (Ctrl+K) -->
+  <div class="modal-backdrop spotlight-backdrop" id="globalSearchModal" aria-hidden="true">
+    <div class="modal-box modal-box--xl spotlight-box" role="dialog" aria-modal="true" aria-label="Глобальный поиск">
+      <div class="spotlight-input-wrap">
+        <svg class="ico spotlight-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" class="spotlight-input" id="globalSearchInput" placeholder="Поиск по всем вкладкам, характеристикам, магазинам, кредитам..." autocomplete="off">
+        <kbd class="spotlight-kbd">ESC</kbd>
+        <button type="button" class="modal-close" data-close-modal="globalSearchModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="spotlight-meta" id="globalSearchMeta"></div>
+      <div class="spotlight-results" id="globalSearchResults"></div>
+    </div>
   </div>
 
   <!-- МОДАЛКА: Единая сводка «Все кредиты и лимит карты» (780px) -->

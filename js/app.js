@@ -7,11 +7,13 @@
   var WM = (global.WMChecklist = global.WMChecklist || {});
 
   var filters = {
-    search: '',
+    sort: 'priority',
     status: 'all',
     priority: 'all',
     store: 'all'
   };
+  var spotlightMatches = [];
+  var spotlightIdx = 0;
 
   var creditsTypeFilter = 'all';
   var viewingItemId = null;
@@ -368,15 +370,40 @@
   }
 
   function resetFilters(shouldRender) {
-    filters.search = '';
+    filters.sort = 'priority';
     filters.status = 'all';
     filters.priority = 'all';
     filters.store = 'all';
-    document.getElementById('searchInput').value = '';
+    document.getElementById('sortFilter').value = 'priority';
     document.getElementById('statusFilter').value = 'all';
     document.getElementById('priorityFilter').value = 'all';
     document.getElementById('storeFilter').value = 'all';
     if (shouldRender) refreshUI();
+  }
+
+  function refreshSpotlight() {
+    var q = document.getElementById('globalSearchInput').value;
+    spotlightMatches = WM.render.renderGlobalSearch(q, spotlightIdx, {
+      onSelectSearchResult: function (tabId, itemId) {
+        closeModal('globalSearchModal');
+        if (WM.storage.getActiveTab().id !== tabId) {
+          WM.storage.setActiveTab(tabId);
+          resetFilters(false);
+        }
+        refreshUI();
+        openItemDrawer(itemId);
+      }
+    });
+    if (spotlightIdx >= spotlightMatches.length) spotlightIdx = 0;
+  }
+
+  function openGlobalSearch() {
+    var inp = document.getElementById('globalSearchInput');
+    inp.value = '';
+    spotlightIdx = 0;
+    openModal('globalSearchModal');
+    refreshSpotlight();
+    setTimeout(function () { inp.focus(); }, 40);
   }
 
   // --- Подсказки и переключение полей в окне «Оформить в кредит» ---
@@ -941,6 +968,12 @@
     document.getElementById('bundleShowUsedCheck').addEventListener('change', renderBundlePickerList);
 
     document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (isModalOpen('globalSearchModal')) closeModal('globalSearchModal');
+        else openGlobalSearch();
+        return;
+      }
       if (e.key === 'Escape') {
         var lb = document.getElementById('photoLightbox');
         if (lb && lb.classList.contains('open')) {
@@ -1038,9 +1071,39 @@
       }
     });
 
-    document.getElementById('searchInput').addEventListener('input', function (e) {
-      filters.search = e.target.value;
+    document.getElementById('sortFilter').addEventListener('change', function (e) {
+      filters.sort = e.target.value;
       refreshUI();
+    });
+
+    document.getElementById('openSearchModalBtn').addEventListener('click', openGlobalSearch);
+    document.getElementById('globalSearchInput').addEventListener('input', function () {
+      spotlightIdx = 0;
+      refreshSpotlight();
+    });
+    document.getElementById('globalSearchInput').addEventListener('keydown', function (e) {
+      if (!spotlightMatches.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        spotlightIdx = (spotlightIdx + 1) % spotlightMatches.length;
+        refreshSpotlight();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        spotlightIdx = (spotlightIdx - 1 + spotlightMatches.length) % spotlightMatches.length;
+        refreshSpotlight();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        var hit = spotlightMatches[spotlightIdx];
+        if (hit) {
+          closeModal('globalSearchModal');
+          if (WM.storage.getActiveTab().id !== hit.tab.id) {
+            WM.storage.setActiveTab(hit.tab.id);
+            resetFilters(false);
+          }
+          refreshUI();
+          openItemDrawer(hit.item.id);
+        }
+      }
     });
     document.getElementById('statusFilter').addEventListener('change', function (e) {
       filters.status = e.target.value;

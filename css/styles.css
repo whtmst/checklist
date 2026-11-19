@@ -361,7 +361,7 @@ code {
 
 .toolbar-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1.6fr) repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1999,4 +1999,188 @@ a.badge-store-link:hover {
   font-size: 10.5px;
   color: var(--warn);
   margin-left: 6px;
+}
+
+/* ==========================================================================
+   ГЛОБАЛЬНЫЙ SPOTLIGHT-ПОИСК (Ctrl+K)
+   ========================================================================== */
+.spotlight-backdrop {
+  align-items: flex-start;
+  padding-top: min(10vh, 72px);
+}
+
+.spotlight-box {
+  padding: 0;
+  overflow: hidden;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.spotlight-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-elevated);
+}
+
+.spotlight-ico {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.spotlight-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  outline: none;
+}
+
+.spotlight-input::placeholder {
+  color: var(--text-muted);
+}
+
+.spotlight-kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  background-color: var(--bg-surface);
+}
+
+.spotlight-meta {
+  padding: 7px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+}
+
+.spotlight-results {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 58vh;
+}
+
+.spotlight-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.12s ease;
+}
+
+.spotlight-item:last-child {
+  border-bottom: none;
+}
+
+.spotlight-item:hover,
+.spotlight-item.is-focused {
+  background-color: var(--bg-surface-hover);
+}
+
+.spotlight-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.spotlight-item-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.spotlight-item-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.spotlight-item.is-checked .spotlight-item-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.spotlight-snippet {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spotlight-mark {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 2px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+.spotlight-item-price {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.spotlight-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+@media (max-width: 760px) {
+  .spotlight-backdrop {
+    padding: 10px;
+    padding-top: 12px;
+  }
+
+  .spotlight-kbd {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .topbar-actions .btn {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 5px;
+  }
+
+  .brand-title {
+    font-size: 12.5px;
+  }
 }
