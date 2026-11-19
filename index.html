@@ -113,6 +113,51 @@
     </footer>
   </div>
 
+  <!-- ВЫДВИЖНАЯ ПАНЕЛЬ ПРОСМОТРА КАРТОЧКИ ТОВАРА (справа на ПК / шторка снизу на мобилке) -->
+  <div class="drawer-backdrop" id="itemDetailDrawer" aria-hidden="true">
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerItemTitle">
+      <div class="drawer-header">
+        <div class="drawer-kicker" id="drawerCategoryLabel">КАРТОЧКА ПОЗИЦИИ</div>
+        <div class="drawer-header-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="drawerEditBtn" title="Редактировать позицию">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span>Редактировать</span>
+          </button>
+          <button type="button" class="modal-close" id="closeDrawerBtn" aria-label="Закрыть">✕</button>
+        </div>
+      </div>
+
+      <div class="drawer-body" id="drawerBody">
+        <div class="drawer-badges" id="drawerBadges"></div>
+        <h3 class="drawer-title" id="drawerItemTitle"></h3>
+
+        <div class="drawer-price-bar">
+          <div>
+            <div class="drawer-price-main" id="drawerPriceMain"></div>
+            <div class="drawer-price-sub" id="drawerPriceSub"></div>
+          </div>
+          <label class="checkbox-label drawer-check-toggle">
+            <input type="checkbox" id="drawerCheckedToggle">
+            <span id="drawerCheckedText">Куплено</span>
+          </label>
+        </div>
+
+        <div class="drawer-credit-block hidden" id="drawerCreditBlock"></div>
+
+        <div class="drawer-link-wrap hidden" id="drawerLinkWrap">
+          <a class="btn btn-accent drawer-link-btn" id="drawerLinkAnchor" href="#" target="_blank" rel="noopener noreferrer">
+            Открыть товар ↗
+          </a>
+        </div>
+
+        <div class="drawer-note-section" id="drawerNoteSection">
+          <div class="drawer-section-label">ЗАМЕТКА / ХАРАКТЕРИСТИКИ</div>
+          <div class="drawer-note-content" id="drawerNoteContent"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
   <!-- МОДАЛКА: Добавить / Редактировать позицию -->
   <div class="modal-backdrop" id="itemModal" aria-hidden="true">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
@@ -161,8 +206,8 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="itemNoteInput">Заметка</label>
-          <textarea class="textarea" id="itemNoteInput" rows="2" placeholder="Размер, цвет, нюансы доставки..."></textarea>
+          <label class="form-label" for="itemNoteInput">Заметка / характеристики</label>
+          <textarea class="textarea" id="itemNoteInput" rows="3" placeholder="Размер, цвет, характеристики вида «Ключ: Значение»..."></textarea>
         </div>
 
         <div class="form-check-row">
@@ -384,7 +429,7 @@
   <!-- Уведомления -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Модули приложения (порядок важен, работает и через file://, и через GitHub Pages) -->
+  <!-- Модули приложения -->
   <script src="js/config.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/sync.js"></script>

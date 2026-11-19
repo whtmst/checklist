@@ -13,6 +13,45 @@
     return node;
   }
 
+  function createPencilIcon() {
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
+
+    var p1 = document.createElementNS(svgNS, 'path');
+    p1.setAttribute('d', 'M12 20h9');
+    var p2 = document.createElementNS(svgNS, 'path');
+    p2.setAttribute('d', 'M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z');
+
+    svg.appendChild(p1);
+    svg.appendChild(p2);
+    return svg;
+  }
+
+  function createStoreBadge(storeName, link) {
+    if (link) {
+      var a = document.createElement('a');
+      a.className = 'badge badge-store-link';
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = (storeName || 'Ссылка') + ' ↗';
+      a.title = 'Открыть товар в магазине';
+      a.addEventListener('click', function (e) {
+        e.stopPropagation(); // Не открывать карточку при клике по ссылке магазина
+      });
+      return a;
+    }
+    return el('span', 'badge badge-store', storeName);
+  }
+
   function renderTabs(state, handlers) {
     var container = document.getElementById('tabsList');
     container.innerHTML = '';
@@ -52,7 +91,6 @@
   }
 
   function renderFilterOptions(tab, filters) {
-    // Приоритеты
     var prioSelect = document.getElementById('priorityFilter');
     if (prioSelect.options.length <= 1) {
       WM.CONFIG.PRIORITIES.forEach(function (p) {
@@ -64,7 +102,6 @@
     }
     prioSelect.value = filters.priority;
 
-    // Магазины (базовые + все кастомные из текущей вкладки)
     var storeSelect = document.getElementById('storeFilter');
     var seen = {};
     var stores = [];
@@ -124,8 +161,11 @@
       checkTitle.appendChild(cb);
       checkTitle.appendChild(nameWrap);
 
-      var editBtn = el('button', 'icon-action', 'Изм.');
+      var editBtn = el('button', 'icon-action');
       editBtn.type = 'button';
+      editBtn.title = 'Редактировать общий кредит';
+      editBtn.setAttribute('aria-label', 'Редактировать общий кредит');
+      editBtn.appendChild(createPencilIcon());
       editBtn.addEventListener('click', function () {
         handlers.onEditBundle(bundle.id);
       });
@@ -134,7 +174,6 @@
       top.appendChild(editBtn);
       card.appendChild(top);
 
-      // Считаем базовую сумму входящих товаров
       var baseSum = 0;
       var tagsWrap = el('div', 'bundle-items-tags');
       bundle.itemIds.forEach(function (id) {
@@ -153,8 +192,7 @@
         metrics.appendChild(createMetricSpan('Срок: ', bundle.months + ' мес.'));
       }
       if (overpay > 0) {
-        var ov = el('span', 'bundle-overpay', 'Переплата: +' + fmt(overpay));
-        metrics.appendChild(ov);
+        metrics.appendChild(el('span', 'bundle-overpay', 'Переплата: +' + fmt(overpay)));
       }
 
       card.appendChild(metrics);
@@ -228,7 +266,6 @@
       }
       renderedAnyCategory = true;
 
-      // Сортируем: сначала некупленные, затем по приоритету (1 -> 5)
       catItems.sort(function (a, b) {
         if (a.checked !== b.checked) return a.checked ? 1 : -1;
         return WM.utils.getPriority(a.priority).rank - WM.utils.getPriority(b.priority).rank;
@@ -236,7 +273,6 @@
 
       var block = el('section', 'category-block' + (cat.collapsed ? ' is-collapsed' : ''));
 
-      // Заголовок категории
       var header = el('div', 'category-header');
       var left = el('div', 'category-header-left');
       left.addEventListener('click', function () {
@@ -247,7 +283,6 @@
       var checkedInCat = catItemsAll.filter(function (x) { return x.checked; }).length;
       left.appendChild(el('span', 'category-count', checkedInCat + '/' + catItemsAll.length));
 
-      // Сумма категории (справочно по ценам позиций)
       var catSum = 0;
       catItemsAll.forEach(function (it) {
         var val = (it.credit && it.credit.enabled && it.credit.totalAmount > 0) ? it.credit.totalAmount : it.price;
@@ -264,9 +299,11 @@
         handlers.onAddItemInCategory(cat.id);
       });
 
-      var editCatBtn = el('button', 'icon-action', 'Изм.');
+      var editCatBtn = el('button', 'icon-action');
       editCatBtn.type = 'button';
       editCatBtn.title = 'Переименовать или удалить категорию';
+      editCatBtn.setAttribute('aria-label', 'Редактировать категорию');
+      editCatBtn.appendChild(createPencilIcon());
       editCatBtn.addEventListener('click', function () {
         handlers.onEditCategory(cat.id);
       });
@@ -278,7 +315,6 @@
       header.appendChild(right);
       block.appendChild(header);
 
-      // Список позиций категории
       var itemsWrap = el('div', 'category-items');
       if (catItems.length === 0) {
         var emptyRow = el('div', 'category-empty');
@@ -312,6 +348,7 @@
     }
   }
 
+  /* Компактная строка товара: клик по контенту открывает полную карточку в выдвижной панели */
   function renderItemRow(item, tab, handlers) {
     var fmt = WM.utils.formatMoney;
     var prio = WM.utils.getPriority(item.priority);
@@ -320,7 +357,6 @@
 
     var row = el('div', 'item-row' + (item.checked ? ' is-checked' : ''));
 
-    // Чекбокс
     var cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'check-input';
@@ -331,58 +367,43 @@
     });
     row.appendChild(cb);
 
-    // Основной контент
     var content = el('div', 'item-content');
+    content.title = 'Нажми, чтобы открыть полную карточку';
+    content.addEventListener('click', function () {
+      handlers.onViewItem(item.id);
+    });
 
     var badges = el('div', 'item-badges');
     badges.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
-    if (item.store) {
-      badges.appendChild(el('span', 'badge badge-store', item.store));
+    if (item.store || item.link) {
+      badges.appendChild(createStoreBadge(item.store, item.link));
     }
     if (isIndCredit) {
       badges.appendChild(el('span', 'badge badge-credit', 'КРЕДИТ / РАССРОЧКА'));
     } else if (bundle) {
       badges.appendChild(el('span', 'badge badge-bundle', 'ОБЩИЙ КРЕДИТ: ' + bundle.name));
     }
+    if (item.note) {
+      badges.appendChild(el('span', 'badge badge-note-hint', '≡ Заметка'));
+    }
     content.appendChild(badges);
 
-    content.appendChild(el('div', 'item-title', item.title));
-
-    if (item.note) {
-      content.appendChild(el('div', 'item-note', item.note));
-    }
-
+    var titleLine = el('div', 'item-title-line');
+    titleLine.appendChild(el('div', 'item-title', item.title));
     if (isIndCredit) {
-      var creditLine = el('div', 'item-credit-line');
-      var total = item.credit.totalAmount > 0 ? item.credit.totalAmount : item.price;
-      var overpay = Math.round((total - item.price) * 100) / 100;
-      if (item.credit.months > 0) {
-        creditLine.appendChild(el('span', '', 'Срок: ' + item.credit.months + ' мес.'));
+      var parts = [];
+      if (item.credit.months > 0) parts.push(item.credit.months + ' мес.');
+      if (item.credit.monthlyPayment > 0) parts.push(fmt(item.credit.monthlyPayment) + '/мес');
+      if (parts.length > 0) {
+        titleLine.appendChild(el('span', 'item-credit-inline', parts.join(' · ')));
       }
-      creditLine.appendChild(el('span', '', 'Платёж: ' + fmt(item.credit.monthlyPayment) + '/мес'));
-      creditLine.appendChild(el('span', '', 'Итого: ' + fmt(total)));
-      if (overpay > 0) {
-        creditLine.appendChild(el('span', 'bundle-overpay', 'Переплата: +' + fmt(overpay)));
-      }
-      content.appendChild(creditLine);
     }
-
-    if (item.link) {
-      var links = el('div', 'item-links');
-      var a = document.createElement('a');
-      a.href = item.link;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.textContent = 'Открыть ссылку ↗';
-      links.appendChild(a);
-      content.appendChild(links);
-    }
+    content.appendChild(titleLine);
 
     row.appendChild(content);
 
-    // Правая колонка: цена и действия
     var right = el('div', 'item-right');
-    var priceWrap = el('div');
+    var priceWrap = el('div', 'item-price-block');
     if (isIndCredit && item.credit.totalAmount > 0 && item.credit.totalAmount !== item.price) {
       priceWrap.appendChild(el('div', 'item-price', fmt(item.credit.totalAmount)));
       priceWrap.appendChild(el('div', 'item-price-sub', 'Цена: ' + fmt(item.price)));
@@ -394,17 +415,124 @@
     }
     right.appendChild(priceWrap);
 
-    var actions = el('div', 'item-actions');
-    var editBtn = el('button', 'icon-action', 'Изм.');
+    var editBtn = el('button', 'icon-action');
     editBtn.type = 'button';
-    editBtn.addEventListener('click', function () {
+    editBtn.title = 'Редактировать позицию';
+    editBtn.setAttribute('aria-label', 'Редактировать ' + item.title);
+    editBtn.appendChild(createPencilIcon());
+    editBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
       handlers.onEditItem(item.id);
     });
-    actions.appendChild(editBtn);
-    right.appendChild(actions);
+    right.appendChild(editBtn);
 
     row.appendChild(right);
     return row;
+  }
+
+  /* Отрисовка полной карточки в выдвижной панели (с умным разбором «Ключ: Значение») */
+  function renderItemDrawer(item, tab) {
+    var fmt = WM.utils.formatMoney;
+    var cat = tab.categories.find(function (c) { return c.id === item.categoryId; });
+    var prio = WM.utils.getPriority(item.priority);
+    var bundle = WM.storage.getBundleForItem(tab, item.id);
+    var isIndCredit = !bundle && !!(item.credit && item.credit.enabled);
+
+    document.getElementById('drawerCategoryLabel').textContent = cat ? cat.name : 'КАРТОЧКА ПОЗИЦИИ';
+    document.getElementById('drawerItemTitle').textContent = item.title;
+
+    var badgesWrap = document.getElementById('drawerBadges');
+    badgesWrap.innerHTML = '';
+    badgesWrap.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
+    if (item.store || item.link) {
+      badgesWrap.appendChild(createStoreBadge(item.store, item.link));
+    }
+    if (isIndCredit) {
+      badgesWrap.appendChild(el('span', 'badge badge-credit', 'КРЕДИТ / РАССРОЧКА'));
+    } else if (bundle) {
+      badgesWrap.appendChild(el('span', 'badge badge-bundle', 'ОБЩИЙ КРЕДИТ: ' + bundle.name));
+    }
+
+    var priceMain = document.getElementById('drawerPriceMain');
+    var priceSub = document.getElementById('drawerPriceSub');
+    if (isIndCredit && item.credit.totalAmount > 0) {
+      priceMain.textContent = fmt(item.credit.totalAmount);
+      priceSub.textContent = item.credit.totalAmount !== item.price ? 'Базовая цена: ' + fmt(item.price) : 'Рассрочка без переплаты';
+    } else if (bundle) {
+      priceMain.textContent = fmt(item.price);
+      priceSub.textContent = 'Входит в общий кредит «' + bundle.name + '»';
+    } else {
+      priceMain.textContent = fmt(item.price);
+      priceSub.textContent = 'Оплата наличными / картой';
+    }
+
+    var toggle = document.getElementById('drawerCheckedToggle');
+    toggle.checked = !!item.checked;
+    document.getElementById('drawerCheckedText').textContent = item.checked ? 'Куплено' : 'Не куплено';
+
+    // Блок кредита
+    var creditBlock = document.getElementById('drawerCreditBlock');
+    creditBlock.innerHTML = '';
+    if (isIndCredit) {
+      creditBlock.classList.remove('hidden');
+      var total = item.credit.totalAmount > 0 ? item.credit.totalAmount : item.price;
+      var overpay = Math.round((total - item.price) * 100) / 100;
+      if (item.credit.months > 0) creditBlock.appendChild(createMetricSpan('Срок: ', item.credit.months + ' мес.'));
+      creditBlock.appendChild(createMetricSpan('Ежемесячный платёж: ', fmt(item.credit.monthlyPayment) + '/мес'));
+      creditBlock.appendChild(createMetricSpan('Итоговая сумма: ', fmt(total)));
+      if (overpay > 0) {
+        creditBlock.appendChild(el('span', 'bundle-overpay', 'Переплата банку: +' + fmt(overpay)));
+      }
+    } else if (bundle) {
+      creditBlock.classList.remove('hidden');
+      creditBlock.appendChild(createMetricSpan('Общий кредит: ', bundle.name));
+      if (bundle.months > 0) creditBlock.appendChild(createMetricSpan('Срок: ', bundle.months + ' мес.'));
+      creditBlock.appendChild(createMetricSpan('Общий платёж: ', fmt(bundle.monthlyPayment) + '/мес'));
+      creditBlock.appendChild(createMetricSpan('Общая сумма кредита: ', fmt(bundle.totalAmount)));
+    } else {
+      creditBlock.classList.add('hidden');
+    }
+
+    // Кнопка ссылки на товар
+    var linkWrap = document.getElementById('drawerLinkWrap');
+    var linkAnchor = document.getElementById('drawerLinkAnchor');
+    if (item.link) {
+      linkWrap.classList.remove('hidden');
+      linkAnchor.href = item.link;
+      linkAnchor.textContent = 'Открыть в ' + (item.store || 'магазине') + ' ↗';
+    } else {
+      linkWrap.classList.add('hidden');
+    }
+
+    // Заметка / характеристики (строки вида "Ключ: Значение" красиво раскладываются в 2 колонки)
+    var noteSection = document.getElementById('drawerNoteSection');
+    var noteContent = document.getElementById('drawerNoteContent');
+    noteContent.innerHTML = '';
+
+    if (!item.note) {
+      noteSection.classList.add('hidden');
+    } else {
+      noteSection.classList.remove('hidden');
+      var lines = item.note.split(/\r?\n/);
+      lines.forEach(function (rawLine) {
+        var line = rawLine.trim();
+        if (!line) return;
+        var colonIdx = line.indexOf(':');
+        // Если есть короткий ключ до двоеточия (и это не URL), оформляем как строку характеристики
+        if (colonIdx > 0 && colonIdx <= 42 && line.indexOf('http://') === -1 && line.indexOf('https://') === -1) {
+          var key = line.slice(0, colonIdx).trim();
+          var val = line.slice(colonIdx + 1).trim();
+          if (key && val) {
+            var specRow = el('div', 'note-spec-row');
+            specRow.appendChild(el('span', 'note-spec-key', key));
+            specRow.appendChild(el('span', 'note-spec-val', val));
+            noteContent.appendChild(specRow);
+            return;
+          }
+        }
+        noteContent.appendChild(el('div', 'note-plain-line', line));
+      });
+    }
   }
 
   WM.render = {
@@ -415,6 +543,7 @@
       renderFilterOptions(tab, filters);
       renderBundles(tab, handlers);
       renderChecklist(tab, filters, handlers);
-    }
+    },
+    renderItemDrawer: renderItemDrawer
   };
 })(window);

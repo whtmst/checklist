@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ И СОБЫТИЯ
+   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПАНЕЛЬ ПРОСМОТРА И СОБЫТИЯ
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -13,6 +13,7 @@
     store: 'all'
   };
 
+  var viewingItemId = null;
   var toastTimer = null;
 
   function showToast(message) {
@@ -46,7 +47,26 @@
     m.setAttribute('aria-hidden', 'true');
   }
 
-  function closeAllModals() {
+  function openItemDrawer(itemId) {
+    var tab = WM.storage.getActiveTab();
+    var item = tab.items.find(function (x) { return x.id === itemId; });
+    if (!item) return;
+    viewingItemId = itemId;
+    WM.render.renderItemDrawer(item, tab);
+    var drawer = document.getElementById('itemDetailDrawer');
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeItemDrawer() {
+    viewingItemId = null;
+    var drawer = document.getElementById('itemDetailDrawer');
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+
+  function closeAllOverlays() {
+    closeItemDrawer();
     document.querySelectorAll('.modal-backdrop.open').forEach(function (m) {
       m.classList.remove('open');
       m.setAttribute('aria-hidden', 'true');
@@ -79,6 +99,7 @@
   function refreshUI() {
     WM.render.renderAll(WM.storage.getState(), filters, {
       onSelectTab: function (tabId) {
+        closeItemDrawer();
         WM.storage.setActiveTab(tabId);
         resetFilters(false);
         refreshUI();
@@ -95,6 +116,9 @@
       },
       onAddItemInCategory: function (catId) {
         openItemModal(null, catId);
+      },
+      onViewItem: function (itemId) {
+        openItemDrawer(itemId);
       },
       onEditItem: function (itemId) {
         openItemModal(itemId, null);
@@ -114,6 +138,17 @@
         resetFilters(true);
       }
     });
+
+    // Если открыта выдвижная панель просмотра — обновляем её содержимое
+    if (viewingItemId) {
+      var tab = WM.storage.getActiveTab();
+      var item = tab.items.find(function (x) { return x.id === viewingItemId; });
+      if (item) {
+        WM.render.renderItemDrawer(item, tab);
+      } else {
+        closeItemDrawer();
+      }
+    }
   }
 
   function resetFilters(shouldRender) {
@@ -207,7 +242,6 @@
     document.getElementById('itemNoteInput').value = item ? item.note : '';
     document.getElementById('itemCheckedInput').checked = item ? !!item.checked : false;
 
-    // Магазин (стандартный или «Свой вариант»)
     var storeSelect = document.getElementById('itemStoreSelect');
     var customGroup = document.getElementById('customStoreGroup');
     var customInput = document.getElementById('itemCustomStoreInput');
@@ -221,7 +255,6 @@
       customGroup.classList.add('hidden');
     }
 
-    // Кредит (индивидуальный блокируется, если товар в общем кредите)
     var inBundle = item ? !!WM.storage.getBundleForItem(tab, item.id) : false;
     var creditCheck = document.getElementById('itemCreditCheck');
     var creditFields = document.getElementById('itemCreditFields');
@@ -245,7 +278,7 @@
     }, 50);
   }
 
-  // --- Модалка: Общий кредит (несколько товаров в один кредит) ---
+  // --- Модалка: Общий кредит ---
   function updateBundleCalcHints() {
     var tab = WM.storage.getActiveTab();
     var checkboxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
@@ -387,7 +420,6 @@
 
   // --- Привязка всех событий ---
   function bindEvents() {
-    // Закрытие модалок по кнопке, фону и Escape
     document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         closeModal(btn.getAttribute('data-close-modal'));
@@ -400,8 +432,24 @@
       });
     });
 
+    // События выдвижной панели просмотра карточки
+    document.getElementById('closeDrawerBtn').addEventListener('click', closeItemDrawer);
+    document.getElementById('itemDetailDrawer').addEventListener('click', function (e) {
+      if (e.target === e.currentTarget) closeItemDrawer();
+    });
+    document.getElementById('drawerEditBtn').addEventListener('click', function () {
+      if (!viewingItemId) return;
+      var idToEdit = viewingItemId;
+      openItemModal(idToEdit, null);
+    });
+    document.getElementById('drawerCheckedToggle').addEventListener('change', function (e) {
+      if (!viewingItemId) return;
+      WM.storage.toggleItemChecked(viewingItemId, e.target.checked);
+      refreshUI();
+    });
+
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeAllModals();
+      if (e.key === 'Escape') closeAllOverlays();
     });
 
     // Тема
@@ -421,7 +469,6 @@
     document.getElementById('addBundleInlineBtn').addEventListener('click', function () { openBundleModal(null); });
     document.getElementById('openSyncModalBtn').addEventListener('click', openSyncModal);
 
-    // Быстрая кнопка синхронизации в шапке
     document.getElementById('quickSyncBtn').addEventListener('click', async function () {
       if (!WM.sync.hasToken()) {
         openSyncModal();
@@ -457,7 +504,6 @@
       refreshUI();
     });
 
-    // Переключение «Свой вариант» магазина
     document.getElementById('itemStoreSelect').addEventListener('change', function (e) {
       var isCustom = e.target.value === WM.CONFIG.CUSTOM_STORE_VALUE;
       document.getElementById('customStoreGroup').classList.toggle('hidden', !isCustom);
@@ -466,7 +512,6 @@
       }
     });
 
-    // Переключение индивидуального кредита
     document.getElementById('itemCreditCheck').addEventListener('change', function (e) {
       document.getElementById('itemCreditFields').classList.toggle('hidden', !e.target.checked);
       if (e.target.checked && !document.getElementById('itemCreditTotal').value) {
@@ -521,6 +566,7 @@
       if (confirm('Удалить эту позицию?')) {
         WM.storage.deleteItem(id);
         closeModal('itemModal');
+        if (viewingItemId === id) closeItemDrawer();
         refreshUI();
         showToast('Позиция удалена');
       }
@@ -723,6 +769,7 @@
     document.getElementById('clearAllDataBtn').addEventListener('click', function () {
       if (confirm('Очистить абсолютно все вкладки, категории и позиции? Это действие нельзя отменить.')) {
         WM.storage.resetAll();
+        closeItemDrawer();
         resetFilters(false);
         refreshUI();
         closeModal('syncModal');
@@ -737,7 +784,6 @@
     WM.storage.load();
     WM.sync.loadSettings();
 
-    // Авто-отправка в GitHub Gist при изменениях
     WM.storage.onChange(function () {
       WM.sync.scheduleAutoPush(setSyncStatus);
     });
