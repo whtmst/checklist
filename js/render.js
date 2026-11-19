@@ -127,7 +127,6 @@
     var globalSummary = WM.storage.calculateGlobalCredits();
     var fmt = WM.utils.formatMoney;
 
-    // Мини-индикатор месячного платежа на кнопке «Кредиты» в шапке
     var pill = document.getElementById('topbarCreditsPill');
     if (globalSummary.monthlyTotal > 0) {
       pill.textContent = fmt(globalSummary.monthlyTotal) + '/м';
@@ -193,98 +192,6 @@
     storeSelect.value = seen[filters.store] ? filters.store : 'all';
   }
 
-  function renderBundleCard(bundle, handlers) {
-    var fmt = WM.utils.formatMoney;
-    var details = WM.storage.getBundleDetails(bundle);
-    var card = el('article', 'bundle-card' + (bundle.checked ? ' is-active' : ''));
-
-    var top = el('div', 'bundle-card-top');
-    var checkTitle = el('div', 'bundle-check-title');
-
-    var cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.className = 'check-input';
-    cb.checked = !!bundle.checked;
-    cb.setAttribute('aria-label', 'Отметить кредит ' + bundle.name);
-    cb.addEventListener('change', function () {
-      handlers.onToggleBundle(bundle.id, cb.checked);
-    });
-
-    var nameWrap = el('div');
-    var badgeRow = el('div', 'item-badges');
-    badgeRow.style.marginBottom = '4px';
-    badgeRow.appendChild(createCreditBadge(bundle.type, bundle.customType, null));
-    if (details.isCrossTab) {
-      badgeRow.appendChild(el('span', 'badge badge-store', details.tabNames.join(' + ')));
-    }
-    nameWrap.appendChild(badgeRow);
-    nameWrap.appendChild(el('div', 'bundle-name', bundle.name));
-    nameWrap.appendChild(el('div', 'item-price-sub', bundle.checked ? 'Оформлен' : 'Запланирован'));
-
-    checkTitle.appendChild(cb);
-    checkTitle.appendChild(nameWrap);
-
-    var editBtn = el('button', 'icon-action');
-    editBtn.type = 'button';
-    editBtn.title = 'Редактировать общий кредит';
-    editBtn.setAttribute('aria-label', 'Редактировать общий кредит');
-    editBtn.appendChild(createPencilIcon());
-    editBtn.addEventListener('click', function () {
-      handlers.onEditBundle(bundle.id);
-    });
-
-    top.appendChild(checkTitle);
-    top.appendChild(editBtn);
-    card.appendChild(top);
-
-    var overpay = Math.round((bundle.totalAmount - details.baseSum) * 100) / 100;
-    var metrics = el('div', 'bundle-metrics');
-    metrics.appendChild(createMetricSpan('Итого: ', fmt(bundle.totalAmount)));
-    if (bundle.type !== 'grace') {
-      metrics.appendChild(createMetricSpan('Платёж: ', fmt(bundle.monthlyPayment) + '/мес'));
-      if (bundle.months > 0) metrics.appendChild(createMetricSpan('Срок: ', bundle.months + ' мес.'));
-    }
-    if (overpay > 0) {
-      metrics.appendChild(el('span', 'bundle-overpay', 'Переплата: +' + fmt(overpay)));
-    }
-    card.appendChild(metrics);
-
-    appendScheduleOrGraceBlock(card, {
-      type: bundle.type,
-      startDate: bundle.startDate,
-      dueDate: bundle.dueDate,
-      months: bundle.months,
-      monthlyPayment: bundle.monthlyPayment
-    });
-
-    var tagsWrap = el('div', 'bundle-items-tags');
-    details.items.forEach(function (entry) {
-      var label = details.isCrossTab
-        ? '[' + entry.tab.name + '] ' + entry.item.title + ' (' + fmt(entry.item.price) + ')'
-        : entry.item.title + ' (' + fmt(entry.item.price) + ')';
-      tagsWrap.appendChild(el('span', 'mini-tag', label));
-    });
-    card.appendChild(tagsWrap);
-    return card;
-  }
-
-  function renderBundles(tab, handlers) {
-    var section = document.getElementById('bundlesSection');
-    var list = document.getElementById('bundlesList');
-    list.innerHTML = '';
-
-    var tabBundles = WM.storage.getBundlesForTab(tab);
-    if (tabBundles.length === 0) {
-      section.classList.add('hidden');
-      return;
-    }
-
-    section.classList.remove('hidden');
-    tabBundles.forEach(function (bundle) {
-      list.appendChild(renderBundleCard(bundle, handlers));
-    });
-  }
-
   function itemMatchesFilters(item, filters) {
     var q = (filters.search || '').trim().toLowerCase();
     if (q) {
@@ -294,11 +201,7 @@
 
     if (filters.status === 'checked' && !item.checked) return false;
     if (filters.status === 'unchecked' && item.checked) return false;
-    if (filters.status === 'credit') {
-      var isIndCredit = !!(item.credit && item.credit.enabled);
-      var isBundled = !!WM.storage.getBundleForItem(item.id);
-      if (!isIndCredit && !isBundled) return false;
-    }
+    if (filters.status === 'credit' && !WM.storage.getBundleForItem(item.id)) return false;
 
     if (filters.priority !== 'all' && item.priority !== filters.priority) return false;
     if (filters.store !== 'all' && item.store !== filters.store) return false;
@@ -359,10 +262,7 @@
       left.appendChild(el('span', 'category-count', checkedInCat + '/' + catItemsAll.length));
 
       var catSum = 0;
-      catItemsAll.forEach(function (it) {
-        var val = (it.credit && it.credit.enabled && it.credit.totalAmount > 0) ? it.credit.totalAmount : it.price;
-        catSum += val;
-      });
+      catItemsAll.forEach(function (it) { catSum += it.price; });
 
       var right = el('div', 'category-header-right');
       right.appendChild(el('span', 'category-sum', fmt(catSum)));
@@ -427,7 +327,7 @@
     var fmt = WM.utils.formatMoney;
     var prio = WM.utils.getPriority(item.priority);
     var bundle = WM.storage.getBundleForItem(item.id);
-    var isIndCredit = !bundle && !!(item.credit && item.credit.enabled);
+    var isSingleCredit = bundle && bundle.itemIds.length === 1;
 
     var row = el('div', 'item-row' + (item.checked ? ' is-checked' : ''));
 
@@ -449,10 +349,8 @@
 
     var badges = el('div', 'item-badges');
     badges.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
-    if (isIndCredit) {
-      badges.appendChild(createCreditBadge(item.credit.type, item.credit.customType, null));
-    } else if (bundle) {
-      badges.appendChild(createCreditBadge(bundle.type, bundle.customType, bundle.name));
+    if (bundle) {
+      badges.appendChild(createCreditBadge(bundle.type, bundle.customType, isSingleCredit ? null : bundle.name));
     }
     if (item.store || item.link) {
       badges.appendChild(createStoreBadge(item.store, item.link));
@@ -467,10 +365,10 @@
 
     var right = el('div', 'item-right');
     var priceWrap = el('div', 'item-price-block');
-    if (isIndCredit && item.credit.totalAmount > 0 && item.credit.totalAmount !== item.price) {
-      priceWrap.appendChild(el('div', 'item-price', fmt(item.credit.totalAmount)));
+    if (isSingleCredit && bundle.totalAmount > 0 && bundle.totalAmount !== item.price) {
+      priceWrap.appendChild(el('div', 'item-price', fmt(bundle.totalAmount)));
       priceWrap.appendChild(el('div', 'item-price-sub', 'Цена: ' + fmt(item.price)));
-    } else if (bundle) {
+    } else if (bundle && !isSingleCredit) {
       priceWrap.appendChild(el('div', 'item-price', fmt(item.price)));
       priceWrap.appendChild(el('div', 'item-price-sub', 'В общем кредите'));
     } else {
@@ -493,12 +391,12 @@
     return row;
   }
 
-  function renderItemDrawer(item, tab) {
+  function renderItemDrawer(item, tab, handlers) {
     var fmt = WM.utils.formatMoney;
     var cat = tab.categories.find(function (c) { return c.id === item.categoryId; });
     var prio = WM.utils.getPriority(item.priority);
     var bundle = WM.storage.getBundleForItem(item.id);
-    var isIndCredit = !bundle && !!(item.credit && item.credit.enabled);
+    var isSingleCredit = bundle && bundle.itemIds.length === 1;
 
     document.getElementById('drawerCategoryLabel').textContent = cat ? cat.name : 'КАРТОЧКА ПОЗИЦИИ';
     document.getElementById('drawerItemTitle').textContent = item.title;
@@ -506,10 +404,8 @@
     var badgesWrap = document.getElementById('drawerBadges');
     badgesWrap.innerHTML = '';
     badgesWrap.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
-    if (isIndCredit) {
-      badgesWrap.appendChild(createCreditBadge(item.credit.type, item.credit.customType, null));
-    } else if (bundle) {
-      badgesWrap.appendChild(createCreditBadge(bundle.type, bundle.customType, bundle.name));
+    if (bundle) {
+      badgesWrap.appendChild(createCreditBadge(bundle.type, bundle.customType, isSingleCredit ? null : bundle.name));
     }
     if (item.store || item.link) {
       badgesWrap.appendChild(createStoreBadge(item.store, item.link));
@@ -517,13 +413,13 @@
 
     var priceMain = document.getElementById('drawerPriceMain');
     var priceSub = document.getElementById('drawerPriceSub');
-    if (isIndCredit && item.credit.totalAmount > 0) {
-      priceMain.textContent = fmt(item.credit.totalAmount);
-      var lbl = WM.utils.getCreditTypeLabel(item.credit.type, item.credit.customType, false);
-      priceSub.textContent = item.credit.totalAmount !== item.price ? 'Базовая цена: ' + fmt(item.price) : lbl;
-    } else if (bundle) {
+    if (isSingleCredit && bundle.totalAmount > 0) {
+      priceMain.textContent = fmt(bundle.totalAmount);
+      var lbl = WM.utils.getCreditTypeLabel(bundle.type, bundle.customType, false);
+      priceSub.textContent = bundle.totalAmount !== item.price ? 'Базовая цена: ' + fmt(item.price) : lbl;
+    } else if (bundle && !isSingleCredit) {
       priceMain.textContent = fmt(item.price);
-      priceSub.textContent = 'Входит в общий пакет «' + bundle.name + '»';
+      priceSub.textContent = 'Входит в общий кредит «' + bundle.name + '»';
     } else {
       priceMain.textContent = fmt(item.price);
       priceSub.textContent = 'Оплата наличными / картой';
@@ -535,36 +431,42 @@
 
     var creditBlock = document.getElementById('drawerCreditBlock');
     creditBlock.innerHTML = '';
-    if (isIndCredit) {
-      creditBlock.classList.remove('hidden');
-      var c = item.credit;
-      var total = c.totalAmount > 0 ? c.totalAmount : item.price;
-      var overpay = Math.round((total - item.price) * 100) / 100;
-      creditBlock.appendChild(createMetricSpan('Тип: ', WM.utils.getCreditTypeLabel(c.type, c.customType, false)));
-      if (c.type !== 'grace') {
-        if (c.months > 0) creditBlock.appendChild(createMetricSpan('Срок: ', c.months + ' мес.'));
-        creditBlock.appendChild(createMetricSpan('Ежемесячный платёж: ', fmt(c.monthlyPayment) + '/мес'));
-      }
-      creditBlock.appendChild(createMetricSpan('Итого к возврату: ', fmt(total)));
-      if (overpay > 0) {
-        creditBlock.appendChild(el('span', 'bundle-overpay', 'Переплата банку: +' + fmt(overpay)));
-      }
-      appendScheduleOrGraceBlock(creditBlock, c);
-    } else if (bundle) {
+    if (bundle) {
       creditBlock.classList.remove('hidden');
       var bDetails = WM.storage.getBundleDetails(bundle);
-      creditBlock.appendChild(createMetricSpan('Общий пакет: ', bundle.name + ' (' + WM.utils.getCreditTypeLabel(bundle.type, bundle.customType, false) + ')'));
+      var titleRow = el('div', 'bundle-card-top');
+      var titleInfo = el('div');
+      titleInfo.appendChild(createMetricSpan(
+        isSingleCredit ? 'Тип: ' : 'Общий кредит: ',
+        isSingleCredit
+          ? WM.utils.getCreditTypeLabel(bundle.type, bundle.customType, false)
+          : bundle.name + ' (' + WM.utils.getCreditTypeLabel(bundle.type, bundle.customType, false) + ')'
+      ));
+      titleRow.appendChild(titleInfo);
+
+      if (handlers && handlers.onEditBundle) {
+        var editCreditBtn = el('button', 'icon-action');
+        editCreditBtn.type = 'button';
+        editCreditBtn.title = 'Редактировать условия кредита';
+        editCreditBtn.appendChild(createPencilIcon());
+        editCreditBtn.addEventListener('click', function () {
+          handlers.onEditBundle(bundle.id);
+        });
+        titleRow.appendChild(editCreditBtn);
+      }
+      creditBlock.appendChild(titleRow);
+
       if (bDetails.isCrossTab) {
         creditBlock.appendChild(createMetricSpan('Вкладки: ', bDetails.tabNames.join(' + ')));
       }
       if (bundle.type !== 'grace') {
         if (bundle.months > 0) creditBlock.appendChild(createMetricSpan('Срок: ', bundle.months + ' мес.'));
-        creditBlock.appendChild(createMetricSpan('Общий платёж: ', fmt(bundle.monthlyPayment) + '/мес'));
+        creditBlock.appendChild(createMetricSpan(isSingleCredit ? 'Ежемесячный платёж: ' : 'Общий платёж: ', fmt(bundle.monthlyPayment) + '/мес'));
       }
-      creditBlock.appendChild(createMetricSpan('Общая сумма пакета: ', fmt(bundle.totalAmount)));
+      creditBlock.appendChild(createMetricSpan(isSingleCredit ? 'Итого к возврату: ' : 'Общая сумма кредита: ', fmt(bundle.totalAmount)));
       var bOverpay = Math.round((bundle.totalAmount - bDetails.baseSum) * 100) / 100;
       if (bOverpay > 0) {
-        creditBlock.appendChild(el('span', 'bundle-overpay', 'Общая переплата: +' + fmt(bOverpay)));
+        creditBlock.appendChild(el('span', 'bundle-overpay', 'Переплата банку: +' + fmt(bOverpay)));
       }
       appendScheduleOrGraceBlock(creditBlock, bundle);
     } else {
@@ -610,12 +512,10 @@
     }
   }
 
-  /* Отрисовка единой панели «Все кредиты и лимит карты» */
   function renderGlobalCreditsModal(typeFilter, handlers) {
     var data = WM.storage.calculateGlobalCredits();
     var fmt = WM.utils.formatMoney;
 
-    // Лимит карты
     var limitInput = document.getElementById('cardLimitInput');
     if (document.activeElement !== limitInput) {
       limitInput.value = data.cardLimit > 0 ? data.cardLimit : '';
@@ -640,7 +540,6 @@
       limitTrack.classList.add('hidden');
     }
 
-    // 3 главные цифры
     document.getElementById('globalCreditMonthly').textContent = fmt(data.monthlyTotal);
     document.getElementById('globalCreditMonthlyMeta').textContent = 'Активных долгов: ' + data.activeCount;
 
@@ -651,7 +550,6 @@
 
     document.getElementById('globalCreditRemaining').textContent = fmt(data.totalDebtRemaining);
 
-    // Фильтрация списка записей
     var listEl = document.getElementById('globalCreditsList');
     listEl.innerHTML = '';
 
@@ -678,8 +576,7 @@
       cb.className = 'check-input';
       cb.checked = !!rec.checked;
       cb.addEventListener('change', function () {
-        if (rec.kind === 'bundle') handlers.onToggleBundle(rec.id, cb.checked);
-        else handlers.onToggleItem(rec.id, cb.checked);
+        handlers.onToggleBundle(rec.id, cb.checked);
       });
 
       var info = el('div');
@@ -687,8 +584,8 @@
       badges.style.marginBottom = '4px';
       badges.appendChild(createCreditBadge(rec.type, rec.customType, null));
       badges.appendChild(el('span', 'badge badge-store', rec.tabNames.join(' + ')));
-      if (rec.kind === 'bundle') {
-        badges.appendChild(el('span', 'badge badge-note-hint', 'ОБЩИЙ'));
+      if (!rec.isSingleItem) {
+        badges.appendChild(el('span', 'badge badge-note-hint', 'ПАЧКА'));
       }
       info.appendChild(badges);
       info.appendChild(el('div', 'bundle-name', rec.title));
@@ -699,11 +596,10 @@
 
       var editBtn = el('button', 'icon-action');
       editBtn.type = 'button';
-      editBtn.title = 'Редактировать';
+      editBtn.title = 'Редактировать кредит';
       editBtn.appendChild(createPencilIcon());
       editBtn.addEventListener('click', function () {
-        if (rec.kind === 'bundle') handlers.onEditBundle(rec.id);
-        else handlers.onEditItemAcrossTabs(rec.tabId, rec.id);
+        handlers.onEditBundle(rec.id);
       });
 
       top.appendChild(left);
@@ -723,7 +619,7 @@
 
       appendScheduleOrGraceBlock(card, rec);
 
-      if (rec.kind === 'bundle' && rec.itemsList.length > 0) {
+      if (!rec.isSingleItem && rec.itemsList.length > 0) {
         var tags = el('div', 'bundle-items-tags');
         rec.itemsList.forEach(function (entry) {
           tags.appendChild(el('span', 'mini-tag', '[' + entry.tab.name + '] ' + entry.item.title + ' (' + fmt(entry.item.price) + ')'));
@@ -741,7 +637,6 @@
       renderTabs(state, handlers);
       renderSummary(tab);
       renderFilterOptions(tab, filters);
-      renderBundles(tab, handlers);
       renderChecklist(tab, filters, handlers);
     },
     renderItemDrawer: renderItemDrawer,

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — ХРАНИЛИЩЕ, ГЛОБАЛЬНЫЕ КРЕДИТЫ, ЛИМИТ КАРТЫ И ИТОГИ
+   WM_CHECKLIST — ХРАНИЛИЩЕ, ЕДИНЫЙ РЕЕСТР КРЕДИТОВ И АВТО-МИГРАЦИЯ
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -18,7 +18,7 @@
   function createDefaultState() {
     var mainTab = createEmptyTab('Основная');
     return {
-      version: 2,
+      version: 3,
       updatedAt: new Date().toISOString(),
       activeTabId: mainTab.id,
       cardLimit: 0,
@@ -40,7 +40,7 @@
   function sanitizeBundle(b) {
     return {
       id: String(b.id || WM.utils.uid('bundle')),
-      name: String(b.name || 'Общий кредит').trim() || 'Общий кредит',
+      name: String(b.name || 'Кредит').trim() || 'Кредит',
       type: sanitizeCreditType(b.type),
       customType: String(b.customType || '').trim(),
       itemIds: Array.isArray(b.itemIds) ? b.itemIds.map(String) : [],
@@ -66,7 +66,7 @@
     globalBundles.forEach(function (b) { seenBundleIds[b.id] = true; });
 
     var tabs = raw.tabs.map(function (t) {
-      // Автоматическая миграция старых creditBundles из вкладок (v1 -> v2)
+      // Миграция старых tab.creditBundles (v1)
       if (Array.isArray(t.creditBundles)) {
         t.creditBundles.forEach(function (oldB) {
           var sb = sanitizeBundle(oldB);
@@ -91,32 +91,43 @@
           : [],
         items: Array.isArray(t.items)
           ? t.items.map(function (it) {
-              var credit = it.credit && typeof it.credit === 'object' ? {
-                enabled: !!it.credit.enabled,
-                type: sanitizeCreditType(it.credit.type),
-                customType: String(it.credit.customType || '').trim(),
-                months: Math.max(0, parseInt(it.credit.months, 10) || 0),
-                monthlyPayment: WM.utils.toNumber(it.credit.monthlyPayment),
-                totalAmount: WM.utils.toNumber(it.credit.totalAmount),
-                startDate: sanitizeDate(it.credit.startDate),
-                dueDate: sanitizeDate(it.credit.dueDate)
-              } : {
-                enabled: false, type: 'installment', customType: '',
-                months: 0, monthlyPayment: 0, totalAmount: 0, startDate: '', dueDate: ''
-              };
+              var itemId = String(it.id || WM.utils.uid('item'));
+              var title = String(it.title || 'Без названия').trim() || 'Без названия';
+              var price = WM.utils.toNumber(it.price);
+
+              // Авто-миграция старых индивидуальных кредитов в единый реестр creditBundles (v2 -> v3)
+              var alreadyBundled = globalBundles.some(function (b) {
+                return b.itemIds.indexOf(itemId) !== -1;
+              });
+
+              if (!alreadyBundled && it.credit && it.credit.enabled) {
+                var migrated = sanitizeBundle({
+                  id: WM.utils.uid('bundle'),
+                  name: title,
+                  type: it.credit.type || 'installment',
+                  customType: it.credit.customType || '',
+                  itemIds: [itemId],
+                  months: it.credit.months || 0,
+                  monthlyPayment: it.credit.monthlyPayment || 0,
+                  totalAmount: WM.utils.toNumber(it.credit.totalAmount) || price,
+                  startDate: it.credit.startDate || '',
+                  dueDate: it.credit.dueDate || '',
+                  checked: !!it.checked
+                });
+                globalBundles.push(migrated);
+              }
 
               return {
-                id: String(it.id || WM.utils.uid('item')),
+                id: itemId,
                 categoryId: String(it.categoryId || ''),
-                title: String(it.title || 'Без названия').trim() || 'Без названия',
-                price: WM.utils.toNumber(it.price),
+                title: title,
+                price: price,
                 checked: !!it.checked,
                 priority: String(it.priority || 'medium'),
                 store: String(it.store || WM.CONFIG.STORES[0]),
                 link: String(it.link || '').trim(),
                 note: String(it.note || '').trim(),
-                credit: credit,
-                bundleId: it.bundleId ? String(it.bundleId) : null,
+                bundleId: null,
                 createdAt: it.createdAt || new Date().toISOString()
               };
             })
@@ -124,7 +135,6 @@
       };
     });
 
-    // Чистим несуществующие itemIds в бандлах
     var existingItems = {};
     tabs.forEach(function (t) {
       t.items.forEach(function (it) { existingItems[it.id] = it; });
@@ -135,8 +145,6 @@
       return b;
     }).filter(function (b) { return b.itemIds.length > 0; });
 
-    // Синхронизируем it.bundleId с globalBundles
-    Object.keys(existingItems).forEach(function (id) { existingItems[id].bundleId = null; });
     globalBundles.forEach(function (b) {
       b.itemIds.forEach(function (id) {
         if (existingItems[id]) existingItems[id].bundleId = b.id;
@@ -145,7 +153,7 @@
 
     var activeExists = tabs.some(function (t) { return t.id === raw.activeTabId; });
     return {
-      version: 2,
+      version: 3,
       updatedAt: raw.updatedAt || new Date().toISOString(),
       activeTabId: activeExists ? raw.activeTabId : tabs[0].id,
       cardLimit: WM.utils.toNumber(raw.cardLimit),
@@ -210,14 +218,6 @@
     return null;
   }
 
-  function getBundlesForTab(tab) {
-    var tabItemSet = {};
-    tab.items.forEach(function (it) { tabItemSet[it.id] = true; });
-    return state.creditBundles.filter(function (b) {
-      return b.itemIds.some(function (id) { return !!tabItemSet[id]; });
-    });
-  }
-
   function getBundleDetails(bundle) {
     var items = [];
     var tabNames = [];
@@ -240,6 +240,7 @@
       items: items,
       tabNames: tabNames,
       isCrossTab: tabNames.length > 1,
+      isSingleItem: items.length === 1,
       baseSum: WM.utils.toNumber(baseSum)
     };
   }
@@ -255,22 +256,12 @@
       store: it.store,
       link: it.link,
       note: it.note,
-      credit: {
-        enabled: !!(it.credit && it.credit.enabled),
-        type: sanitizeCreditType(it.credit && it.credit.type),
-        customType: (it.credit && it.credit.customType) || '',
-        months: (it.credit && it.credit.months) || 0,
-        monthlyPayment: (it.credit && it.credit.monthlyPayment) || 0,
-        totalAmount: (it.credit && it.credit.totalAmount) || 0,
-        startDate: (it.credit && it.credit.startDate) || '',
-        dueDate: (it.credit && it.credit.dueDate) || ''
-      },
       bundleId: forceNewId ? null : it.bundleId,
       createdAt: forceNewId ? new Date().toISOString() : it.createdAt
     };
   }
 
-  /* Итоги конкретной вкладки (для межвкладочных кредитов берётся честная пропорциональная доля этой вкладки!) */
+  /* Итоги конкретной вкладки (доля по межвкладочным кредитам считается пропорционально) */
   function calculateTabTotals(tab) {
     var spentTotal = 0;
     var spentCash = 0;
@@ -296,35 +287,18 @@
       b.itemIds.forEach(function (id) { bundledItemSet[id] = b.id; });
     });
 
-    // 1. Обычные и индивидуально кредитные товары вкладки
+    // 1. Обычные (наличные) товары вкладки
     tab.items.forEach(function (it) {
       if (bundledItemSet[it.id]) return;
-
-      var isCredit = !!(it.credit && it.credit.enabled);
-      var isGrace = isCredit && it.credit.type === 'grace';
-      var effectiveAmount = isCredit
-        ? (it.credit.totalAmount > 0 ? it.credit.totalAmount : it.price)
-        : it.price;
-
-      plannedTotal += effectiveAmount;
-      if (isCredit) plannedCredit += effectiveAmount;
-      else plannedCash += effectiveAmount;
-
+      plannedTotal += it.price;
+      plannedCash += it.price;
       if (it.checked) {
-        spentTotal += effectiveAmount;
-        if (isCredit) {
-          spentCredit += effectiveAmount;
-          activeCreditsCount++;
-          if (!isGrace) {
-            monthlyCreditTotal += WM.utils.toNumber(it.credit.monthlyPayment);
-          }
-        } else {
-          spentCash += effectiveAmount;
-        }
+        spentTotal += it.price;
+        spentCash += it.price;
       }
     });
 
-    // 2. Глобальные общие кредиты, содержащие товары из этой вкладки (пропорциональная доля)
+    // 2. Все кредиты, в которых есть товары этой вкладки
     state.creditBundles.forEach(function (b) {
       var tabIdsInBundle = b.itemIds.filter(function (id) { return !!tabItemSet[id]; });
       if (tabIdsInBundle.length === 0) return;
@@ -369,7 +343,7 @@
     };
   }
 
-  /* Глобальная сводка по ВСЕМ кредитам со всех вкладок (для панели «Кредиты» и лимита карты) */
+  /* Глобальная сводка по всем кредитам и лимиту карты */
   function calculateGlobalCredits() {
     var records = [];
     var monthlyTotal = 0;
@@ -378,57 +352,6 @@
     var totalDebtRemaining = 0;
     var activeCount = 0;
 
-    // 1. Индивидуальные кредиты по всем вкладкам
-    state.tabs.forEach(function (tab) {
-      tab.items.forEach(function (it) {
-        if (it.bundleId) return;
-        if (!it.credit || !it.credit.enabled) return;
-
-        var c = it.credit;
-        var total = c.totalAmount > 0 ? c.totalAmount : it.price;
-        var overpay = Math.round((total - it.price) * 100) / 100;
-        var sched = c.type !== 'grace' ? WM.utils.calcCreditSchedule(c.startDate, c.months, c.monthlyPayment) : null;
-        var grace = c.type === 'grace' ? WM.utils.calcGraceStatus(c.dueDate) : null;
-        var remaining = sched ? sched.remainingAmount : total;
-
-        records.push({
-          kind: 'item',
-          id: it.id,
-          tabId: tab.id,
-          tabNames: [tab.name],
-          title: it.title,
-          type: c.type,
-          customType: c.customType,
-          checked: !!it.checked,
-          baseSum: it.price,
-          totalAmount: total,
-          overpay: overpay,
-          months: c.months,
-          monthlyPayment: c.type === 'grace' ? 0 : c.monthlyPayment,
-          startDate: c.startDate,
-          dueDate: c.dueDate,
-          schedule: sched,
-          graceStatus: grace,
-          remainingAmount: remaining,
-          itemsList: [{ tab: tab, item: it }]
-        });
-
-        if (it.checked) {
-          activeCount++;
-          totalDebtRemaining += remaining;
-          if (c.type === 'grace') {
-            graceTotal += total;
-            if (grace && (!nearestGrace || grace.dueDate < nearestGrace.dueDate)) {
-              nearestGrace = grace;
-            }
-          } else {
-            monthlyTotal += c.monthlyPayment;
-          }
-        }
-      });
-    });
-
-    // 2. Глобальные общие кредиты
     state.creditBundles.forEach(function (b) {
       var details = getBundleDetails(b);
       var overpay = Math.round((b.totalAmount - details.baseSum) * 100) / 100;
@@ -437,10 +360,9 @@
       var remaining = sched ? sched.remainingAmount : b.totalAmount;
 
       records.push({
-        kind: 'bundle',
         id: b.id,
-        tabId: null,
         tabNames: details.tabNames,
+        isSingleItem: details.isSingleItem,
         title: b.name,
         type: b.type,
         customType: b.customType,
@@ -496,7 +418,6 @@
     getActiveTab: getActiveTab,
     findItemAcrossTabs: findItemAcrossTabs,
     getBundleForItem: getBundleForItem,
-    getBundlesForTab: getBundlesForTab,
     getBundleDetails: getBundleDetails,
     calculateTabTotals: calculateTabTotals,
     calculateGlobalCredits: calculateGlobalCredits,
@@ -602,7 +523,6 @@
       persist(false, false);
     },
 
-    /* Перенос категории сохраняет привязку товаров к глобальному общему кредиту! */
     transferCategory: function (catId, targetTabId, mode) {
       var srcTab = getActiveTab();
       var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
@@ -629,7 +549,6 @@
       return true;
     },
 
-    /* Перенос позиции сохраняет её привязку к глобальному общему кредиту! */
     transferItem: function (itemId, targetTabId, targetCatIdOrNew, mode) {
       var srcTab = getActiveTab();
       var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
@@ -669,17 +588,6 @@
       var tab = getActiveTab();
       var existing = payload.id ? tab.items.find(function (it) { return it.id === payload.id; }) : null;
 
-      var creditObj = {
-        enabled: !!(payload.credit && payload.credit.enabled),
-        type: sanitizeCreditType(payload.credit && payload.credit.type),
-        customType: String((payload.credit && payload.credit.customType) || '').trim(),
-        months: Math.max(0, parseInt(payload.credit && payload.credit.months, 10) || 0),
-        monthlyPayment: WM.utils.toNumber(payload.credit && payload.credit.monthlyPayment),
-        totalAmount: WM.utils.toNumber(payload.credit && payload.credit.totalAmount),
-        startDate: sanitizeDate(payload.credit && payload.credit.startDate),
-        dueDate: sanitizeDate(payload.credit && payload.credit.dueDate)
-      };
-
       if (existing) {
         existing.title = payload.title.trim();
         existing.categoryId = payload.categoryId;
@@ -689,9 +597,6 @@
         existing.store = payload.store || WM.CONFIG.STORES[0];
         existing.link = (payload.link || '').trim();
         existing.note = (payload.note || '').trim();
-        if (!existing.bundleId) {
-          existing.credit = creditObj;
-        }
         persist(false, false);
         return existing;
       }
@@ -706,7 +611,6 @@
         store: payload.store || WM.CONFIG.STORES[0],
         link: (payload.link || '').trim(),
         note: (payload.note || '').trim(),
-        credit: creditObj,
         bundleId: null,
         createdAt: new Date().toISOString()
       };
@@ -719,6 +623,11 @@
       var found = findItemAcrossTabs(itemId);
       if (!found) return;
       found.item.checked = !!checked;
+      // Если товар один в кредите — синхронизируем статус этого кредита автоматически
+      var b = getBundleForItem(itemId);
+      if (b && b.itemIds.length === 1) {
+        b.checked = !!checked;
+      }
       persist(false, false);
     },
 
@@ -733,7 +642,7 @@
       persist(false, false);
     },
 
-    /* Глобальные общие кредиты (работают сразу по всем вкладкам!) */
+    /* Единое сохранение кредита / рассрочки (на 1 или несколько товаров из любых вкладок) */
     saveCreditBundle: function (payload) {
       var selectedIds = Array.isArray(payload.itemIds) ? payload.itemIds.slice() : [];
       if (selectedIds.length === 0) return null;
@@ -770,7 +679,14 @@
         state.creditBundles.push(bundle);
       }
 
-      bundle.name = (payload.name || '').trim() || 'Общий кредит';
+      // Если выбран 1 товар и название не введено — берём название самого товара
+      var fallbackName = 'Кредит';
+      if (selectedIds.length === 1) {
+        var singleFound = findItemAcrossTabs(selectedIds[0]);
+        if (singleFound) fallbackName = singleFound.item.title;
+      }
+
+      bundle.name = (payload.name || '').trim() || fallbackName;
       bundle.type = sanitizeCreditType(payload.type);
       bundle.customType = String(payload.customType || '').trim();
       bundle.itemIds = selectedIds;
@@ -792,10 +708,6 @@
             }
           }
           it.bundleId = bundle.id;
-          it.credit = {
-            enabled: false, type: 'installment', customType: '',
-            months: 0, monthlyPayment: 0, totalAmount: 0, startDate: '', dueDate: ''
-          };
           if (bundle.checked) it.checked = true;
         }
       });

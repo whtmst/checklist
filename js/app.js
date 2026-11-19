@@ -58,7 +58,7 @@
     var item = tab.items.find(function (x) { return x.id === itemId; });
     if (!item) return;
     viewingItemId = itemId;
-    WM.render.renderItemDrawer(item, tab);
+    WM.render.renderItemDrawer(item, tab, getCommonHandlers());
     var drawer = document.getElementById('itemDetailDrawer');
     drawer.classList.add('open');
     drawer.setAttribute('aria-hidden', 'false');
@@ -117,12 +117,6 @@
       onAddItemInCategory: function (catId) { openItemModal(null, catId); },
       onViewItem: function (itemId) { openItemDrawer(itemId); },
       onEditItem: function (itemId) { openItemModal(itemId, null); },
-      onEditItemAcrossTabs: function (tabId, itemId) {
-        closeModal('creditsModal');
-        WM.storage.setActiveTab(tabId);
-        refreshUI();
-        openItemModal(itemId, null);
-      },
       onToggleItem: function (itemId, checked) {
         WM.storage.toggleItemChecked(itemId, checked);
         refreshUI();
@@ -143,7 +137,7 @@
     if (viewingItemId) {
       var tab = WM.storage.getActiveTab();
       var item = tab.items.find(function (x) { return x.id === viewingItemId; });
-      if (item) WM.render.renderItemDrawer(item, tab);
+      if (item) WM.render.renderItemDrawer(item, tab, handlers);
       else closeItemDrawer();
     }
 
@@ -164,20 +158,7 @@
     if (shouldRender) refreshUI();
   }
 
-  // --- Переключение полей типа долга (Рассрочка / Ninja / Льготный / Свой) ---
-  function syncItemCreditTypeUI() {
-    var type = document.getElementById('itemCreditType').value;
-    var isGrace = type === 'grace';
-    document.getElementById('itemCreditCustomTypeGroup').classList.toggle('hidden', type !== 'custom');
-    document.getElementById('itemCreditInstallmentRows').classList.toggle('hidden', isGrace);
-    document.getElementById('itemCreditGraceRows').classList.toggle('hidden', !isGrace);
-    if (isGrace && !document.getElementById('itemCreditGraceTotal').value) {
-      var p = document.getElementById('itemPriceInput').value;
-      if (p) document.getElementById('itemCreditGraceTotal').value = p;
-    }
-    updateItemOverpayHint();
-  }
-
+  // --- Подсказки и переключение полей в окне «Оформить в кредит» ---
   function syncBundleCreditTypeUI() {
     var type = document.getElementById('bundleTypeSelect').value;
     var isGrace = type === 'grace';
@@ -192,40 +173,6 @@
     if (!sched) return '';
     if (sched.isFinished) return 'Окончание: ' + sched.endFormatted + ' (срок завершён).';
     return 'До ' + sched.endFormatted + ' · осталось ' + sched.remainingMonths + ' из ' + sched.totalMonths + ' мес.';
-  }
-
-  function updateItemOverpayHint() {
-    var type = document.getElementById('itemCreditType').value;
-    var price = WM.utils.toNumber(document.getElementById('itemPriceInput').value);
-    var note = document.getElementById('itemCreditOverpayNote');
-
-    if (type === 'grace') {
-      var due = document.getElementById('itemCreditDueDate').value;
-      var grace = WM.utils.calcGraceStatus(due);
-      note.textContent = grace
-        ? 'Льготный долг: вернуть до ' + grace.dueFormatted + ' (' + grace.statusText + ').'
-        : 'Укажите дату, до которой нужно вернуть сумму без процентов.';
-      return;
-    }
-
-    var total = WM.utils.toNumber(document.getElementById('itemCreditTotal').value);
-    var startDate = document.getElementById('itemCreditStartDate').value;
-    var months = document.getElementById('itemCreditMonths').value;
-    var monthly = document.getElementById('itemCreditMonthly').value;
-
-    var lines = [];
-    if (total > 0) {
-      var diff = Math.round((total - price) * 100) / 100;
-      if (diff > 0) lines.push('Переплата банку: +' + WM.utils.formatMoney(diff) + '.');
-      else if (diff === 0) lines.push('Рассрочка без переплаты.');
-      else lines.push('Итоговая сумма ниже цены товара на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
-    }
-    var schedLine = buildScheduleHint(startDate, months, monthly);
-    if (schedLine) lines.push(schedLine);
-
-    note.textContent = lines.length > 0
-      ? lines.join(' ')
-      : 'Введите реальный ежемесячный платёж, итоговую сумму и (по желанию) дату оформления.';
   }
 
   function updateBundleCalcHints() {
@@ -411,29 +358,6 @@
       customGroup.classList.add('hidden');
     }
 
-    var inBundle = item ? !!WM.storage.getBundleForItem(item.id) : false;
-    var creditCheck = document.getElementById('itemCreditCheck');
-    var creditFields = document.getElementById('itemCreditFields');
-    var lockedHint = document.getElementById('itemBundleLockedHint');
-
-    creditCheck.disabled = inBundle;
-    lockedHint.classList.toggle('hidden', !inBundle);
-
-    var isCredit = !inBundle && item && item.credit && item.credit.enabled;
-    creditCheck.checked = !!isCredit;
-    creditFields.classList.toggle('hidden', !isCredit);
-
-    var cType = isCredit ? (item.credit.type || 'installment') : 'installment';
-    document.getElementById('itemCreditType').value = cType;
-    document.getElementById('itemCreditCustomType').value = isCredit ? (item.credit.customType || '') : '';
-    document.getElementById('itemCreditStartDate').value = isCredit && item.credit.startDate ? item.credit.startDate : '';
-    document.getElementById('itemCreditMonths').value = isCredit && item.credit.months ? item.credit.months : '';
-    document.getElementById('itemCreditMonthly').value = isCredit ? item.credit.monthlyPayment : '';
-    document.getElementById('itemCreditTotal').value = isCredit ? item.credit.totalAmount : '';
-    document.getElementById('itemCreditDueDate').value = isCredit && item.credit.dueDate ? item.credit.dueDate : '';
-    document.getElementById('itemCreditGraceTotal').value = isCredit ? item.credit.totalAmount : '';
-    syncItemCreditTypeUI();
-
     setupItemTransferUI(item);
     document.getElementById('deleteItemBtn').classList.toggle('hidden', !item);
     openModal('itemModal');
@@ -442,20 +366,20 @@
     }, 50);
   }
 
-  // --- Модалка: Глобальный общий кредит (группировка товаров по ВСЕМ вкладкам) ---
+  // --- Модалка: Оформить в кредит / рассрочку ---
   function openBundleModal(bundleId) {
     var state = WM.storage.getState();
     var totalItemsAllTabs = state.tabs.reduce(function (acc, t) { return acc + t.items.length; }, 0);
     if (totalItemsAllTabs === 0) {
-      showToast('Сначала добавь товары, чтобы объединить их в кредит');
+      showToast('Сначала добавь товары, чтобы оформить их в кредит');
       return;
     }
 
     var bundle = bundleId ? state.creditBundles.find(function (b) { return b.id === bundleId; }) : null;
-    document.getElementById('bundleModalTitle').textContent = bundle ? 'Редактировать общий кредит' : 'Объединить товары в один кредит';
+    document.getElementById('bundleModalTitle').textContent = bundle ? 'Редактировать кредит / рассрочку' : 'Оформить в кредит / рассрочку';
     document.getElementById('bundleIdInput').value = bundle ? bundle.id : '';
     document.getElementById('bundleNameInput').value = bundle ? bundle.name : '';
-    document.getElementById('bundleTypeSelect').value = bundle ? (bundle.type || 'ninja') : 'ninja';
+    document.getElementById('bundleTypeSelect').value = bundle ? (bundle.type || 'installment') : 'installment';
     document.getElementById('bundleCustomTypeInput').value = bundle ? (bundle.customType || '') : '';
     document.getElementById('bundleStartDateInput').value = bundle && bundle.startDate ? bundle.startDate : '';
     document.getElementById('bundleMonthsInput').value = bundle && bundle.months ? bundle.months : '';
@@ -469,7 +393,6 @@
     var picker = document.getElementById('bundleItemsPicker');
     picker.innerHTML = '';
 
-    // Сортируем вкладки: текущая вкладка первой, остальные следом
     var activeTabId = state.activeTabId;
     var orderedTabs = state.tabs.slice().sort(function (a, b) {
       if (a.id === activeTabId) return -1;
@@ -528,13 +451,11 @@
     openModal('bundleModal');
   }
 
-  // --- Модалка: Все кредиты и лимит карты ---
   function openCreditsModal() {
     WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
     openModal('creditsModal');
   }
 
-  // --- Модалки: Категория, Вкладка, Синхронизация ---
   function openCategoryModal(catId) {
     var tab = WM.storage.getActiveTab();
     var cat = catId ? tab.categories.find(function (c) { return c.id === catId; }) : null;
@@ -639,13 +560,11 @@
       openBundleModal(null);
     });
 
-    // Ввод лимита карты в панели «Кредиты»
     document.getElementById('cardLimitInput').addEventListener('input', function (e) {
       WM.storage.setCardLimit(e.target.value);
       WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
     });
 
-    // Фильтры типа кредита внутри панели «Кредиты»
     document.querySelectorAll('#creditsTypeFilter [data-ctype]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         document.querySelectorAll('#creditsTypeFilter [data-ctype]').forEach(function (b) {
@@ -664,7 +583,6 @@
     document.getElementById('addItemBtn').addEventListener('click', function () { openItemModal(null, null); });
     document.getElementById('addCategoryBtn').addEventListener('click', function () { openCategoryModal(null); });
     document.getElementById('addBundleBtn').addEventListener('click', function () { openBundleModal(null); });
-    document.getElementById('addBundleInlineBtn').addEventListener('click', function () { openBundleModal(null); });
     document.getElementById('openSyncModalBtn').addEventListener('click', openSyncModal);
 
     document.getElementById('quickSyncBtn').addEventListener('click', async function () {
@@ -707,29 +625,11 @@
       if (isCustom) document.getElementById('itemCustomStoreInput').focus();
     });
 
-    document.getElementById('itemCreditCheck').addEventListener('change', function (e) {
-      document.getElementById('itemCreditFields').classList.toggle('hidden', !e.target.checked);
-      if (e.target.checked && !document.getElementById('itemCreditTotal').value) {
-        var priceVal = document.getElementById('itemPriceInput').value;
-        if (priceVal) {
-          document.getElementById('itemCreditTotal').value = priceVal;
-          document.getElementById('itemCreditGraceTotal').value = priceVal;
-        }
-      }
-      syncItemCreditTypeUI();
-    });
-
-    document.getElementById('itemCreditType').addEventListener('change', syncItemCreditTypeUI);
     document.getElementById('bundleTypeSelect').addEventListener('change', syncBundleCreditTypeUI);
-
-    ['itemPriceInput', 'itemCreditTotal', 'itemCreditMonths', 'itemCreditMonthly', 'itemCreditStartDate', 'itemCreditDueDate', 'itemCreditGraceTotal'].forEach(function (id) {
-      document.getElementById(id).addEventListener('input', updateItemOverpayHint);
-    });
     ['bundleTotalInput', 'bundleMonthsInput', 'bundleMonthlyInput', 'bundleStartDateInput', 'bundleDueDateInput', 'bundleGraceTotalInput'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', updateBundleCalcHints);
     });
 
-    // Перенос / копирование карточки
     document.getElementById('itemTransferTabSelect').addEventListener('change', function (e) {
       var activeTab = WM.storage.getActiveTab();
       var curCatId = document.getElementById('itemCategorySelect').value;
@@ -783,10 +683,6 @@
         storeVal = document.getElementById('itemCustomStoreInput').value.trim() || 'Свой вариант';
       }
 
-      var isCredit = document.getElementById('itemCreditCheck').checked;
-      var cType = document.getElementById('itemCreditType').value;
-      var isGrace = cType === 'grace';
-
       WM.storage.saveItem({
         id: document.getElementById('itemIdInput').value || null,
         title: title,
@@ -796,19 +692,7 @@
         store: storeVal,
         link: document.getElementById('itemLinkInput').value,
         note: document.getElementById('itemNoteInput').value,
-        checked: document.getElementById('itemCheckedInput').checked,
-        credit: {
-          enabled: isCredit,
-          type: cType,
-          customType: document.getElementById('itemCreditCustomType').value,
-          startDate: isGrace ? '' : document.getElementById('itemCreditStartDate').value,
-          months: isGrace ? 0 : document.getElementById('itemCreditMonths').value,
-          monthlyPayment: isGrace ? 0 : document.getElementById('itemCreditMonthly').value,
-          totalAmount: isGrace
-            ? document.getElementById('itemCreditGraceTotal').value
-            : document.getElementById('itemCreditTotal').value,
-          dueDate: isGrace ? document.getElementById('itemCreditDueDate').value : ''
-        }
+        checked: document.getElementById('itemCheckedInput').checked
       });
 
       closeModal('itemModal');
@@ -828,7 +712,7 @@
       }
     });
 
-    // Сохранение общего кредита
+    // Сохранение кредита / рассрочки
     document.getElementById('bundleForm').addEventListener('submit', function (e) {
       e.preventDefault();
       var checkedBoxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
@@ -836,7 +720,7 @@
       checkedBoxes.forEach(function (cb) { itemIds.push(cb.value); });
 
       if (itemIds.length === 0) {
-        showToast('Выбери хотя бы один товар для кредита');
+        showToast('Выбери хотя бы один товар');
         return;
       }
 
@@ -867,17 +751,17 @@
 
       closeModal('bundleModal');
       refreshUI();
-      showToast('Общий кредит сохранён');
+      showToast('Кредит сохранён');
     });
 
     document.getElementById('deleteBundleBtn').addEventListener('click', function () {
       var id = document.getElementById('bundleIdInput').value;
       if (!id) return;
-      if (confirm('Удалить этот общий кредит? Сами товары останутся в списке.')) {
+      if (confirm('Удалить этот кредит? Сами товары останутся в списке.')) {
         WM.storage.deleteCreditBundle(id);
         closeModal('bundleModal');
         refreshUI();
-        showToast('Общий кредит удалён');
+        showToast('Кредит удалён');
       }
     });
 
@@ -1003,7 +887,6 @@
       }
     });
 
-    // Локальный JSON бэкап
     document.getElementById('exportFileBtn').addEventListener('click', function () {
       WM.sync.downloadJsonFile();
       showToast('Файл .json скачан');
