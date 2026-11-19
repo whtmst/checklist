@@ -1,0 +1,126 @@
+/* ==========================================================================
+   WM_CHECKLIST — ЦВЕТОВЫЕ ПЕРЕМЕННЫЕ И ТОКЕНЫ
+   Меняй любой цвет здесь — он обновится по всему приложению автоматически.
+   По умолчанию активна тёмная тема в стиле WHT MST'S HUB.
+   ========================================================================== */
+
+:root {
+  /* Шрифты */
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Фоны и поверхности (Тёмная тема по умолчанию) */
+  --bg-page: #141414;          /* Основной фон страницы */
+  --bg-shell: #1A1A1A;         /* Контейнер / верхняя панель */
+  --bg-surface: #202020;       /* Карточки, блоки категорий, модалки */
+  --bg-surface-hover: #262626; /* Наведение на строку / карточку */
+  --bg-input: #161616;         /* Поля ввода */
+  --bg-elevated: #2A2A2A;      /* Вторичные кнопки и теги */
+
+  /* Границы */
+  --border-subtle: #2C2C2C;
+  --border-default: #363636;
+  --border-strong: #4A4A4A;
+
+  /* Текст */
+  --text-primary: #EFEFEF;
+  --text-secondary: #B5B5B5;
+  --text-muted: #7C7C7C;
+
+  /* Главный акцент (терракотовый с WHT MST'S HUB) */
+  --accent: #C84B31;
+  --accent-hover: #DC583D;
+  --accent-text: #FFFFFF;
+  --accent-soft: rgba(200, 75, 49, 0.14);
+  --accent-border: rgba(200, 75, 49, 0.45);
+
+  /* Семантические статусы */
+  --ok: #34A876;
+  --ok-soft: rgba(52, 168, 118, 0.14);
+  --warn: #D49B38;
+  --warn-soft: rgba(212, 155, 56, 0.14);
+  --danger: #D9534F;
+  --danger-soft: rgba(217, 83, 79, 0.14);
+
+  /* Цвета 5 приоритетов */
+  --prio-1-bg: rgba(200, 75, 49, 0.20);
+  --prio-1-fg: #FF7B5E;
+  --prio-1-bd: rgba(200, 75, 49, 0.45);
+
+  --prio-2-bg: rgba(212, 122, 48, 0.18);
+  --prio-2-fg: #F5A35C;
+  --prio-2-bd: rgba(212, 122, 48, 0.42);
+
+  --prio-3-bg: rgba(204, 164, 62, 0.16);
+  --prio-3-fg: #E6C167;
+  --prio-3-bd: rgba(204, 164, 62, 0.36);
+
+  --prio-4-bg: rgba(140, 148, 156, 0.15);
+  --prio-4-fg: #C5CBD1;
+  --prio-4-bd: rgba(140, 148, 156, 0.32);
+
+  --prio-5-bg: rgba(105, 105, 105, 0.14);
+  --prio-5-fg: #949494;
+  --prio-5-bd: rgba(105, 105, 105, 0.28);
+
+  /* Радиусы и тени */
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+/* ==========================================================================
+   СВЕТЛАЯ ТЕМА (нейтрально-тёплые серые тона + тот же терракотовый акцент)
+   ========================================================================== */
+[data-theme="light"] {
+  --bg-page: #EEEDEA;
+  --bg-shell: #F7F6F4;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #F5F4F1;
+  --bg-input: #FAF9F7;
+  --bg-elevated: #E6E4DF;
+
+  --border-subtle: #E2E0DB;
+  --border-default: #D2CFC8;
+  --border-strong: #B8B4AC;
+
+  --text-primary: #1A1A1A;
+  --text-secondary: #4D4C49;
+  --text-muted: #787671;
+
+  --accent: #C84B31;
+  --accent-hover: #B13E26;
+  --accent-text: #FFFFFF;
+  --accent-soft: rgba(200, 75, 49, 0.10);
+  --accent-border: rgba(200, 75, 49, 0.38);
+
+  --ok: #1F7A53;
+  --ok-soft: rgba(31, 122, 83, 0.12);
+  --warn: #A87314;
+  --warn-soft: rgba(168, 115, 20, 0.12);
+  --danger: #B8322E;
+  --danger-soft: rgba(184, 50, 46, 0.10);
+
+  --prio-1-bg: rgba(200, 75, 49, 0.12);
+  --prio-1-fg: #A8351E;
+  --prio-1-bd: rgba(200, 75, 49, 0.35);
+
+  --prio-2-bg: rgba(196, 102, 24, 0.12);
+  --prio-2-fg: #9E4E0E;
+  --prio-2-bd: rgba(196, 102, 24, 0.32);
+
+  --prio-3-bg: rgba(168, 125, 20, 0.12);
+  --prio-3-fg: #825E07;
+  --prio-3-bd: rgba(168, 125, 20, 0.30);
+
+  --prio-4-bg: rgba(95, 100, 106, 0.10);
+  --prio-4-fg: #4B4F54;
+  --prio-4-bd: rgba(95, 100, 106, 0.25);
+
+  --prio-5-bg: rgba(120, 120, 120, 0.10);
+  --prio-5-fg: #666666;
+  --prio-5-bd: rgba(120, 120, 120, 0.22);
+
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.18);
+}

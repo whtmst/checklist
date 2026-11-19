@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#141414">
+  <title>WM_CHECKLIST · Личный чек-лист и учёт покупок</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23181818'/%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23C84B31'/%3E%3Cpath d='M11 16.5l3.2 3.2 6.8-7.2' stroke='%23ffffff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Шапка в стиле WHT MST'S HUB -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <div class="brand-text">
+          <span class="brand-title">WM_CHECKLIST</span>
+          <span class="brand-sub" id="syncStatusText">LOCAL // OFFLINE</span>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button type="button" class="btn btn-ghost btn-icon" id="quickSyncBtn" title="Синхронизировать с GitHub">
+          <span class="sync-indicator" id="syncIndicator"></span>
+          <span class="btn-label-desktop">Синхр.</span>
+        </button>
+        <button type="button" class="btn btn-ghost" id="openSyncModalBtn" title="Настройки синхронизации и бэкапа">
+          Настройки
+        </button>
+        <button type="button" class="btn btn-ghost btn-icon" id="themeToggleBtn" title="Переключить тему" aria-label="Переключить тему">
+          <span id="themeToggleIcon">☀</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Панель вкладок (списков) -->
+    <nav class="tabs-bar" aria-label="Списки">
+      <div class="tabs-list" id="tabsList"></div>
+      <div class="tabs-controls">
+        <button type="button" class="btn btn-accent btn-sm" id="addTabBtn">+ Вкладка</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="manageTabBtn" title="Переименовать или удалить текущую вкладку">•••</button>
+      </div>
+    </nav>
+
+    <!-- Итоговая полоса текущей вкладки (3 отдельных показателя) -->
+    <section class="summary-grid" aria-label="Итоги по вкладке">
+      <div class="summary-card summary-card--primary">
+        <div class="summary-label">ПОТРАЧЕНО (ОТМЕЧЕНО)</div>
+        <div class="summary-value" id="statSpent">0 ₼</div>
+        <div class="summary-meta" id="statSpentMeta">Отмечено: 0 из 0</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">В МЕСЯЦ ПО КРЕДИТАМ</div>
+        <div class="summary-value" id="statMonthly">0 ₼</div>
+        <div class="summary-meta" id="statMonthlyMeta">Активных кредитов: 0</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">ВСЕГО ЗАПЛАНИРОВАНО</div>
+        <div class="summary-value" id="statPlanned">0 ₼</div>
+        <div class="summary-meta" id="statPlannedMeta">Нал: 0 ₼ · Кредит: 0 ₼</div>
+      </div>
+    </section>
+
+    <!-- Основные действия и фильтры -->
+    <section class="toolbar">
+      <div class="toolbar-primary">
+        <button type="button" class="btn btn-accent" id="addItemBtn">+ Позиция</button>
+        <button type="button" class="btn btn-secondary" id="addCategoryBtn">+ Категория</button>
+        <button type="button" class="btn btn-secondary" id="addBundleBtn">Общий кредит</button>
+      </div>
+
+      <div class="toolbar-filters">
+        <input type="search" class="input input-search" id="searchInput" placeholder="Поиск по названию или заметке..." aria-label="Поиск">
+        <select class="select" id="statusFilter" aria-label="Фильтр по статусу">
+          <option value="all">Все статусы</option>
+          <option value="unchecked">Не куплено</option>
+          <option value="checked">Куплено</option>
+          <option value="credit">Только в кредит</option>
+        </select>
+        <select class="select" id="priorityFilter" aria-label="Фильтр по приоритету">
+          <option value="all">Все приоритеты</option>
+        </select>
+        <select class="select" id="storeFilter" aria-label="Фильтр по магазину">
+          <option value="all">Все магазины</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Блок общих кредитов (показывается, если есть хотя бы один) -->
+    <section class="bundles-section hidden" id="bundlesSection" aria-label="Общие кредиты и рассрочки">
+      <div class="section-header-bar">
+        <div class="section-heading-group">
+          <span class="section-kicker">SYS_CREDIT</span>
+          <h2 class="section-title">Общие кредиты и рассрочки</h2>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addBundleInlineBtn">+ Объединить товары</button>
+      </div>
+      <div class="bundles-list" id="bundlesList"></div>
+    </section>
+
+    <!-- Основной список категорий и позиций -->
+    <main class="checklist-main" id="checklistRoot"></main>
+
+    <!-- Футер -->
+    <footer class="app-footer">
+      <span class="footer-left">WM_CHECKLIST // LOCAL + GITHUB GIST</span>
+      <span class="footer-right" id="footerStats">READY</span>
+    </footer>
+  </div>
+
+  <!-- МОДАЛКА: Добавить / Редактировать позицию -->
+  <div class="modal-backdrop" id="itemModal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
+      <div class="modal-header">
+        <h3 id="itemModalTitle">Новая позиция</h3>
+        <button type="button" class="modal-close" data-close-modal="itemModal" aria-label="Закрыть">✕</button>
+      </div>
+      <form id="itemForm" class="modal-form">
+        <input type="hidden" id="itemIdInput">
+
+        <div class="form-group">
+          <label class="form-label" for="itemTitleInput">Название *</label>
+          <input type="text" class="input" id="itemTitleInput" placeholder="Например, Велосипед 26&quot; или Зарядка USB-C" required>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="itemCategorySelect">Категория *</label>
+            <select class="select" id="itemCategorySelect" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="itemPriceInput">Цена (₼)</label>
+            <input type="number" class="input input-mono" id="itemPriceInput" min="0" step="0.01" placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="itemPrioritySelect">Приоритет</label>
+            <select class="select" id="itemPrioritySelect"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="itemStoreSelect">Откуда товар</label>
+            <select class="select" id="itemStoreSelect"></select>
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="customStoreGroup">
+          <label class="form-label" for="itemCustomStoreInput">Свой магазин / источник</label>
+          <input type="text" class="input" id="itemCustomStoreInput" placeholder="Например, Tap.az, AliExpress, Kontakt Home">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="itemLinkInput">Ссылка на товар</label>
+          <input type="url" class="input" id="itemLinkInput" placeholder="https://...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="itemNoteInput">Заметка</label>
+          <textarea class="textarea" id="itemNoteInput" rows="2" placeholder="Размер, цвет, нюансы доставки..."></textarea>
+        </div>
+
+        <div class="form-check-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="itemCheckedInput">
+            <span>Уже куплено / выполнено</span>
+          </label>
+        </div>
+
+        <!-- Индивидуальный кредит -->
+        <div class="credit-box" id="itemCreditSection">
+          <label class="checkbox-label">
+            <input type="checkbox" id="itemCreditCheck">
+            <span>Взято в кредит / рассрочку (отдельно по этому товару)</span>
+          </label>
+          <p class="form-hint hidden" id="itemBundleLockedHint">
+            Этот товар входит в общий кредит. Чтобы настроить индивидуальный кредит, сначала уберите его из общего кредита.
+          </p>
+
+          <div class="credit-fields hidden" id="itemCreditFields">
+            <div class="form-row-3">
+              <div class="form-group">
+                <label class="form-label" for="itemCreditMonths">Срок (мес.)</label>
+                <input type="number" class="input input-mono" id="itemCreditMonths" min="1" step="1" placeholder="6">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="itemCreditMonthly">Платёж / мес (₼)</label>
+                <input type="number" class="input input-mono" id="itemCreditMonthly" min="0" step="0.01" placeholder="20">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="itemCreditTotal">Итоговая сумма (₼)</label>
+                <input type="number" class="input input-mono" id="itemCreditTotal" min="0" step="0.01" placeholder="120">
+              </div>
+            </div>
+            <div class="credit-calc-note" id="itemCreditOverpayNote">
+              Введите реальный ежемесячный платёж и итоговую сумму из договора / банка.
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions modal-actions--split">
+          <button type="button" class="btn btn-danger hidden" id="deleteItemBtn">Удалить</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-ghost" data-close-modal="itemModal">Отмена</button>
+            <button type="submit" class="btn btn-accent">Сохранить</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Общий кредит (несколько товаров в один кредит) -->
+  <div class="modal-backdrop" id="bundleModal" aria-hidden="true">
+    <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="bundleModalTitle">
+      <div class="modal-header">
+        <h3 id="bundleModalTitle">Общий кредит / рассрочка</h3>
+        <button type="button" class="modal-close" data-close-modal="bundleModal" aria-label="Закрыть">✕</button>
+      </div>
+      <form id="bundleForm" class="modal-form">
+        <input type="hidden" id="bundleIdInput">
+
+        <div class="form-group">
+          <label class="form-label" for="bundleNameInput">Название кредита / рассрочки</label>
+          <input type="text" class="input" id="bundleNameInput" placeholder="Например, Таксит Birmarket на 6 мес.">
+        </div>
+
+        <div class="form-group">
+          <div class="form-label-row">
+            <label class="form-label">Выберите товары в этот кредит *</label>
+            <span class="mono-pill" id="bundleBaseSumLabel">База: 0 ₼</span>
+          </div>
+          <div class="bundle-picker-list" id="bundleItemsPicker"></div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label" for="bundleMonthsInput">Срок (мес.)</label>
+            <input type="number" class="input input-mono" id="bundleMonthsInput" min="1" step="1" placeholder="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bundleMonthlyInput">Платёж / мес (₼) *</label>
+            <input type="number" class="input input-mono" id="bundleMonthlyInput" min="0" step="0.01" placeholder="55" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bundleTotalInput">Итоговая сумма (₼) *</label>
+            <input type="number" class="input input-mono" id="bundleTotalInput" min="0" step="0.01" placeholder="330" required>
+          </div>
+        </div>
+
+        <div class="credit-calc-note" id="bundleOverpayNote">
+          Укажите общую итоговую сумму (с учётом переплаты банка, если есть) и реальный ежемесячный платёж.
+        </div>
+
+        <div class="form-check-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="bundleCheckedInput" checked>
+            <span>Кредит уже оформлен (отметить выбранные товары как купленные)</span>
+          </label>
+        </div>
+
+        <div class="modal-actions modal-actions--split">
+          <button type="button" class="btn btn-danger hidden" id="deleteBundleBtn">Удалить кредит</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-ghost" data-close-modal="bundleModal">Отмена</button>
+            <button type="submit" class="btn btn-accent">Сохранить кредит</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Категория (добавить / переименовать) -->
+  <div class="modal-backdrop" id="categoryModal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+      <div class="modal-header">
+        <h3 id="categoryModalTitle">Новая категория</h3>
+        <button type="button" class="modal-close" data-close-modal="categoryModal" aria-label="Закрыть">✕</button>
+      </div>
+      <form id="categoryForm" class="modal-form">
+        <input type="hidden" id="categoryIdInput">
+        <div class="form-group">
+          <label class="form-label" for="categoryNameInput">Название категории *</label>
+          <input type="text" class="input" id="categoryNameInput" placeholder="Например, Экипировка, Свет, Инструменты" required>
+        </div>
+        <div class="modal-actions modal-actions--split">
+          <button type="button" class="btn btn-danger hidden" id="deleteCategoryBtn">Удалить категорию</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-ghost" data-close-modal="categoryModal">Отмена</button>
+            <button type="submit" class="btn btn-accent">Сохранить</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Вкладка (добавить / переименовать / удалить) -->
+  <div class="modal-backdrop" id="tabModal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="tabModalTitle">
+      <div class="modal-header">
+        <h3 id="tabModalTitle">Новая вкладка</h3>
+        <button type="button" class="modal-close" data-close-modal="tabModal" aria-label="Закрыть">✕</button>
+      </div>
+      <form id="tabForm" class="modal-form">
+        <input type="hidden" id="tabIdInput">
+        <div class="form-group">
+          <label class="form-label" for="tabNameInput">Название вкладки *</label>
+          <input type="text" class="input" id="tabNameInput" placeholder="Например, Велосипед, Дом, Ремонт" required>
+        </div>
+        <div class="modal-actions modal-actions--split">
+          <button type="button" class="btn btn-danger hidden" id="deleteTabBtn">Удалить вкладку</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-ghost" data-close-modal="tabModal">Отмена</button>
+            <button type="submit" class="btn btn-accent">Сохранить</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Синхронизация GitHub Gist и Резервный JSON -->
+  <div class="modal-backdrop" id="syncModal" aria-hidden="true">
+    <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
+      <div class="modal-header">
+        <h3 id="syncModalTitle">Синхронизация (GitHub Gist) и JSON</h3>
+        <button type="button" class="modal-close" data-close-modal="syncModal" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modal-form">
+        <div class="sync-panel">
+          <div class="section-kicker">GITHUB SECRET GIST SYNC</div>
+          <p class="form-hint">
+            Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется. Данные сохраняются в скрытый Gist под именем <code>wm-checklist-data.json</code>.
+          </p>
+
+          <div class="form-group">
+            <label class="form-label" for="ghTokenInput">GitHub Personal Access Token (право: gist)</label>
+            <input type="password" class="input input-mono" id="ghTokenInput" placeholder="ghp_... или github_pat_..." autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="ghGistIdInput">Gist ID (заполнится сам при первом сохранении или поиске)</label>
+            <input type="text" class="input input-mono" id="ghGistIdInput" placeholder="Оставь пустым для автопоиска / создания">
+          </div>
+
+          <div class="form-check-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="ghAutoSyncCheck">
+              <span>Автоматически отправлять изменения в GitHub (через 1.5 сек)</span>
+            </label>
+          </div>
+
+          <div class="sync-buttons-row">
+            <button type="button" class="btn btn-accent" id="saveSyncSettingsBtn">Сохранить настройки</button>
+            <button type="button" class="btn btn-secondary" id="pushGistBtn">Отправить в GitHub ↑</button>
+            <button type="button" class="btn btn-secondary" id="pullGistBtn">Загрузить с GitHub ↓</button>
+            <button type="button" class="btn btn-ghost" id="findGistBtn">Найти мой Gist</button>
+          </div>
+          <div class="sync-log" id="syncModalStatus"></div>
+        </div>
+
+        <div class="sync-divider"></div>
+
+        <div class="sync-panel">
+          <div class="section-kicker">ЛОКАЛЬНЫЙ БЭКАП (JSON)</div>
+          <div class="sync-buttons-row">
+            <button type="button" class="btn btn-secondary" id="exportFileBtn">Скачать .json</button>
+            <label class="btn btn-secondary file-upload-btn">
+              Загрузить .json
+              <input type="file" id="importFileInput" accept=".json,application/json" hidden>
+            </label>
+            <button type="button" class="btn btn-ghost" id="copyJsonBtn">Скопировать JSON</button>
+            <button type="button" class="btn btn-danger" id="clearAllDataBtn">Очистить всё</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Уведомления -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Модули приложения (порядок важен, работает и через file://, и через GitHub Pages) -->
+  <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
