@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПАНЕЛЬ И АВТО-ПУЛЛ
+   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПЕРЕНОС И АВТО-ПУЛЛ
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -162,7 +162,7 @@
     if (shouldRender) refreshUI();
   }
 
-  // --- Подсказки расчёта кредита (переплата + дата окончания) ---
+  // --- Подсказки расчёта кредита ---
   function buildScheduleHint(startDate, months, monthly) {
     var sched = WM.utils.calcCreditSchedule(startDate, months, monthly);
     if (!sched) return '';
@@ -233,6 +233,76 @@
     note.textContent = lines.length > 0
       ? lines.join(' ')
       : 'Укажите итоговую сумму, ежемесячный платёж и (по желанию) дату оформления.';
+  }
+
+  // --- Заполнение селектов переноса между вкладками ---
+  function populateItemTransferCats(targetTabId, currentCatName) {
+    var state = WM.storage.getState();
+    var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
+    var catSelect = document.getElementById('itemTransferCatSelect');
+    catSelect.innerHTML = '';
+
+    var autoOpt = document.createElement('option');
+    autoOpt.value = '__create_same__';
+    autoOpt.textContent = 'Как сейчас («' + (currentCatName || 'Общее') + '»)';
+    catSelect.appendChild(autoOpt);
+
+    if (dstTab && dstTab.categories.length > 0) {
+      dstTab.categories.forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        catSelect.appendChild(opt);
+      });
+    }
+  }
+
+  function setupItemTransferUI(item) {
+    var box = document.getElementById('itemTransferBox');
+    var state = WM.storage.getState();
+    var activeTab = WM.storage.getActiveTab();
+    var otherTabs = state.tabs.filter(function (t) { return t.id !== activeTab.id; });
+
+    if (!item || otherTabs.length === 0) {
+      box.classList.add('hidden');
+      return;
+    }
+
+    var tabSelect = document.getElementById('itemTransferTabSelect');
+    tabSelect.innerHTML = '';
+    otherTabs.forEach(function (t) {
+      var opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      tabSelect.appendChild(opt);
+    });
+
+    var curCat = activeTab.categories.find(function (c) { return c.id === item.categoryId; });
+    populateItemTransferCats(otherTabs[0].id, curCat ? curCat.name : '');
+    box.classList.remove('hidden');
+  }
+
+  function setupCategoryTransferUI(cat) {
+    var box = document.getElementById('categoryTransferBox');
+    var state = WM.storage.getState();
+    var activeTab = WM.storage.getActiveTab();
+    var otherTabs = state.tabs.filter(function (t) { return t.id !== activeTab.id; });
+
+    if (!cat || otherTabs.length === 0) {
+      box.classList.add('hidden');
+      return;
+    }
+
+    var tabSelect = document.getElementById('categoryTransferTabSelect');
+    tabSelect.innerHTML = '';
+    otherTabs.forEach(function (t) {
+      var opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      tabSelect.appendChild(opt);
+    });
+
+    box.classList.remove('hidden');
   }
 
   // --- Модалка: Позиция ---
@@ -323,6 +393,7 @@
     document.getElementById('itemCreditTotal').value = isCredit ? item.credit.totalAmount : '';
     updateItemOverpayHint();
 
+    setupItemTransferUI(item);
     document.getElementById('deleteItemBtn').classList.toggle('hidden', !item);
     openModal('itemModal');
     setTimeout(function () {
@@ -402,6 +473,7 @@
     document.getElementById('categoryIdInput').value = cat ? cat.id : '';
     document.getElementById('categoryNameInput').value = cat ? cat.name : '';
     document.getElementById('deleteCategoryBtn').classList.toggle('hidden', !cat);
+    setupCategoryTransferUI(cat);
     openModal('categoryModal');
     setTimeout(function () {
       document.getElementById('categoryNameInput').focus();
@@ -440,7 +512,6 @@
     });
   }
 
-  // --- Экономная авто-проверка обновлений с GitHub (ETag + 304) ---
   async function runAutoPull(force) {
     var updated = await WM.sync.checkForRemoteUpdates(force);
     if (updated) {
@@ -482,7 +553,6 @@
       if (e.key === 'Escape') closeAllOverlays();
     });
 
-    // Авто-подгрузка при возврате на вкладку (разблокировал телефон / переключил окно)
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) runAutoPull(false);
     });
@@ -560,6 +630,50 @@
     ['bundleTotalInput', 'bundleMonthsInput', 'bundleMonthlyInput', 'bundleStartDateInput'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', updateBundleCalcHints);
     });
+
+    // События переноса / копирования карточки между вкладками
+    document.getElementById('itemTransferTabSelect').addEventListener('change', function (e) {
+      var activeTab = WM.storage.getActiveTab();
+      var curCatId = document.getElementById('itemCategorySelect').value;
+      var curCat = activeTab.categories.find(function (c) { return c.id === curCatId; });
+      populateItemTransferCats(e.target.value, curCat ? curCat.name : '');
+    });
+
+    function handleItemTransfer(mode) {
+      var itemId = document.getElementById('itemIdInput').value;
+      var targetTabId = document.getElementById('itemTransferTabSelect').value;
+      var targetCatId = document.getElementById('itemTransferCatSelect').value;
+      if (!itemId || !targetTabId) return;
+      var ok = WM.storage.transferItem(itemId, targetTabId, targetCatId, mode);
+      if (ok) {
+        var dstTab = WM.storage.getState().tabs.find(function (t) { return t.id === targetTabId; });
+        closeModal('itemModal');
+        if (mode === 'move' && viewingItemId === itemId) closeItemDrawer();
+        refreshUI();
+        showToast((mode === 'move' ? 'Перенесено во вкладку «' : 'Скопировано во вкладку «') + (dstTab ? dstTab.name : '') + '»');
+      }
+    }
+
+    document.getElementById('moveItemTabBtn').addEventListener('click', function () { handleItemTransfer('move'); });
+    document.getElementById('copyItemTabBtn').addEventListener('click', function () { handleItemTransfer('copy'); });
+
+    // События переноса / копирования категории между вкладками
+    function handleCategoryTransfer(mode) {
+      var catId = document.getElementById('categoryIdInput').value;
+      var targetTabId = document.getElementById('categoryTransferTabSelect').value;
+      if (!catId || !targetTabId) return;
+      var ok = WM.storage.transferCategory(catId, targetTabId, mode);
+      if (ok) {
+        var dstTab = WM.storage.getState().tabs.find(function (t) { return t.id === targetTabId; });
+        closeModal('categoryModal');
+        if (mode === 'move') closeItemDrawer();
+        refreshUI();
+        showToast((mode === 'move' ? 'Категория перенесена во вкладку «' : 'Категория скопирована во вкладку «') + (dstTab ? dstTab.name : '') + '»');
+      }
+    }
+
+    document.getElementById('moveCategoryTabBtn').addEventListener('click', function () { handleCategoryTransfer('move'); });
+    document.getElementById('copyCategoryTabBtn').addEventListener('click', function () { handleCategoryTransfer('copy'); });
 
     // Сохранение позиции
     document.getElementById('itemForm').addEventListener('submit', function (e) {
@@ -816,7 +930,6 @@
     });
   }
 
-  // --- Инициализация ---
   function init() {
     initTheme();
     WM.storage.load();
@@ -832,13 +945,11 @@
     if (WM.sync.hasToken()) {
       var s = WM.sync.getSettings();
       setSyncStatus('ok', s.lastSyncAt ? 'GIST // ' + WM.utils.formatTime(s.lastSyncAt) : 'GIST // READY');
-      // При открытии страницы мягко проверяем, нет ли более свежих данных с другого устройства
       runAutoPull(true);
     } else {
       setSyncStatus('', 'LOCAL // OFFLINE');
     }
 
-    // Фоновая проверка раз в 60 сек (только пока вкладка открыта на экране; 304 не тратит лимит)
     setInterval(function () {
       runAutoPull(false);
     }, WM.CONFIG.AUTO_PULL_INTERVAL_MS);

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — ХРАНИЛИЩЕ, CRUD И МАТЕМАТИКА ИТОГОВ
+   WM_CHECKLIST — ХРАНИЛИЩЕ, CRUD, ПЕРЕНОС МЕЖДУ ВКЛАДКАМИ И ИТОГИ
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -146,7 +146,29 @@
     return null;
   }
 
-  /* Расчёт итогов по вкладке (без двойного счёта для общих кредитов) */
+  function cloneItem(it, newCategoryId, forceNewId) {
+    return {
+      id: forceNewId ? WM.utils.uid('item') : it.id,
+      categoryId: newCategoryId,
+      title: it.title,
+      price: it.price,
+      checked: it.checked,
+      priority: it.priority,
+      store: it.store,
+      link: it.link,
+      note: it.note,
+      credit: {
+        enabled: !!(it.credit && it.credit.enabled),
+        months: (it.credit && it.credit.months) || 0,
+        monthlyPayment: (it.credit && it.credit.monthlyPayment) || 0,
+        totalAmount: (it.credit && it.credit.totalAmount) || 0,
+        startDate: (it.credit && it.credit.startDate) || ''
+      },
+      bundleId: null,
+      createdAt: forceNewId ? new Date().toISOString() : it.createdAt
+    };
+  }
+
   function calculateTabTotals(tab) {
     var spentTotal = 0;
     var spentCash = 0;
@@ -317,6 +339,83 @@
       });
       tab.creditBundles = tab.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
       persist(false, false);
+    },
+
+    /* Перенос ('move') или копирование ('copy') категории со всеми её товарами в другую вкладку */
+    transferCategory: function (catId, targetTabId, mode) {
+      var srcTab = getActiveTab();
+      var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
+      if (!dstTab || dstTab.id === srcTab.id) return false;
+
+      var cat = srcTab.categories.find(function (c) { return c.id === catId; });
+      if (!cat) return false;
+
+      var isCopy = mode === 'copy';
+      var newCat = {
+        id: WM.utils.uid('cat'),
+        name: cat.name,
+        collapsed: false
+      };
+      dstTab.categories.push(newCat);
+
+      var catItems = srcTab.items.filter(function (it) { return it.categoryId === catId; });
+      var movedIds = {};
+      catItems.forEach(function (it) {
+        movedIds[it.id] = true;
+        dstTab.items.push(cloneItem(it, newCat.id, isCopy));
+      });
+
+      if (!isCopy) {
+        srcTab.categories = srcTab.categories.filter(function (c) { return c.id !== catId; });
+        srcTab.items = srcTab.items.filter(function (it) { return it.categoryId !== catId; });
+        srcTab.creditBundles.forEach(function (b) {
+          b.itemIds = b.itemIds.filter(function (id) { return !movedIds[id]; });
+        });
+        srcTab.creditBundles = srcTab.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
+      }
+
+      persist(false, false);
+      return true;
+    },
+
+    /* Перенос ('move') или копирование ('copy') одной позиции в другую вкладку */
+    transferItem: function (itemId, targetTabId, targetCatIdOrNew, mode) {
+      var srcTab = getActiveTab();
+      var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
+      if (!dstTab || dstTab.id === srcTab.id) return false;
+
+      var item = srcTab.items.find(function (it) { return it.id === itemId; });
+      if (!item) return false;
+
+      var dstCatId = targetCatIdOrNew;
+      if (!dstCatId || dstCatId === '__create_same__') {
+        var srcCat = srcTab.categories.find(function (c) { return c.id === item.categoryId; });
+        var catName = srcCat ? srcCat.name : 'Общее';
+        var existingDstCat = dstTab.categories.find(function (c) {
+          return c.name.toLowerCase() === catName.toLowerCase();
+        });
+        if (existingDstCat) {
+          dstCatId = existingDstCat.id;
+        } else {
+          var created = { id: WM.utils.uid('cat'), name: catName, collapsed: false };
+          dstTab.categories.push(created);
+          dstCatId = created.id;
+        }
+      }
+
+      var isCopy = mode === 'copy';
+      dstTab.items.push(cloneItem(item, dstCatId, isCopy));
+
+      if (!isCopy) {
+        srcTab.items = srcTab.items.filter(function (it) { return it.id !== itemId; });
+        srcTab.creditBundles.forEach(function (b) {
+          b.itemIds = b.itemIds.filter(function (id) { return id !== itemId; });
+        });
+        srcTab.creditBundles = srcTab.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
+      }
+
+      persist(false, false);
+      return true;
     },
 
     saveItem: function (payload) {

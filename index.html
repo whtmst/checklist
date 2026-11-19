@@ -47,7 +47,7 @@
       </div>
     </nav>
 
-    <!-- Итоговая полоса текущей вкладки (3 отдельных показателя) -->
+    <!-- Итоговая полоса текущей вкладки -->
     <section class="summary-grid" aria-label="Итоги по вкладке">
       <div class="summary-card summary-card--primary">
         <div class="summary-label">ПОТРАЧЕНО (ОТМЕЧЕНО)</div>
@@ -254,6 +254,25 @@
           </div>
         </div>
 
+        <!-- Перенести / скопировать карточку в другую вкладку -->
+        <div class="transfer-box hidden" id="itemTransferBox">
+          <div class="section-kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="itemTransferTabSelect">Целевая вкладка</label>
+              <select class="select" id="itemTransferTabSelect"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="itemTransferCatSelect">Категория в ней</label>
+              <select class="select" id="itemTransferCatSelect"></select>
+            </div>
+          </div>
+          <div class="transfer-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="moveItemTabBtn">Перенести →</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="copyItemTabBtn">Скопировать</button>
+          </div>
+        </div>
+
         <div class="modal-actions modal-actions--split">
           <button type="button" class="btn btn-danger hidden" id="deleteItemBtn">Удалить</button>
           <div class="modal-actions-right">
@@ -265,7 +284,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: Общий кредит (несколько товаров в один кредит) -->
+  <!-- МОДАЛКА: Общий кредит -->
   <div class="modal-backdrop" id="bundleModal" aria-hidden="true">
     <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="bundleModalTitle">
       <div class="modal-header">
@@ -345,6 +364,21 @@
           <label class="form-label" for="categoryNameInput">Название категории *</label>
           <input type="text" class="input" id="categoryNameInput" placeholder="Например, Экипировка, Свет, Инструменты" required>
         </div>
+
+        <!-- Перенести / скопировать категорию (со всеми позициями) в другую вкладку -->
+        <div class="transfer-box hidden" id="categoryTransferBox">
+          <div class="section-kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
+          <p class="form-hint">Категория перенесётся или скопируется вместе со всеми товарами внутри неё.</p>
+          <div class="form-group">
+            <label class="form-label" for="categoryTransferTabSelect">Целевая вкладка</label>
+            <select class="select" id="categoryTransferTabSelect"></select>
+          </div>
+          <div class="transfer-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="moveCategoryTabBtn">Перенести →</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="copyCategoryTabBtn">Скопировать</button>
+          </div>
+        </div>
+
         <div class="modal-actions modal-actions--split">
           <button type="button" class="btn btn-danger hidden" id="deleteCategoryBtn">Удалить категорию</button>
           <div class="modal-actions-right">

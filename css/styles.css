@@ -1420,3 +1420,20 @@ a.badge-store-link:hover {
     gap: 2px;
   }
 }
+
+/* Блок переноса / копирования между вкладками */
+.transfer-box {
+  background-color: var(--bg-input);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transfer-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
