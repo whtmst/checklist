@@ -741,6 +741,13 @@
     document.getElementById('addTabFromManagerBtn').addEventListener('click', function () {
       openTabModal(null);
     });
+    document.getElementById('toggleAllCategoriesBtn').addEventListener('click', function (e) {
+      var btn = e.currentTarget;
+      var allCollapsed = btn.dataset.allCollapsed === '1';
+      WM.storage.setAllCategoriesCollapsed(!allCollapsed);
+      refreshUI();
+    });
+
     document.getElementById('manageCategoriesBtn').addEventListener('click', function () {
       WM.render.renderCategoriesManager(WM.storage.getActiveTab(), getCommonHandlers());
       openModal('categoriesManagerModal');

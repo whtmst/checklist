@@ -252,10 +252,10 @@
       var block = el('section', 'category-block' + (cat.collapsed ? ' is-collapsed' : ''));
 
       var header = el('div', 'category-header');
-      var left = el('div', 'category-header-left');
-      left.addEventListener('click', function () {
+      header.addEventListener('click', function () {
         handlers.onToggleCategoryCollapse(cat.id);
       });
+      var left = el('div', 'category-header-left');
       left.appendChild(el('span', 'cat-chevron', '▾'));
       left.appendChild(el('h2', 'category-name', cat.name));
       var checkedInCat = catItemsAll.filter(function (x) { return x.checked; }).length;
@@ -767,6 +767,21 @@
       renderSummary(tab);
       renderFilterOptions(tab, filters);
       renderChecklist(tab, filters, handlers);
+
+      var toggleAllBtn = document.getElementById('toggleAllCategoriesBtn');
+      if (toggleAllBtn) {
+        if (tab.categories.length === 0) {
+          toggleAllBtn.classList.add('hidden');
+        } else {
+          toggleAllBtn.classList.remove('hidden');
+          var allCollapsed = tab.categories.every(function (c) { return !!c.collapsed; });
+          toggleAllBtn.dataset.allCollapsed = allCollapsed ? '1' : '0';
+          toggleAllBtn.title = allCollapsed ? 'Развернуть все категории' : 'Свернуть все категории';
+          toggleAllBtn.innerHTML = allCollapsed
+            ? '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+            : '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+        }
+      }
     },
     renderItemDrawer: renderItemDrawer,
     renderGlobalCreditsModal: renderGlobalCreditsModal,

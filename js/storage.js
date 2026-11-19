@@ -542,6 +542,13 @@
       persist(true, true);
     },
 
+    setAllCategoriesCollapsed: function (collapsed) {
+      var tab = getActiveTab();
+      if (!tab || tab.categories.length === 0) return;
+      tab.categories.forEach(function (c) { c.collapsed = !!collapsed; });
+      persist(true, true);
+    },
+
     moveCategory: function (catId, delta) {
       var tab = getActiveTab();
       var idx = tab.categories.findIndex(function (c) { return c.id === catId; });
