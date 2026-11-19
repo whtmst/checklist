@@ -27,7 +27,7 @@
       <div class="topbar-actions">
         <button type="button" class="btn btn-ghost btn-icon" id="quickSyncBtn" title="Синхронизировать с GitHub">
           <span class="sync-indicator" id="syncIndicator"></span>
-          <span class="btn-label-desktop">Синхронизировать</span>
+          <span class="btn-label-desktop">Синхр.</span>
         </button>
         <button type="button" class="btn btn-ghost" id="openSyncModalBtn" title="Настройки синхронизации и бэкапа">
           Настройки
@@ -431,7 +431,10 @@
 
           <div class="form-group">
             <label class="form-label" for="ghTokenInput">GitHub Personal Access Token (право: gist)</label>
-            <input type="password" class="input input-mono" id="ghTokenInput" placeholder="ghp_... или github_pat_..." autocomplete="off">
+            <div class="input-with-btn">
+              <input type="password" class="input input-mono" id="ghTokenInput" placeholder="ghp_... или github_pat_..." autocomplete="off">
+              <button type="button" class="btn btn-secondary" id="findGistBtn">Найти мой Gist</button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -450,7 +453,6 @@
             <button type="button" class="btn btn-accent" id="saveSyncSettingsBtn">Сохранить настройки</button>
             <button type="button" class="btn btn-secondary" id="pushGistBtn">Отправить в GitHub ↑</button>
             <button type="button" class="btn btn-secondary" id="pullGistBtn">Загрузить с GitHub ↓</button>
-            <button type="button" class="btn btn-ghost" id="findGistBtn">Найти мой Gist</button>
           </div>
           <div class="sync-log" id="syncModalStatus"></div>
         </div>

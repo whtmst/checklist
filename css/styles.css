@@ -1437,3 +1437,30 @@ a.badge-store-link:hover {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* Поле ввода + кнопка в одну линию (на мобилке кнопка переносится под поле) */
+.input-with-btn {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.input-with-btn .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.input-with-btn .btn {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .input-with-btn {
+    flex-direction: column;
+  }
+
+  .input-with-btn .btn {
+    width: 100%;
+  }
+}
