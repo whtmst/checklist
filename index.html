@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="theme-color" content="#141414">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <title>WM_CHECKLIST · Личный чек-лист и учёт покупок</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23181818'/%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23C84B31'/%3E%3Cpath d='M11 16.5l3.2 3.2 6.8-7.2' stroke='%23ffffff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/tokens.css">
@@ -47,7 +51,11 @@
 
     <!-- Панель вкладок (списков) -->
     <nav class="tabs-bar" aria-label="Списки">
-      <div class="tabs-list" id="tabsList"></div>
+      <div class="tabs-scroll-wrap">
+        <button type="button" class="tabs-scroll-btn tabs-scroll-prev hidden" id="tabsScrollLeftBtn" aria-label="Прокрутить вкладки влево">‹</button>
+        <div class="tabs-list" id="tabsList"></div>
+        <button type="button" class="tabs-scroll-btn tabs-scroll-next hidden" id="tabsScrollRightBtn" aria-label="Прокрутить вкладки вправо">›</button>
+      </div>
       <div class="tabs-controls">
         <button type="button" class="btn btn-ghost btn-sm" id="manageTabsBtn" title="Управление вкладками (создать, порядок, редактировать)">•••</button>
       </div>

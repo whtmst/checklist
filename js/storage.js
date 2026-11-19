@@ -1,28 +1,43 @@
 /* ==========================================================================
-   WM_CHECKLIST — ХРАНИЛИЩЕ, ЕДИНЫЙ РЕЕСТР КРЕДИТОВ И АВТО-МИГРАЦИЯ
+   WM_CHECKLIST — ХРАНИЛИЩЕ, ЕДИНЫЙ РЕЕСТР КРЕДИТОВ И ОФЛАЙН-АВТОСЛИЯНИЕ (v4)
    ========================================================================== */
 (function (global) {
   'use strict';
 
   var WM = (global.WMChecklist = global.WMChecklist || {});
+  var TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 дней
+
+  function nowIso() {
+    return new Date().toISOString();
+  }
+
+  function parseTs(iso) {
+    var t = Date.parse(iso || '');
+    return isFinite(t) ? t : 0;
+  }
 
   function createEmptyTab(name) {
+    var ts = nowIso();
     return {
       id: WM.utils.uid('tab'),
       name: name || 'Основная',
+      updatedAt: ts,
       categories: [],
       items: []
     };
   }
 
   function createDefaultState() {
+    var ts = nowIso();
     var mainTab = createEmptyTab('Основная');
     return {
-      version: 3,
-      updatedAt: new Date().toISOString(),
+      version: 4,
+      updatedAt: ts,
+      metaUpdatedAt: ts,
       activeTabId: mainTab.id,
       cardLimit: 0,
       monthlyIncome: 0,
+      deleted: {},
       creditBundles: [],
       tabs: [mainTab]
     };
@@ -48,7 +63,20 @@
     return allowed.indexOf(val) !== -1 ? val : 'installment';
   }
 
-  function sanitizeBundle(b) {
+  function sanitizeDeleted(rawDel) {
+    var res = {};
+    if (!rawDel || typeof rawDel !== 'object') return res;
+    var cutoff = Date.now() - TOMBSTONE_TTL_MS;
+    Object.keys(rawDel).forEach(function (id) {
+      var ts = parseTs(rawDel[id]);
+      if (ts > cutoff) {
+        res[String(id)] = String(rawDel[id]);
+      }
+    });
+    return res;
+  }
+
+  function sanitizeBundle(b, fallbackTs) {
     return {
       id: String(b.id || WM.utils.uid('bundle')),
       name: String(b.name || 'Кредит').trim() || 'Кредит',
@@ -60,7 +88,8 @@
       totalAmount: WM.utils.toNumber(b.totalAmount),
       startDate: sanitizeDate(b.startDate),
       dueDate: sanitizeDate(b.dueDate),
-      checked: !!b.checked
+      checked: !!b.checked,
+      updatedAt: b.updatedAt || fallbackTs || nowIso()
     };
   }
 
@@ -69,18 +98,18 @@
       return createDefaultState();
     }
 
+    var fallbackTs = raw.updatedAt || nowIso();
     var globalBundles = Array.isArray(raw.creditBundles)
-      ? raw.creditBundles.map(sanitizeBundle)
+      ? raw.creditBundles.map(function (b) { return sanitizeBundle(b, fallbackTs); })
       : [];
 
     var seenBundleIds = {};
     globalBundles.forEach(function (b) { seenBundleIds[b.id] = true; });
 
     var tabs = raw.tabs.map(function (t) {
-      // Миграция старых tab.creditBundles (v1)
       if (Array.isArray(t.creditBundles)) {
         t.creditBundles.forEach(function (oldB) {
-          var sb = sanitizeBundle(oldB);
+          var sb = sanitizeBundle(oldB, fallbackTs);
           if (!seenBundleIds[sb.id]) {
             seenBundleIds[sb.id] = true;
             globalBundles.push(sb);
@@ -91,12 +120,14 @@
       return {
         id: String(t.id || WM.utils.uid('tab')),
         name: String(t.name || 'Без названия').trim() || 'Без названия',
+        updatedAt: t.updatedAt || fallbackTs,
         categories: Array.isArray(t.categories)
           ? t.categories.map(function (c) {
               return {
                 id: String(c.id || WM.utils.uid('cat')),
                 name: String(c.name || 'Категория').trim() || 'Категория',
-                collapsed: !!c.collapsed
+                collapsed: !!c.collapsed,
+                updatedAt: c.updatedAt || fallbackTs
               };
             })
           : [],
@@ -106,7 +137,6 @@
               var title = String(it.title || 'Без названия').trim() || 'Без названия';
               var price = WM.utils.toNumber(it.price);
 
-              // Авто-миграция старых индивидуальных кредитов в единый реестр creditBundles (v2 -> v3)
               var alreadyBundled = globalBundles.some(function (b) {
                 return b.itemIds.indexOf(itemId) !== -1;
               });
@@ -123,8 +153,9 @@
                   totalAmount: WM.utils.toNumber(it.credit.totalAmount) || price,
                   startDate: it.credit.startDate || '',
                   dueDate: it.credit.dueDate || '',
-                  checked: !!it.checked
-                });
+                  checked: !!it.checked,
+                  updatedAt: it.updatedAt || fallbackTs
+                }, fallbackTs);
                 globalBundles.push(migrated);
               }
 
@@ -140,7 +171,8 @@
                 note: String(it.note || '').trim(),
                 images: sanitizeImages(it.images),
                 bundleId: null,
-                createdAt: it.createdAt || new Date().toISOString()
+                createdAt: it.createdAt || fallbackTs,
+                updatedAt: it.updatedAt || it.createdAt || fallbackTs
               };
             })
           : []
@@ -165,18 +197,188 @@
 
     var activeExists = tabs.some(function (t) { return t.id === raw.activeTabId; });
     return {
-      version: 3,
-      updatedAt: raw.updatedAt || new Date().toISOString(),
+      version: 4,
+      updatedAt: fallbackTs,
+      metaUpdatedAt: raw.metaUpdatedAt || fallbackTs,
       activeTabId: activeExists ? raw.activeTabId : tabs[0].id,
       cardLimit: WM.utils.toNumber(raw.cardLimit),
       monthlyIncome: WM.utils.toNumber(raw.monthlyIncome),
+      deleted: sanitizeDeleted(raw.deleted),
       creditBundles: globalBundles,
       tabs: tabs
     };
   }
 
+  /* Автоматическое поэлементное слияние офлайн-правок (local) и данных с другого устройства (remote) */
+  function mergeEntityArrays(localArr, remoteArr, mergedDeleted, primaryFirst) {
+    var localMap = {};
+    var remoteMap = {};
+    localArr.forEach(function (x) { localMap[x.id] = x; });
+    remoteArr.forEach(function (x) { remoteMap[x.id] = x; });
+
+    var orderIds = [];
+    var seen = {};
+    var first = primaryFirst ? localArr : remoteArr;
+    var second = primaryFirst ? remoteArr : localArr;
+    first.forEach(function (x) { if (!seen[x.id]) { seen[x.id] = true; orderIds.push(x.id); } });
+    second.forEach(function (x) { if (!seen[x.id]) { seen[x.id] = true; orderIds.push(x.id); } });
+
+    var result = [];
+    orderIds.forEach(function (id) {
+      var loc = localMap[id];
+      var rem = remoteMap[id];
+      var delTs = parseTs(mergedDeleted[id]);
+      var locTs = loc ? parseTs(loc.updatedAt) : 0;
+      var remTs = rem ? parseTs(rem.updatedAt) : 0;
+      var winner = null;
+      var winTs = 0;
+
+      if (loc && rem) {
+        if (locTs >= remTs) { winner = loc; winTs = locTs; }
+        else { winner = rem; winTs = remTs; }
+      } else if (loc) {
+        winner = loc; winTs = locTs;
+      } else if (rem) {
+        winner = rem; winTs = remTs;
+      }
+
+      if (winner && delTs > winTs) {
+        return; // Удалено позже последнего редактирования
+      }
+      if (winner) result.push(winner);
+    });
+
+    return result;
+  }
+
+  function mergeStates(localRaw, remoteRaw) {
+    var loc = sanitizeState(localRaw);
+    var rem = sanitizeState(remoteRaw);
+    var localNewer = parseTs(loc.updatedAt) >= parseTs(rem.updatedAt);
+
+    // 1. Объединяем tombstones (удалённые ID)
+    var mergedDeleted = {};
+    Object.keys(loc.deleted).forEach(function (id) { mergedDeleted[id] = loc.deleted[id]; });
+    Object.keys(rem.deleted).forEach(function (id) {
+      if (!mergedDeleted[id] || parseTs(rem.deleted[id]) > parseTs(mergedDeleted[id])) {
+        mergedDeleted[id] = rem.deleted[id];
+      }
+    });
+
+    // 2. Собираем глобальную карту позиций (если карточку перенесли в другую вкладку — побеждает самая свежая версия!)
+    var locItemsById = {};
+    var remItemsById = {};
+    loc.tabs.forEach(function (t) {
+      t.items.forEach(function (it) { locItemsById[it.id] = { tabId: t.id, item: it }; });
+    });
+    rem.tabs.forEach(function (t) {
+      t.items.forEach(function (it) { remItemsById[it.id] = { tabId: t.id, item: it }; });
+    });
+
+    var winningItemPlacement = {};
+    var allItemIds = {};
+    Object.keys(locItemsById).forEach(function (id) { allItemIds[id] = true; });
+    Object.keys(remItemsById).forEach(function (id) { allItemIds[id] = true; });
+
+    Object.keys(allItemIds).forEach(function (id) {
+      var l = locItemsById[id];
+      var r = remItemsById[id];
+      var delTs = parseTs(mergedDeleted[id]);
+      var lTs = l ? parseTs(l.item.updatedAt) : 0;
+      var rTs = r ? parseTs(r.item.updatedAt) : 0;
+      var win = null;
+      var wTs = 0;
+
+      if (l && r) {
+        if (lTs >= rTs) { win = l; wTs = lTs; }
+        else { win = r; wTs = rTs; }
+      } else if (l) {
+        win = l; wTs = lTs;
+      } else if (r) {
+        win = r; wTs = rTs;
+      }
+
+      if (win && delTs <= wTs) {
+        winningItemPlacement[id] = win;
+      }
+    });
+
+    // 3. Объединяем вкладки и категории внутри них
+    var locTabMap = {};
+    var remTabMap = {};
+    loc.tabs.forEach(function (t) { locTabMap[t.id] = t; });
+    rem.tabs.forEach(function (t) { remTabMap[t.id] = t; });
+
+    var mergedTabShells = mergeEntityArrays(loc.tabs, rem.tabs, mergedDeleted, localNewer);
+    var mergedTabs = mergedTabShells.map(function (shell) {
+      var lt = locTabMap[shell.id];
+      var rt = remTabMap[shell.id];
+      var mergedCats = mergeEntityArrays(
+        lt ? lt.categories : [],
+        rt ? rt.categories : [],
+        mergedDeleted,
+        localNewer
+      ).map(function (c) {
+        // Локальное состояние свёрнутости сохраняем с текущего устройства
+        var localCat = lt && lt.categories.find(function (x) { return x.id === c.id; });
+        return {
+          id: c.id,
+          name: c.name,
+          collapsed: localCat ? !!localCat.collapsed : !!c.collapsed,
+          updatedAt: c.updatedAt
+        };
+      });
+
+      var tabItems = [];
+      Object.keys(winningItemPlacement).forEach(function (itemId) {
+        var placed = winningItemPlacement[itemId];
+        if (placed.tabId === shell.id) {
+          tabItems.push(placed.item);
+        }
+      });
+
+      return {
+        id: shell.id,
+        name: shell.name,
+        updatedAt: shell.updatedAt,
+        categories: mergedCats,
+        items: tabItems
+      };
+    });
+
+    if (mergedTabs.length === 0) {
+      mergedTabs = [createEmptyTab('Основная')];
+    }
+
+    // 4. Объединяем глобальные кредиты
+    var mergedBundles = mergeEntityArrays(loc.creditBundles, rem.creditBundles, mergedDeleted, localNewer);
+
+    // 5. Мета-поля (лимит карты и доход)
+    var locMetaNewer = parseTs(loc.metaUpdatedAt) >= parseTs(rem.metaUpdatedAt);
+    var cardLimit = locMetaNewer ? (loc.cardLimit || rem.cardLimit) : (rem.cardLimit || loc.cardLimit);
+    var monthlyIncome = locMetaNewer ? (loc.monthlyIncome || rem.monthlyIncome) : (rem.monthlyIncome || loc.monthlyIncome);
+
+    return sanitizeState({
+      version: 4,
+      updatedAt: nowIso(),
+      metaUpdatedAt: locMetaNewer ? loc.metaUpdatedAt : rem.metaUpdatedAt,
+      activeTabId: loc.activeTabId,
+      cardLimit: cardLimit,
+      monthlyIncome: monthlyIncome,
+      deleted: mergedDeleted,
+      creditBundles: mergedBundles,
+      tabs: mergedTabs
+    });
+  }
+
   var state = createDefaultState();
   var onChangeListeners = [];
+
+  function markDeleted(id) {
+    if (!id) return;
+    if (!state.deleted || typeof state.deleted !== 'object') state.deleted = {};
+    state.deleted[String(id)] = nowIso();
+  }
 
   function load() {
     try {
@@ -192,7 +394,7 @@
 
   function persist(skipNotify, keepUpdatedAt) {
     if (!keepUpdatedAt) {
-      state.updatedAt = new Date().toISOString();
+      state.updatedAt = nowIso();
     }
     try {
       localStorage.setItem(WM.CONFIG.STORAGE_KEY, JSON.stringify(state));
@@ -259,6 +461,7 @@
   }
 
   function cloneItem(it, newCategoryId, forceNewId) {
+    var ts = nowIso();
     return {
       id: forceNewId ? WM.utils.uid('item') : it.id,
       categoryId: newCategoryId,
@@ -271,22 +474,20 @@
       note: it.note,
       images: sanitizeImages(it.images),
       bundleId: forceNewId ? null : it.bundleId,
-      createdAt: forceNewId ? new Date().toISOString() : it.createdAt
+      createdAt: forceNewId ? ts : it.createdAt,
+      updatedAt: ts
     };
   }
 
-  /* Итоги конкретной вкладки (доля по межвкладочным кредитам считается пропорционально) */
   function calculateTabTotals(tab) {
     var spentTotal = 0;
     var spentCash = 0;
     var spentCredit = 0;
     var monthlyCreditTotal = 0;
     var activeCreditsCount = 0;
-
     var plannedTotal = 0;
     var plannedCash = 0;
     var plannedCredit = 0;
-
     var totalItemsCount = tab.items.length;
     var checkedItemsCount = 0;
 
@@ -301,7 +502,6 @@
       b.itemIds.forEach(function (id) { bundledItemSet[id] = b.id; });
     });
 
-    // 1. Обычные (наличные) товары вкладки
     tab.items.forEach(function (it) {
       if (bundledItemSet[it.id]) return;
       plannedTotal += it.price;
@@ -312,7 +512,6 @@
       }
     });
 
-    // 2. Все кредиты, в которых есть товары этой вкладки
     state.creditBundles.forEach(function (b) {
       var tabIdsInBundle = b.itemIds.filter(function (id) { return !!tabItemSet[id]; });
       if (tabIdsInBundle.length === 0) return;
@@ -357,7 +556,6 @@
     };
   }
 
-  /* Глобальная сводка по всем кредитам и лимиту карты */
   function calculateGlobalCredits() {
     var records = [];
     var monthlyTotal = 0;
@@ -443,6 +641,7 @@
     getBundleDetails: getBundleDetails,
     calculateTabTotals: calculateTabTotals,
     calculateGlobalCredits: calculateGlobalCredits,
+    mergeStates: mergeStates,
 
     onChange: function (fn) {
       onChangeListeners.push(fn);
@@ -454,6 +653,12 @@
       return state;
     },
 
+    mergeRemoteState: function (remoteRaw) {
+      state = mergeStates(state, remoteRaw);
+      persist(true, true);
+      return state;
+    },
+
     resetAll: function () {
       state = createDefaultState();
       persist(false, false);
@@ -462,11 +667,13 @@
 
     setCardLimit: function (amount) {
       state.cardLimit = WM.utils.toNumber(amount);
+      state.metaUpdatedAt = nowIso();
       persist(false, false);
     },
 
     setMonthlyIncome: function (amount) {
       state.monthlyIncome = WM.utils.toNumber(amount);
+      state.metaUpdatedAt = nowIso();
       persist(false, false);
     },
 
@@ -489,6 +696,7 @@
       var tab = state.tabs.find(function (t) { return t.id === tabId; });
       if (!tab) return;
       tab.name = name.trim() || tab.name;
+      tab.updatedAt = nowIso();
       persist(false, false);
     },
 
@@ -516,11 +724,19 @@
       var tab = state.tabs.find(function (t) { return t.id === tabId; });
       var removedIds = {};
       if (tab) {
-        tab.items.forEach(function (it) { removedIds[it.id] = true; });
+        markDeleted(tab.id);
+        tab.categories.forEach(function (c) { markDeleted(c.id); });
+        tab.items.forEach(function (it) {
+          removedIds[it.id] = true;
+          markDeleted(it.id);
+        });
       }
       state.tabs = state.tabs.filter(function (t) { return t.id !== tabId; });
       state.creditBundles.forEach(function (b) {
+        var before = b.itemIds.length;
         b.itemIds = b.itemIds.filter(function (id) { return !removedIds[id]; });
+        if (b.itemIds.length !== before) b.updatedAt = nowIso();
+        if (b.itemIds.length === 0) markDeleted(b.id);
       });
       state.creditBundles = state.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
       if (state.activeTabId === tabId) {
@@ -532,7 +748,7 @@
 
     addCategory: function (name) {
       var tab = getActiveTab();
-      var cat = { id: WM.utils.uid('cat'), name: name.trim() || 'Новая категория', collapsed: false };
+      var cat = { id: WM.utils.uid('cat'), name: name.trim() || 'Новая категория', collapsed: false, updatedAt: nowIso() };
       tab.categories.push(cat);
       persist(false, false);
       return cat;
@@ -543,6 +759,7 @@
       var cat = tab.categories.find(function (c) { return c.id === catId; });
       if (!cat) return;
       cat.name = name.trim() || cat.name;
+      cat.updatedAt = nowIso();
       persist(false, false);
     },
 
@@ -585,13 +802,20 @@
     deleteCategory: function (catId) {
       var tab = getActiveTab();
       var removedIds = {};
+      markDeleted(catId);
       tab.items.forEach(function (it) {
-        if (it.categoryId === catId) removedIds[it.id] = true;
+        if (it.categoryId === catId) {
+          removedIds[it.id] = true;
+          markDeleted(it.id);
+        }
       });
       tab.categories = tab.categories.filter(function (c) { return c.id !== catId; });
       tab.items = tab.items.filter(function (it) { return it.categoryId !== catId; });
       state.creditBundles.forEach(function (b) {
+        var before = b.itemIds.length;
         b.itemIds = b.itemIds.filter(function (id) { return !removedIds[id]; });
+        if (b.itemIds.length !== before) b.updatedAt = nowIso();
+        if (b.itemIds.length === 0) markDeleted(b.id);
       });
       state.creditBundles = state.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
       persist(false, false);
@@ -606,7 +830,7 @@
       if (!cat) return false;
 
       var isCopy = mode === 'copy';
-      var newCat = { id: WM.utils.uid('cat'), name: cat.name, collapsed: false };
+      var newCat = { id: WM.utils.uid('cat'), name: cat.name, collapsed: false, updatedAt: nowIso() };
       dstTab.categories.push(newCat);
 
       var catItems = srcTab.items.filter(function (it) { return it.categoryId === catId; });
@@ -615,6 +839,7 @@
       });
 
       if (!isCopy) {
+        markDeleted(catId);
         srcTab.categories = srcTab.categories.filter(function (c) { return c.id !== catId; });
         srcTab.items = srcTab.items.filter(function (it) { return it.categoryId !== catId; });
       }
@@ -641,7 +866,7 @@
         if (existingDstCat) {
           dstCatId = existingDstCat.id;
         } else {
-          var created = { id: WM.utils.uid('cat'), name: catName, collapsed: false };
+          var created = { id: WM.utils.uid('cat'), name: catName, collapsed: false, updatedAt: nowIso() };
           dstTab.categories.push(created);
           dstCatId = created.id;
         }
@@ -661,6 +886,7 @@
     saveItem: function (payload) {
       var tab = getActiveTab();
       var existing = payload.id ? tab.items.find(function (it) { return it.id === payload.id; }) : null;
+      var ts = nowIso();
 
       if (existing) {
         existing.title = payload.title.trim();
@@ -672,6 +898,7 @@
         existing.link = (payload.link || '').trim();
         existing.note = (payload.note || '').trim();
         existing.images = sanitizeImages(payload.images);
+        existing.updatedAt = ts;
         persist(false, false);
         return existing;
       }
@@ -688,7 +915,8 @@
         note: (payload.note || '').trim(),
         images: sanitizeImages(payload.images),
         bundleId: null,
-        createdAt: new Date().toISOString()
+        createdAt: ts,
+        updatedAt: ts
       };
       tab.items.push(item);
       persist(false, false);
@@ -698,11 +926,13 @@
     toggleItemChecked: function (itemId, checked) {
       var found = findItemAcrossTabs(itemId);
       if (!found) return;
+      var ts = nowIso();
       found.item.checked = !!checked;
-      // Если товар один в кредите — синхронизируем статус этого кредита автоматически
+      found.item.updatedAt = ts;
       var b = getBundleForItem(itemId);
       if (b && b.itemIds.length === 1) {
         b.checked = !!checked;
+        b.updatedAt = ts;
       }
       persist(false, false);
     },
@@ -710,18 +940,22 @@
     deleteItem: function (itemId) {
       var found = findItemAcrossTabs(itemId);
       if (!found) return;
+      markDeleted(itemId);
       found.tab.items = found.tab.items.filter(function (it) { return it.id !== itemId; });
       state.creditBundles.forEach(function (b) {
+        var before = b.itemIds.length;
         b.itemIds = b.itemIds.filter(function (id) { return id !== itemId; });
+        if (b.itemIds.length !== before) b.updatedAt = nowIso();
+        if (b.itemIds.length === 0) markDeleted(b.id);
       });
       state.creditBundles = state.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
       persist(false, false);
     },
 
-    /* Единое сохранение кредита / рассрочки (на 1 или несколько товаров из любых вкладок) */
     saveCreditBundle: function (payload) {
       var selectedIds = Array.isArray(payload.itemIds) ? payload.itemIds.slice() : [];
       if (selectedIds.length === 0) return null;
+      var ts = nowIso();
 
       var bundle = payload.id
         ? state.creditBundles.find(function (b) { return b.id === payload.id; })
@@ -750,12 +984,12 @@
           totalAmount: 0,
           startDate: '',
           dueDate: '',
-          checked: true
+          checked: true,
+          updatedAt: ts
         };
         state.creditBundles.push(bundle);
       }
 
-      // Если выбран 1 товар и название не введено — берём название самого товара
       var fallbackName = 'Кредит';
       if (selectedIds.length === 1) {
         var singleFound = findItemAcrossTabs(selectedIds[0]);
@@ -772,6 +1006,7 @@
       bundle.startDate = sanitizeDate(payload.startDate);
       bundle.dueDate = sanitizeDate(payload.dueDate);
       bundle.checked = !!payload.checked;
+      bundle.updatedAt = ts;
 
       selectedIds.forEach(function (id) {
         var found = findItemAcrossTabs(id);
@@ -781,10 +1016,15 @@
             var other = state.creditBundles.find(function (b) { return b.id === it.bundleId; });
             if (other) {
               other.itemIds = other.itemIds.filter(function (x) { return x !== id; });
+              other.updatedAt = ts;
+              if (other.itemIds.length === 0) markDeleted(other.id);
             }
           }
           it.bundleId = bundle.id;
-          if (bundle.checked) it.checked = true;
+          if (bundle.checked) {
+            it.checked = true;
+            it.updatedAt = ts;
+          }
         }
       });
 
@@ -796,10 +1036,15 @@
     toggleBundleChecked: function (bundleId, checked) {
       var bundle = state.creditBundles.find(function (b) { return b.id === bundleId; });
       if (!bundle) return;
+      var ts = nowIso();
       bundle.checked = !!checked;
+      bundle.updatedAt = ts;
       bundle.itemIds.forEach(function (id) {
         var found = findItemAcrossTabs(id);
-        if (found) found.item.checked = !!checked;
+        if (found) {
+          found.item.checked = !!checked;
+          found.item.updatedAt = ts;
+        }
       });
       persist(false, false);
     },
@@ -807,6 +1052,7 @@
     deleteCreditBundle: function (bundleId) {
       var bundle = state.creditBundles.find(function (b) { return b.id === bundleId; });
       if (!bundle) return;
+      markDeleted(bundleId);
       bundle.itemIds.forEach(function (id) {
         var found = findItemAcrossTabs(id);
         if (found && found.item.bundleId === bundleId) {

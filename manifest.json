@@ -1,0 +1,26 @@
+{
+  "name": "WM_CHECKLIST — Личный чек-лист и учёт покупок",
+  "short_name": "WM_CHECKLIST",
+  "description": "Адаптивный офлайн-чеклист покупок и учёт кредитов с синхронизацией через Secret GitHub Gist.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

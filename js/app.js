@@ -347,9 +347,94 @@
     };
   }
 
+  function updateTabsScrollArrows() {
+    var list = document.getElementById('tabsList');
+    var leftBtn = document.getElementById('tabsScrollLeftBtn');
+    var rightBtn = document.getElementById('tabsScrollRightBtn');
+    if (!list || !leftBtn || !rightBtn) return;
+    var maxScroll = list.scrollWidth - list.clientWidth;
+    if (maxScroll <= 4) {
+      leftBtn.classList.add('hidden');
+      rightBtn.classList.add('hidden');
+      return;
+    }
+    leftBtn.classList.toggle('hidden', list.scrollLeft <= 2);
+    rightBtn.classList.toggle('hidden', list.scrollLeft >= maxScroll - 2);
+  }
+
+  function initTabsHorizontalScroll() {
+    var list = document.getElementById('tabsList');
+    var leftBtn = document.getElementById('tabsScrollLeftBtn');
+    var rightBtn = document.getElementById('tabsScrollRightBtn');
+    if (!list) return;
+
+    if (leftBtn) {
+      leftBtn.addEventListener('click', function () {
+        list.scrollBy({ left: -200, behavior: 'smooth' });
+      });
+    }
+    if (rightBtn) {
+      rightBtn.addEventListener('click', function () {
+        list.scrollBy({ left: 200, behavior: 'smooth' });
+      });
+    }
+
+    list.addEventListener('scroll', updateTabsScrollArrows, { passive: true });
+    window.addEventListener('resize', updateTabsScrollArrows);
+
+    // Прокрутка колёсиком мыши по горизонтали
+    list.addEventListener('wheel', function (e) {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && list.scrollWidth > list.clientWidth) {
+        e.preventDefault();
+        list.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+
+    // Перетаскивание мышкой влево-вправо (как тач на мобилке)
+    var isDown = false;
+    var startX = 0;
+    var startScrollLeft = 0;
+    var dragged = false;
+
+    list.addEventListener('mousedown', function (e) {
+      if (e.button !== 0 || list.scrollWidth <= list.clientWidth) return;
+      isDown = true;
+      dragged = false;
+      startX = e.pageX;
+      startScrollLeft = list.scrollLeft;
+    });
+
+    window.addEventListener('mousemove', function (e) {
+      if (!isDown) return;
+      var dx = e.pageX - startX;
+      if (Math.abs(dx) > 5) {
+        dragged = true;
+        list.classList.add('is-dragging');
+        list.scrollLeft = startScrollLeft - dx;
+      }
+    });
+
+    window.addEventListener('mouseup', function () {
+      if (!isDown) return;
+      isDown = false;
+      list.classList.remove('is-dragging');
+      if (dragged) {
+        setTimeout(function () { dragged = false; }, 0);
+      }
+    });
+
+    list.addEventListener('click', function (e) {
+      if (dragged) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  }
+
   function refreshUI() {
     var handlers = getCommonHandlers();
     WM.render.renderAll(WM.storage.getState(), filters, handlers);
+    setTimeout(updateTabsScrollArrows, 0);
 
     if (viewingItemId) {
       var tab = WM.storage.getActiveTab();
@@ -1399,7 +1484,7 @@
       log.textContent = 'Отправляю данные в Secret Gist...';
       setSyncStatus('pending', 'SYNC // PUSH...');
       try {
-        var data = await WM.sync.pushToGist();
+        var data = await WM.sync.pushToGist(true);
         document.getElementById('ghGistIdInput').value = data.id;
         var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
         log.textContent = 'Успешно сохранено в Gist (' + data.id + ') в ' + t;
@@ -1485,12 +1570,27 @@
     });
 
     bindEvents();
+    initTabsHorizontalScroll();
     refreshUI();
+
+    window.addEventListener('offline', function () {
+      setSyncStatus('pending', 'OFFLINE // LOCAL');
+    });
+
+    window.addEventListener('online', function () {
+      if (!WM.sync.hasToken()) return;
+      setSyncStatus('pending', 'SYNC // MERGE...');
+      runAutoPull(true);
+    });
 
     if (WM.sync.hasToken()) {
       var s = WM.sync.getSettings();
-      setSyncStatus('ok', s.lastSyncAt ? 'GIST // ' + WM.utils.formatTime(s.lastSyncAt) : 'GIST // READY');
-      runAutoPull(true);
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        setSyncStatus('pending', WM.sync.hasPendingChanges() ? 'OFFLINE // SAVED' : 'OFFLINE // LOCAL');
+      } else {
+        setSyncStatus('ok', s.lastSyncAt ? 'GIST // ' + WM.utils.formatTime(s.lastSyncAt) : 'GIST // READY');
+        runAutoPull(true);
+      }
     } else {
       setSyncStatus('', 'LOCAL // OFFLINE');
     }
@@ -1498,6 +1598,11 @@
     setInterval(function () {
       runAutoPull(false);
     }, WM.CONFIG.AUTO_PULL_INTERVAL_MS);
+
+    // Регистрация Service Worker для офлайн-режима и установки как PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    }
   }
 
   if (document.readyState === 'loading') {

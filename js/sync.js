@@ -1,10 +1,11 @@
 /* ==========================================================================
-   WM_CHECKLIST — СИНХРОНИЗАЦИЯ ЧЕРЕЗ SECRET GITHUB GIST (ETag + AUTO-PULL)
+   WM_CHECKLIST — СИНХРОНИЗАЦИЯ ЧЕРЕЗ SECRET GITHUB GIST (ETag + AUTO-MERGE)
    ========================================================================== */
 (function (global) {
   'use strict';
 
   var WM = (global.WMChecklist = global.WMChecklist || {});
+  var PENDING_KEY = 'wm_checklist_pending_sync_v1';
 
   var settings = {
     token: '',
@@ -17,6 +18,17 @@
   var lastEtag = '';
   var lastPullCheckMs = 0;
   var isSyncBusy = false;
+
+  function hasPendingChanges() {
+    try { return localStorage.getItem(PENDING_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function setPendingChanges(flag) {
+    try {
+      if (flag) localStorage.setItem(PENDING_KEY, '1');
+      else localStorage.removeItem(PENDING_KEY);
+    } catch (e) {}
+  }
 
   function loadSettings() {
     try {
@@ -69,16 +81,12 @@
   }
 
   async function findExistingGist() {
-    if (!settings.token) {
-      throw new Error('Сначала вставь GitHub Token.');
-    }
+    if (!settings.token) throw new Error('Сначала вставь GitHub Token.');
     var res = await fetch('https://api.github.com/gists?per_page=100', {
       method: 'GET',
       headers: buildHeaders()
     });
-    if (!res.ok) {
-      throw new Error(parseGitHubError(res.status, await res.text()));
-    }
+    if (!res.ok) throw new Error(parseGitHubError(res.status, await res.text()));
     var list = await res.json();
     for (var i = 0; i < list.length; i++) {
       var g = list[i];
@@ -90,13 +98,49 @@
     return null;
   }
 
-  async function pushToGist() {
-    if (!settings.token) {
-      throw new Error('Не указан GitHub Token.');
+  /* Внутренняя загрузка удалённого JSON без перезаписи локального состояния */
+  async function fetchRemoteState(useEtag) {
+    var extra = (useEtag && lastEtag) ? { 'If-None-Match': lastEtag } : null;
+    var res = await fetch('https://api.github.com/gists/' + encodeURIComponent(settings.gistId), {
+      method: 'GET',
+      headers: buildHeaders(extra)
+    });
+    if (res.status === 304) return { notModified: true, state: null };
+    if (!res.ok) throw new Error(parseGitHubError(res.status, await res.text()));
+    var etag = res.headers.get('ETag');
+    if (etag) lastEtag = etag;
+    var data = await res.json();
+    var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
+    if (!file || !file.content) {
+      throw new Error('В выбранном Gist нет файла ' + WM.CONFIG.GIST_FILENAME);
+    }
+    return { notModified: false, state: JSON.parse(file.content) };
+  }
+
+  async function pushToGist(mergeBeforePush) {
+    if (!settings.token) throw new Error('Не указан GitHub Token.');
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setPendingChanges(true);
+      throw new Error('Нет интернета — изменения сохранены локально.');
     }
 
     isSyncBusy = true;
+    var merged = false;
     try {
+      // Если были офлайн-изменения и Gist уже существует — сначала аккуратно сливаем с версией на GitHub!
+      if (mergeBeforePush && settings.gistId) {
+        try {
+          var remoteRes = await fetchRemoteState(true);
+          if (!remoteRes.notModified && remoteRes.state) {
+            WM.storage.mergeRemoteState(remoteRes.state);
+            merged = true;
+          }
+        } catch (mergeErr) {
+          // Если Gist 404 или сеть моргнула — пробрасываем ошибку, не теряя флаг pending
+          throw mergeErr;
+        }
+      }
+
       var content = JSON.stringify(WM.storage.getState(), null, 2);
       var filesPayload = {};
       filesPayload[WM.CONFIG.GIST_FILENAME] = { content: content };
@@ -104,15 +148,12 @@
       var url = settings.gistId
         ? 'https://api.github.com/gists/' + encodeURIComponent(settings.gistId)
         : 'https://api.github.com/gists';
-
       var method = settings.gistId ? 'PATCH' : 'POST';
       var body = {
         description: WM.CONFIG.GIST_DESCRIPTION,
         files: filesPayload
       };
-      if (!settings.gistId) {
-        body.public = false;
-      }
+      if (!settings.gistId) body.public = false;
 
       var res = await fetch(url, {
         method: method,
@@ -120,69 +161,68 @@
         body: JSON.stringify(body)
       });
 
-      if (!res.ok) {
-        throw new Error(parseGitHubError(res.status, await res.text()));
-      }
+      if (!res.ok) throw new Error(parseGitHubError(res.status, await res.text()));
 
       var etag = res.headers.get('ETag');
       if (etag) lastEtag = etag;
 
       var data = await res.json();
+      setPendingChanges(false);
       saveSettings({
         gistId: data.id || settings.gistId,
         lastSyncAt: new Date().toISOString()
       });
+      data._merged = merged;
       return data;
+    } catch (err) {
+      setPendingChanges(true);
+      throw err;
     } finally {
       isSyncBusy = false;
     }
   }
 
   async function pullFromGist() {
-    if (!settings.token) {
-      throw new Error('Не указан GitHub Token.');
-    }
+    if (!settings.token) throw new Error('Не указан GitHub Token.');
     if (!settings.gistId) {
       var foundId = await findExistingGist();
-      if (!foundId) {
-        throw new Error('Gist с чек-листом ещё не создан. Сначала нажми «Отправить в GitHub».');
-      }
+      if (!foundId) throw new Error('Gist с чек-листом ещё не создан. Сначала нажми «Отправить в GitHub».');
     }
 
     isSyncBusy = true;
     try {
-      var res = await fetch('https://api.github.com/gists/' + encodeURIComponent(settings.gistId), {
-        method: 'GET',
-        headers: buildHeaders()
-      });
-
-      if (!res.ok) {
-        throw new Error(parseGitHubError(res.status, await res.text()));
+      var remoteRes = await fetchRemoteState(false);
+      if (hasPendingChanges()) {
+        // Не теряем офлайн-правки: сливаем с Gist и сразу отправляем объединённую версию
+        WM.storage.mergeRemoteState(remoteRes.state);
+        isSyncBusy = false;
+        await pushToGist(false);
+        return WM.storage.getState();
       }
-
-      var etag = res.headers.get('ETag');
-      if (etag) lastEtag = etag;
-
-      var data = await res.json();
-      var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
-      if (!file || !file.content) {
-        throw new Error('В выбранном Gist нет файла ' + WM.CONFIG.GIST_FILENAME);
-      }
-
-      var parsed = JSON.parse(file.content);
-      WM.storage.replaceState(parsed, true);
+      WM.storage.replaceState(remoteRes.state, true);
       saveSettings({ lastSyncAt: new Date().toISOString() });
-      return parsed;
+      return remoteRes.state;
     } finally {
       isSyncBusy = false;
     }
   }
 
-  /* Экономная фоновая проверка обновлений через ETag (304 Not Modified не тратит лимит GitHub!) */
+  /* Экономная фоновая проверка через ETag (304 Not Modified = 0 расхода лимита GitHub) */
   async function checkForRemoteUpdates(force) {
     if (!settings.token || !settings.gistId || !settings.autoSync) return false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
     if (isSyncBusy || autoSyncTimer) return false;
     if (document.hidden && !force) return false;
+
+    // Если накопились офлайн-правки — сразу выполняем умное слияние и отправку!
+    if (hasPendingChanges()) {
+      try {
+        await pushToGist(true);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
 
     var now = Date.now();
     if (!force && now - lastPullCheckMs < WM.CONFIG.AUTO_PULL_MIN_GAP_MS) {
@@ -190,37 +230,16 @@
     }
     lastPullCheckMs = now;
 
-    var extraHeaders = lastEtag ? { 'If-None-Match': lastEtag } : null;
     try {
-      var res = await fetch('https://api.github.com/gists/' + encodeURIComponent(settings.gistId), {
-        method: 'GET',
-        headers: buildHeaders(extraHeaders)
-      });
+      var remoteRes = await fetchRemoteState(true);
+      if (remoteRes.notModified || !remoteRes.state) return false;
 
-      // 304 = ничего не изменилось, лимит GitHub API не расходуется (0 запросов)
-      if (res.status === 304) {
-        return false;
-      }
-      if (!res.ok) {
-        return false;
-      }
-
-      var etag = res.headers.get('ETag');
-      if (etag) lastEtag = etag;
-
-      var data = await res.json();
-      var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
-      if (!file || !file.content) return false;
-
-      var remoteState = JSON.parse(file.content);
       var localState = WM.storage.getState();
-
-      var remoteTime = Date.parse(remoteState.updatedAt || '') || 0;
+      var remoteTime = Date.parse(remoteRes.state.updatedAt || '') || 0;
       var localTime = Date.parse(localState.updatedAt || '') || 0;
 
-      // Подтягиваем только если удалённая версия реально новее локальной
       if (remoteTime > localTime) {
-        WM.storage.replaceState(remoteState, true);
+        WM.storage.replaceState(remoteRes.state, true);
         saveSettings({ lastSyncAt: new Date().toISOString() });
         return true;
       }
@@ -231,19 +250,30 @@
   }
 
   function scheduleAutoPush(onStatusChange) {
+    setPendingChanges(true);
     if (!settings.token || !settings.autoSync) return;
     if (autoSyncTimer) clearTimeout(autoSyncTimer);
+
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      if (onStatusChange) onStatusChange('pending', 'OFFLINE // SAVED');
+      return;
+    }
+
     if (onStatusChange) onStatusChange('pending', 'SYNC // SAVING...');
 
     autoSyncTimer = setTimeout(async function () {
       autoSyncTimer = null;
       try {
-        await pushToGist();
+        await pushToGist(true);
         if (onStatusChange) {
           onStatusChange('ok', 'GIST // ' + WM.utils.formatTime(settings.lastSyncAt));
         }
       } catch (err) {
-        if (onStatusChange) onStatusChange('error', 'SYNC // ERROR');
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          if (onStatusChange) onStatusChange('pending', 'OFFLINE // SAVED');
+        } else {
+          if (onStatusChange) onStatusChange('error', 'SYNC // ERROR');
+        }
       }
     }, WM.CONFIG.AUTO_SYNC_DELAY_MS);
   }
@@ -276,6 +306,7 @@
     saveSettings: saveSettings,
     getSettings: function () { return settings; },
     hasToken: function () { return !!settings.token; },
+    hasPendingChanges: hasPendingChanges,
     findExistingGist: findExistingGist,
     pushToGist: pushToGist,
     pullFromGist: pullFromGist,
