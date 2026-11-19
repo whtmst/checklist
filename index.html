@@ -91,7 +91,7 @@
       </div>
     </section>
 
-    <!-- Блок общих кредитов (показывается, если есть хотя бы один) -->
+    <!-- Блок общих кредитов -->
     <section class="bundles-section hidden" id="bundlesSection" aria-label="Общие кредиты и рассрочки">
       <div class="section-header-bar">
         <div class="section-heading-group">
@@ -113,7 +113,7 @@
     </footer>
   </div>
 
-  <!-- ВЫДВИЖНАЯ ПАНЕЛЬ ПРОСМОТРА КАРТОЧКИ ТОВАРА (справа на ПК / шторка снизу на мобилке) -->
+  <!-- ВЫДВИЖНАЯ ПАНЕЛЬ ПРОСМОТРА КАРТОЧКИ ТОВАРА -->
   <div class="drawer-backdrop" id="itemDetailDrawer" aria-hidden="true">
     <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerItemTitle">
       <div class="drawer-header">
@@ -228,18 +228,24 @@
           </p>
 
           <div class="credit-fields hidden" id="itemCreditFields">
-            <div class="form-row-3">
+            <div class="form-row-2">
               <div class="form-group">
-                <label class="form-label" for="itemCreditMonths">Срок (мес.)</label>
-                <input type="number" class="input input-mono" id="itemCreditMonths" min="1" step="1" placeholder="6">
+                <label class="form-label" for="itemCreditStartDate">Дата оформления</label>
+                <input type="date" class="input input-mono" id="itemCreditStartDate">
               </div>
               <div class="form-group">
+                <label class="form-label" for="itemCreditMonths">Срок (мес.)</label>
+                <input type="number" class="input input-mono" id="itemCreditMonths" min="1" step="1" placeholder="18">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
                 <label class="form-label" for="itemCreditMonthly">Платёж / мес (₼)</label>
-                <input type="number" class="input input-mono" id="itemCreditMonthly" min="0" step="0.01" placeholder="20">
+                <input type="number" class="input input-mono" id="itemCreditMonthly" min="0" step="0.01" placeholder="14.33">
               </div>
               <div class="form-group">
                 <label class="form-label" for="itemCreditTotal">Итоговая сумма (₼)</label>
-                <input type="number" class="input input-mono" id="itemCreditTotal" min="0" step="0.01" placeholder="120">
+                <input type="number" class="input input-mono" id="itemCreditTotal" min="0" step="0.01" placeholder="257.99">
               </div>
             </div>
             <div class="credit-calc-note" id="itemCreditOverpayNote">
@@ -282,11 +288,18 @@
           <div class="bundle-picker-list" id="bundleItemsPicker"></div>
         </div>
 
-        <div class="form-row-3">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="bundleStartDateInput">Дата оформления</label>
+            <input type="date" class="input input-mono" id="bundleStartDateInput">
+          </div>
           <div class="form-group">
             <label class="form-label" for="bundleMonthsInput">Срок (мес.)</label>
             <input type="number" class="input input-mono" id="bundleMonthsInput" min="1" step="1" placeholder="6">
           </div>
+        </div>
+
+        <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="bundleMonthlyInput">Платёж / мес (₼) *</label>
             <input type="number" class="input input-mono" id="bundleMonthlyInput" min="0" step="0.01" placeholder="55" required>
@@ -319,7 +332,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: Категория (добавить / переименовать) -->
+  <!-- МОДАЛКА: Категория -->
   <div class="modal-backdrop" id="categoryModal" aria-hidden="true">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
       <div class="modal-header">
@@ -343,7 +356,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: Вкладка (добавить / переименовать / удалить) -->
+  <!-- МОДАЛКА: Вкладка -->
   <div class="modal-backdrop" id="tabModal" aria-hidden="true">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="tabModalTitle">
       <div class="modal-header">
@@ -379,7 +392,7 @@
         <div class="sync-panel">
           <div class="section-kicker">GITHUB SECRET GIST SYNC</div>
           <p class="form-hint">
-            Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется. Данные сохраняются в скрытый Gist под именем <code>wm-checklist-data.json</code>.
+            Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется. Фоновая проверка обновлений использует <code>ETag</code> (пустые проверки не тратят лимит GitHub API).
           </p>
 
           <div class="form-group">
@@ -395,7 +408,7 @@
           <div class="form-check-row">
             <label class="checkbox-label">
               <input type="checkbox" id="ghAutoSyncCheck">
-              <span>Автоматически отправлять изменения в GitHub (через 1.5 сек)</span>
+              <span>Автосинхронизация (отправка после изменений + авто-проверка с другого устройства)</span>
             </label>
           </div>
 

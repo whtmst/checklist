@@ -468,7 +468,7 @@ code {
 .bundle-metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  gap: 6px 14px;
   font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--text-secondary);
@@ -480,6 +480,10 @@ code {
 
 .bundle-overpay {
   color: var(--warn);
+}
+
+.bundle-ok {
+  color: var(--ok);
 }
 
 .bundle-items-tags {
@@ -495,6 +499,35 @@ code {
   background-color: var(--bg-elevated);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
+}
+
+/* Прогресс-бар срока кредита */
+.credit-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.credit-progress-track {
+  width: 100%;
+  height: 5px;
+  background-color: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.credit-progress-fill {
+  height: 100%;
+  background-color: var(--accent);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.credit-progress-fill.done {
+  background-color: var(--ok);
 }
 
 /* Список категорий и товаров */
@@ -635,6 +668,7 @@ code {
   align-items: center;
 }
 
+/* Все бейджи в едином стиле КАПСЛОКОМ */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -645,7 +679,8 @@ code {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   line-height: 1.35;
 }
 
@@ -661,7 +696,7 @@ code {
   border-color: var(--border-default);
 }
 
-/* Вариант 1: кликабельный бейдж магазина со стрелкой ↗ */
+/* Кликабельный бейдж магазина со стрелкой ↗ */
 a.badge-store-link {
   background-color: var(--bg-elevated);
   color: var(--text-primary);
@@ -695,13 +730,6 @@ a.badge-store-link:hover {
   border-color: var(--border-subtle);
 }
 
-.item-title-line {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .item-title {
   font-size: 15px;
   font-weight: 600;
@@ -715,12 +743,6 @@ a.badge-store-link:hover {
 
 .item-row.is-checked .item-content:hover .item-title {
   color: var(--text-secondary);
-}
-
-.item-credit-inline {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--text-muted);
 }
 
 .item-right {
@@ -1168,6 +1190,7 @@ a.badge-store-link:hover {
   padding: 7px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+  line-height: 1.45;
 }
 
 .mono-pill {
@@ -1339,7 +1362,6 @@ a.badge-store-link:hover {
     display: none;
   }
 
-  /* 3 показателя на мобилке: 1 на всю ширину + 2 рядом снизу */
   .summary-grid {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -1374,7 +1396,6 @@ a.badge-store-link:hover {
     gap: 6px;
   }
 
-  /* На мобилке выдвижная панель превращается в удобную шторку снизу */
   .drawer-backdrop {
     align-items: flex-end;
     justify-content: center;

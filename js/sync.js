@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — СИНХРОНИЗАЦИЯ ЧЕРЕЗ SECRET GITHUB GIST И РЕЗЕРВНЫЙ JSON
+   WM_CHECKLIST — СИНХРОНИЗАЦИЯ ЧЕРЕЗ SECRET GITHUB GIST (ETag + AUTO-PULL)
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -14,6 +14,9 @@
   };
 
   var autoSyncTimer = null;
+  var lastEtag = '';
+  var lastPullCheckMs = 0;
+  var isSyncBusy = false;
 
   function loadSettings() {
     try {
@@ -32,7 +35,11 @@
   function saveSettings(next) {
     if (next) {
       if (typeof next.token === 'string') settings.token = next.token.trim();
-      if (typeof next.gistId === 'string') settings.gistId = next.gistId.trim();
+      if (typeof next.gistId === 'string') {
+        var nextId = next.gistId.trim();
+        if (nextId !== settings.gistId) lastEtag = '';
+        settings.gistId = nextId;
+      }
       if (typeof next.autoSync === 'boolean') settings.autoSync = next.autoSync;
       if (typeof next.lastSyncAt === 'string') settings.lastSyncAt = next.lastSyncAt;
     }
@@ -42,17 +49,21 @@
     return settings;
   }
 
-  function buildHeaders() {
-    return {
+  function buildHeaders(extra) {
+    var headers = {
       'Accept': 'application/vnd.github+json',
       'Authorization': 'Bearer ' + settings.token,
       'Content-Type': 'application/json'
     };
+    if (extra) {
+      Object.keys(extra).forEach(function (k) { headers[k] = extra[k]; });
+    }
+    return headers;
   }
 
   function parseGitHubError(status, bodyText) {
     if (status === 401) return 'Токен недействителен или истёк (401). Проверь токен в настройках.';
-    if (status === 403) return 'Нет прав на Gist (403). У токена должна быть галочка «gist».';
+    if (status === 403) return 'Нет прав на Gist или превышен лимит (403).';
     if (status === 404) return 'Gist с таким ID не найден (404). Попробуй «Найти мой Gist».';
     return 'Ошибка GitHub API (' + status + '): ' + (bodyText || 'неизвестно').slice(0, 120);
   }
@@ -84,39 +95,47 @@
       throw new Error('Не указан GitHub Token.');
     }
 
-    var content = JSON.stringify(WM.storage.getState(), null, 2);
-    var filesPayload = {};
-    filesPayload[WM.CONFIG.GIST_FILENAME] = { content: content };
+    isSyncBusy = true;
+    try {
+      var content = JSON.stringify(WM.storage.getState(), null, 2);
+      var filesPayload = {};
+      filesPayload[WM.CONFIG.GIST_FILENAME] = { content: content };
 
-    var url = settings.gistId
-      ? 'https://api.github.com/gists/' + encodeURIComponent(settings.gistId)
-      : 'https://api.github.com/gists';
+      var url = settings.gistId
+        ? 'https://api.github.com/gists/' + encodeURIComponent(settings.gistId)
+        : 'https://api.github.com/gists';
 
-    var method = settings.gistId ? 'PATCH' : 'POST';
-    var body = {
-      description: WM.CONFIG.GIST_DESCRIPTION,
-      files: filesPayload
-    };
-    if (!settings.gistId) {
-      body.public = false; // Secret Gist — скрыт от посторонних
+      var method = settings.gistId ? 'PATCH' : 'POST';
+      var body = {
+        description: WM.CONFIG.GIST_DESCRIPTION,
+        files: filesPayload
+      };
+      if (!settings.gistId) {
+        body.public = false;
+      }
+
+      var res = await fetch(url, {
+        method: method,
+        headers: buildHeaders(),
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        throw new Error(parseGitHubError(res.status, await res.text()));
+      }
+
+      var etag = res.headers.get('ETag');
+      if (etag) lastEtag = etag;
+
+      var data = await res.json();
+      saveSettings({
+        gistId: data.id || settings.gistId,
+        lastSyncAt: new Date().toISOString()
+      });
+      return data;
+    } finally {
+      isSyncBusy = false;
     }
-
-    var res = await fetch(url, {
-      method: method,
-      headers: buildHeaders(),
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      throw new Error(parseGitHubError(res.status, await res.text()));
-    }
-
-    var data = await res.json();
-    saveSettings({
-      gistId: data.id || settings.gistId,
-      lastSyncAt: new Date().toISOString()
-    });
-    return data;
   }
 
   async function pullFromGist() {
@@ -130,25 +149,85 @@
       }
     }
 
-    var res = await fetch('https://api.github.com/gists/' + encodeURIComponent(settings.gistId), {
-      method: 'GET',
-      headers: buildHeaders()
-    });
+    isSyncBusy = true;
+    try {
+      var res = await fetch('https://api.github.com/gists/' + encodeURIComponent(settings.gistId), {
+        method: 'GET',
+        headers: buildHeaders()
+      });
 
-    if (!res.ok) {
-      throw new Error(parseGitHubError(res.status, await res.text()));
+      if (!res.ok) {
+        throw new Error(parseGitHubError(res.status, await res.text()));
+      }
+
+      var etag = res.headers.get('ETag');
+      if (etag) lastEtag = etag;
+
+      var data = await res.json();
+      var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
+      if (!file || !file.content) {
+        throw new Error('В выбранном Gist нет файла ' + WM.CONFIG.GIST_FILENAME);
+      }
+
+      var parsed = JSON.parse(file.content);
+      WM.storage.replaceState(parsed, true);
+      saveSettings({ lastSyncAt: new Date().toISOString() });
+      return parsed;
+    } finally {
+      isSyncBusy = false;
     }
+  }
 
-    var data = await res.json();
-    var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
-    if (!file || !file.content) {
-      throw new Error('В выбранном Gist нет файла ' + WM.CONFIG.GIST_FILENAME);
+  /* Экономная фоновая проверка обновлений через ETag (304 Not Modified не тратит лимит GitHub!) */
+  async function checkForRemoteUpdates(force) {
+    if (!settings.token || !settings.gistId || !settings.autoSync) return false;
+    if (isSyncBusy || autoSyncTimer) return false;
+    if (document.hidden && !force) return false;
+
+    var now = Date.now();
+    if (!force && now - lastPullCheckMs < WM.CONFIG.AUTO_PULL_MIN_GAP_MS) {
+      return false;
     }
+    lastPullCheckMs = now;
 
-    var parsed = JSON.parse(file.content);
-    WM.storage.replaceState(parsed, true);
-    saveSettings({ lastSyncAt: new Date().toISOString() });
-    return parsed;
+    var extraHeaders = lastEtag ? { 'If-None-Match': lastEtag } : null;
+    try {
+      var res = await fetch('https://api.github.com/gists/' + encodeURIComponent(settings.gistId), {
+        method: 'GET',
+        headers: buildHeaders(extraHeaders)
+      });
+
+      // 304 = ничего не изменилось, лимит GitHub API не расходуется (0 запросов)
+      if (res.status === 304) {
+        return false;
+      }
+      if (!res.ok) {
+        return false;
+      }
+
+      var etag = res.headers.get('ETag');
+      if (etag) lastEtag = etag;
+
+      var data = await res.json();
+      var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
+      if (!file || !file.content) return false;
+
+      var remoteState = JSON.parse(file.content);
+      var localState = WM.storage.getState();
+
+      var remoteTime = Date.parse(remoteState.updatedAt || '') || 0;
+      var localTime = Date.parse(localState.updatedAt || '') || 0;
+
+      // Подтягиваем только если удалённая версия реально новее локальной
+      if (remoteTime > localTime) {
+        WM.storage.replaceState(remoteState, true);
+        saveSettings({ lastSyncAt: new Date().toISOString() });
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
   }
 
   function scheduleAutoPush(onStatusChange) {
@@ -157,6 +236,7 @@
     if (onStatusChange) onStatusChange('pending', 'SYNC // SAVING...');
 
     autoSyncTimer = setTimeout(async function () {
+      autoSyncTimer = null;
       try {
         await pushToGist();
         if (onStatusChange) {
@@ -168,7 +248,6 @@
     }, WM.CONFIG.AUTO_SYNC_DELAY_MS);
   }
 
-  // --- Локальный JSON экспорт / импорт ---
   function downloadJsonFile() {
     var json = JSON.stringify(WM.storage.getState(), null, 2);
     var blob = new Blob([json], { type: 'application/json;charset=utf-8' });
@@ -200,6 +279,7 @@
     findExistingGist: findExistingGist,
     pushToGist: pushToGist,
     pullFromGist: pullFromGist,
+    checkForRemoteUpdates: checkForRemoteUpdates,
     scheduleAutoPush: scheduleAutoPush,
     downloadJsonFile: downloadJsonFile,
     importJsonText: importJsonText

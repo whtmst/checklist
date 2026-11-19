@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПАНЕЛЬ ПРОСМОТРА И СОБЫТИЯ
+   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПАНЕЛЬ И АВТО-ПУЛЛ
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -73,7 +73,7 @@
     });
   }
 
-  // --- Тема (тёмная по умолчанию + светлая) ---
+  // --- Тема ---
   function applyTheme(theme) {
     var normalized = theme === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', normalized);
@@ -139,7 +139,6 @@
       }
     });
 
-    // Если открыта выдвижная панель просмотра — обновляем её содержимое
     if (viewingItemId) {
       var tab = WM.storage.getActiveTab();
       var item = tab.items.find(function (x) { return x.id === viewingItemId; });
@@ -163,6 +162,79 @@
     if (shouldRender) refreshUI();
   }
 
+  // --- Подсказки расчёта кредита (переплата + дата окончания) ---
+  function buildScheduleHint(startDate, months, monthly) {
+    var sched = WM.utils.calcCreditSchedule(startDate, months, monthly);
+    if (!sched) return '';
+    if (sched.isFinished) {
+      return 'Окончание: ' + sched.endFormatted + ' (срок завершён).';
+    }
+    return 'До ' + sched.endFormatted + ' · осталось ' + sched.remainingMonths + ' из ' + sched.totalMonths + ' мес.';
+  }
+
+  function updateItemOverpayHint() {
+    var price = WM.utils.toNumber(document.getElementById('itemPriceInput').value);
+    var total = WM.utils.toNumber(document.getElementById('itemCreditTotal').value);
+    var startDate = document.getElementById('itemCreditStartDate').value;
+    var months = document.getElementById('itemCreditMonths').value;
+    var monthly = document.getElementById('itemCreditMonthly').value;
+    var note = document.getElementById('itemCreditOverpayNote');
+
+    var lines = [];
+    if (total > 0) {
+      var diff = Math.round((total - price) * 100) / 100;
+      if (diff > 0) {
+        lines.push('Переплата банку: +' + WM.utils.formatMoney(diff) + '.');
+      } else if (diff === 0) {
+        lines.push('Рассрочка без переплаты.');
+      } else {
+        lines.push('Итоговая сумма ниже цены товара на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
+      }
+    }
+    var schedLine = buildScheduleHint(startDate, months, monthly);
+    if (schedLine) lines.push(schedLine);
+
+    note.textContent = lines.length > 0
+      ? lines.join(' ')
+      : 'Введите реальный ежемесячный платёж, итоговую сумму и (по желанию) дату оформления.';
+  }
+
+  function updateBundleCalcHints() {
+    var tab = WM.storage.getActiveTab();
+    var checkboxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
+    var baseSum = 0;
+    checkboxes.forEach(function (cb) {
+      var it = tab.items.find(function (x) { return x.id === cb.value; });
+      if (it) baseSum += it.price;
+    });
+    baseSum = WM.utils.toNumber(baseSum);
+    document.getElementById('bundleBaseSumLabel').textContent = 'База: ' + WM.utils.formatMoney(baseSum);
+
+    var total = WM.utils.toNumber(document.getElementById('bundleTotalInput').value);
+    var startDate = document.getElementById('bundleStartDateInput').value;
+    var months = document.getElementById('bundleMonthsInput').value;
+    var monthly = document.getElementById('bundleMonthlyInput').value;
+    var note = document.getElementById('bundleOverpayNote');
+
+    var lines = [];
+    if (total > 0) {
+      var diff = Math.round((total - baseSum) * 100) / 100;
+      if (diff > 0) {
+        lines.push('Переплата: +' + WM.utils.formatMoney(diff) + ' к базе ' + WM.utils.formatMoney(baseSum) + '.');
+      } else if (diff === 0) {
+        lines.push('Рассрочка без переплаты.');
+      } else {
+        lines.push('Итоговая сумма ниже базы на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
+      }
+    }
+    var schedLine = buildScheduleHint(startDate, months, monthly);
+    if (schedLine) lines.push(schedLine);
+
+    note.textContent = lines.length > 0
+      ? lines.join(' ')
+      : 'Укажите итоговую сумму, ежемесячный платёж и (по желанию) дату оформления.';
+  }
+
   // --- Модалка: Позиция ---
   function populateItemModalSelects(selectedCatId) {
     var tab = WM.storage.getActiveTab();
@@ -174,9 +246,7 @@
       opt.textContent = c.name;
       catSelect.appendChild(opt);
     });
-    if (selectedCatId) {
-      catSelect.value = selectedCatId;
-    }
+    if (selectedCatId) catSelect.value = selectedCatId;
 
     var prioSelect = document.getElementById('itemPrioritySelect');
     if (prioSelect.options.length === 0) {
@@ -200,25 +270,6 @@
       customOpt.value = WM.CONFIG.CUSTOM_STORE_VALUE;
       customOpt.textContent = 'Свой вариант...';
       storeSelect.appendChild(customOpt);
-    }
-  }
-
-  function updateItemOverpayHint() {
-    var price = WM.utils.toNumber(document.getElementById('itemPriceInput').value);
-    var total = WM.utils.toNumber(document.getElementById('itemCreditTotal').value);
-    var note = document.getElementById('itemCreditOverpayNote');
-
-    if (total <= 0) {
-      note.textContent = 'Введите реальный ежемесячный платёж и итоговую сумму из договора / банка.';
-      return;
-    }
-    var diff = Math.round((total - price) * 100) / 100;
-    if (diff > 0) {
-      note.textContent = 'Переплата банку: +' + WM.utils.formatMoney(diff) + ' (учтётся в итоговой сумме вкладки).';
-    } else if (diff === 0) {
-      note.textContent = 'Рассрочка без переплаты (итоговая сумма равна цене товара).';
-    } else {
-      note.textContent = 'Итоговая сумма меньше цены товара на ' + WM.utils.formatMoney(Math.abs(diff)) + '.';
     }
   }
 
@@ -266,6 +317,7 @@
     var isCredit = !inBundle && item && item.credit && item.credit.enabled;
     creditCheck.checked = !!isCredit;
     creditFields.classList.toggle('hidden', !isCredit);
+    document.getElementById('itemCreditStartDate').value = isCredit && item.credit.startDate ? item.credit.startDate : '';
     document.getElementById('itemCreditMonths').value = isCredit && item.credit.months ? item.credit.months : '';
     document.getElementById('itemCreditMonthly').value = isCredit ? item.credit.monthlyPayment : '';
     document.getElementById('itemCreditTotal').value = isCredit ? item.credit.totalAmount : '';
@@ -279,33 +331,6 @@
   }
 
   // --- Модалка: Общий кредит ---
-  function updateBundleCalcHints() {
-    var tab = WM.storage.getActiveTab();
-    var checkboxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
-    var baseSum = 0;
-    checkboxes.forEach(function (cb) {
-      var it = tab.items.find(function (x) { return x.id === cb.value; });
-      if (it) baseSum += it.price;
-    });
-    baseSum = WM.utils.toNumber(baseSum);
-    document.getElementById('bundleBaseSumLabel').textContent = 'База: ' + WM.utils.formatMoney(baseSum);
-
-    var total = WM.utils.toNumber(document.getElementById('bundleTotalInput').value);
-    var note = document.getElementById('bundleOverpayNote');
-    if (total <= 0) {
-      note.textContent = 'Укажите общую итоговую сумму (с учётом переплаты банка, если есть) и реальный ежемесячный платёж.';
-      return;
-    }
-    var diff = Math.round((total - baseSum) * 100) / 100;
-    if (diff > 0) {
-      note.textContent = 'Переплата по общему кредиту: +' + WM.utils.formatMoney(diff) + ' к базовой сумме ' + WM.utils.formatMoney(baseSum) + '.';
-    } else if (diff === 0) {
-      note.textContent = 'Рассрочка без переплаты (итоговая сумма равна сумме выбранных товаров).';
-    } else {
-      note.textContent = 'Итоговая сумма ниже базы на ' + WM.utils.formatMoney(Math.abs(diff)) + '.';
-    }
-  }
-
   function openBundleModal(bundleId) {
     var tab = WM.storage.getActiveTab();
     if (tab.items.length === 0) {
@@ -317,6 +342,7 @@
     document.getElementById('bundleModalTitle').textContent = bundle ? 'Редактировать общий кредит' : 'Объединить товары в один кредит';
     document.getElementById('bundleIdInput').value = bundle ? bundle.id : '';
     document.getElementById('bundleNameInput').value = bundle ? bundle.name : '';
+    document.getElementById('bundleStartDateInput').value = bundle && bundle.startDate ? bundle.startDate : '';
     document.getElementById('bundleMonthsInput').value = bundle && bundle.months ? bundle.months : '';
     document.getElementById('bundleMonthlyInput').value = bundle ? bundle.monthlyPayment : '';
     document.getElementById('bundleTotalInput').value = bundle ? bundle.totalAmount : '';
@@ -340,9 +366,7 @@
       cb.type = 'checkbox';
       cb.value = it.id;
       cb.checked = isSelected;
-      cb.addEventListener('change', function () {
-        updateBundleCalcHints();
-      });
+      cb.addEventListener('change', updateBundleCalcHints);
 
       var txt = document.createElement('div');
       var titleDiv = document.createElement('div');
@@ -370,7 +394,7 @@
     openModal('bundleModal');
   }
 
-  // --- Модалка: Категория ---
+  // --- Модалки: Категория, Вкладка, Синхронизация ---
   function openCategoryModal(catId) {
     var tab = WM.storage.getActiveTab();
     var cat = catId ? tab.categories.find(function (c) { return c.id === catId; }) : null;
@@ -384,7 +408,6 @@
     }, 50);
   }
 
-  // --- Модалка: Вкладка ---
   function openTabModal(tabId) {
     var state = WM.storage.getState();
     var tab = tabId ? state.tabs.find(function (t) { return t.id === tabId; }) : null;
@@ -398,7 +421,6 @@
     }, 50);
   }
 
-  // --- Модалка: Синхронизация и бэкап ---
   function openSyncModal() {
     var s = WM.sync.getSettings();
     document.getElementById('ghTokenInput').value = s.token;
@@ -418,7 +440,17 @@
     });
   }
 
-  // --- Привязка всех событий ---
+  // --- Экономная авто-проверка обновлений с GitHub (ETag + 304) ---
+  async function runAutoPull(force) {
+    var updated = await WM.sync.checkForRemoteUpdates(force);
+    if (updated) {
+      refreshUI();
+      var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
+      setSyncStatus('ok', 'GIST // ' + t);
+      showToast('Обновлено с GitHub');
+    }
+  }
+
   function bindEvents() {
     document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -432,15 +464,13 @@
       });
     });
 
-    // События выдвижной панели просмотра карточки
     document.getElementById('closeDrawerBtn').addEventListener('click', closeItemDrawer);
     document.getElementById('itemDetailDrawer').addEventListener('click', function (e) {
       if (e.target === e.currentTarget) closeItemDrawer();
     });
     document.getElementById('drawerEditBtn').addEventListener('click', function () {
       if (!viewingItemId) return;
-      var idToEdit = viewingItemId;
-      openItemModal(idToEdit, null);
+      openItemModal(viewingItemId, null);
     });
     document.getElementById('drawerCheckedToggle').addEventListener('change', function (e) {
       if (!viewingItemId) return;
@@ -452,13 +482,19 @@
       if (e.key === 'Escape') closeAllOverlays();
     });
 
-    // Тема
+    // Авто-подгрузка при возврате на вкладку (разблокировал телефон / переключил окно)
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) runAutoPull(false);
+    });
+    window.addEventListener('focus', function () {
+      runAutoPull(false);
+    });
+
     document.getElementById('themeToggleBtn').addEventListener('click', function () {
       var cur = document.documentElement.getAttribute('data-theme');
       applyTheme(cur === 'dark' ? 'light' : 'dark');
     });
 
-    // Кнопки шапки и панели
     document.getElementById('addTabBtn').addEventListener('click', function () { openTabModal(null); });
     document.getElementById('manageTabBtn').addEventListener('click', function () {
       openTabModal(WM.storage.getActiveTab().id);
@@ -486,7 +522,6 @@
       }
     });
 
-    // Фильтры
     document.getElementById('searchInput').addEventListener('input', function (e) {
       filters.search = e.target.value;
       refreshUI();
@@ -507,9 +542,7 @@
     document.getElementById('itemStoreSelect').addEventListener('change', function (e) {
       var isCustom = e.target.value === WM.CONFIG.CUSTOM_STORE_VALUE;
       document.getElementById('customStoreGroup').classList.toggle('hidden', !isCustom);
-      if (isCustom) {
-        document.getElementById('itemCustomStoreInput').focus();
-      }
+      if (isCustom) document.getElementById('itemCustomStoreInput').focus();
     });
 
     document.getElementById('itemCreditCheck').addEventListener('change', function (e) {
@@ -521,9 +554,12 @@
       updateItemOverpayHint();
     });
 
-    document.getElementById('itemPriceInput').addEventListener('input', updateItemOverpayHint);
-    document.getElementById('itemCreditTotal').addEventListener('input', updateItemOverpayHint);
-    document.getElementById('bundleTotalInput').addEventListener('input', updateBundleCalcHints);
+    ['itemPriceInput', 'itemCreditTotal', 'itemCreditMonths', 'itemCreditMonthly', 'itemCreditStartDate'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', updateItemOverpayHint);
+    });
+    ['bundleTotalInput', 'bundleMonthsInput', 'bundleMonthlyInput', 'bundleStartDateInput'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', updateBundleCalcHints);
+    });
 
     // Сохранение позиции
     document.getElementById('itemForm').addEventListener('submit', function (e) {
@@ -549,6 +585,7 @@
         checked: document.getElementById('itemCheckedInput').checked,
         credit: {
           enabled: isCredit,
+          startDate: document.getElementById('itemCreditStartDate').value,
           months: document.getElementById('itemCreditMonths').value,
           monthlyPayment: document.getElementById('itemCreditMonthly').value,
           totalAmount: document.getElementById('itemCreditTotal').value
@@ -588,6 +625,7 @@
         id: document.getElementById('bundleIdInput').value || null,
         name: document.getElementById('bundleNameInput').value,
         itemIds: itemIds,
+        startDate: document.getElementById('bundleStartDateInput').value,
         months: document.getElementById('bundleMonthsInput').value,
         monthlyPayment: document.getElementById('bundleMonthlyInput').value,
         totalAmount: document.getElementById('bundleTotalInput').value,
@@ -794,9 +832,16 @@
     if (WM.sync.hasToken()) {
       var s = WM.sync.getSettings();
       setSyncStatus('ok', s.lastSyncAt ? 'GIST // ' + WM.utils.formatTime(s.lastSyncAt) : 'GIST // READY');
+      // При открытии страницы мягко проверяем, нет ли более свежих данных с другого устройства
+      runAutoPull(true);
     } else {
       setSyncStatus('', 'LOCAL // OFFLINE');
     }
+
+    // Фоновая проверка раз в 60 сек (только пока вкладка открыта на экране; 304 не тратит лимит)
+    setInterval(function () {
+      runAutoPull(false);
+    }, WM.CONFIG.AUTO_PULL_INTERVAL_MS);
   }
 
   if (document.readyState === 'loading') {

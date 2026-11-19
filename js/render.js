@@ -45,11 +45,44 @@
       a.textContent = (storeName || 'Ссылка') + ' ↗';
       a.title = 'Открыть товар в магазине';
       a.addEventListener('click', function (e) {
-        e.stopPropagation(); // Не открывать карточку при клике по ссылке магазина
+        e.stopPropagation();
       });
       return a;
     }
     return el('span', 'badge badge-store', storeName);
+  }
+
+  function createMetricSpan(label, value) {
+    var span = el('span');
+    span.appendChild(document.createTextNode(label));
+    span.appendChild(el('strong', '', value));
+    return span;
+  }
+
+  function appendScheduleBlock(container, startDate, months, monthlyPayment) {
+    var sched = WM.utils.calcCreditSchedule(startDate, months, monthlyPayment);
+    if (!sched) return;
+
+    var wrap = el('div', 'credit-progress-wrap');
+    wrap.appendChild(createMetricSpan('Оформлен: ', sched.startFormatted + ' → до ' + sched.endFormatted));
+
+    if (sched.isFinished) {
+      wrap.appendChild(el('span', 'bundle-ok', 'Статус: ПОГАШЕН (' + sched.totalMonths + ' из ' + sched.totalMonths + ' мес.)'));
+    } else {
+      var remText = sched.remainingMonths + ' из ' + sched.totalMonths + ' мес.';
+      if (sched.remainingAmount > 0) {
+        remText += ' (~' + WM.utils.formatMoney(sched.remainingAmount) + ')';
+      }
+      wrap.appendChild(createMetricSpan('Осталось платежей: ', remText));
+    }
+
+    var track = el('div', 'credit-progress-track');
+    var fill = el('div', 'credit-progress-fill' + (sched.isFinished ? ' done' : ''));
+    fill.style.width = sched.paidPct + '%';
+    track.appendChild(fill);
+    wrap.appendChild(track);
+
+    container.appendChild(wrap);
   }
 
   function renderTabs(state, handlers) {
@@ -196,16 +229,10 @@
       }
 
       card.appendChild(metrics);
+      appendScheduleBlock(card, bundle.startDate, bundle.months, bundle.monthlyPayment);
       card.appendChild(tagsWrap);
       list.appendChild(card);
     });
-  }
-
-  function createMetricSpan(label, value) {
-    var span = el('span');
-    span.appendChild(document.createTextNode(label));
-    span.appendChild(el('strong', '', value));
-    return span;
   }
 
   function itemMatchesFilters(item, tab, filters) {
@@ -348,7 +375,7 @@
     }
   }
 
-  /* Компактная строка товара: клик по контенту открывает полную карточку в выдвижной панели */
+  /* Вариант 1: КАПС-бейджи [ПРИОРИТЕТ] [КРЕДИТ] [МАГАЗИН ↗] [≡ ЗАМЕТКА] + чистое название */
   function renderItemRow(item, tab, handlers) {
     var fmt = WM.utils.formatMoney;
     var prio = WM.utils.getPriority(item.priority);
@@ -375,31 +402,20 @@
 
     var badges = el('div', 'item-badges');
     badges.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
+    if (isIndCredit) {
+      badges.appendChild(el('span', 'badge badge-credit', 'Кредит'));
+    } else if (bundle) {
+      badges.appendChild(el('span', 'badge badge-bundle', 'Кредит: ' + bundle.name));
+    }
     if (item.store || item.link) {
       badges.appendChild(createStoreBadge(item.store, item.link));
-    }
-    if (isIndCredit) {
-      badges.appendChild(el('span', 'badge badge-credit', 'КРЕДИТ / РАССРОЧКА'));
-    } else if (bundle) {
-      badges.appendChild(el('span', 'badge badge-bundle', 'ОБЩИЙ КРЕДИТ: ' + bundle.name));
     }
     if (item.note) {
       badges.appendChild(el('span', 'badge badge-note-hint', '≡ Заметка'));
     }
     content.appendChild(badges);
 
-    var titleLine = el('div', 'item-title-line');
-    titleLine.appendChild(el('div', 'item-title', item.title));
-    if (isIndCredit) {
-      var parts = [];
-      if (item.credit.months > 0) parts.push(item.credit.months + ' мес.');
-      if (item.credit.monthlyPayment > 0) parts.push(fmt(item.credit.monthlyPayment) + '/мес');
-      if (parts.length > 0) {
-        titleLine.appendChild(el('span', 'item-credit-inline', parts.join(' · ')));
-      }
-    }
-    content.appendChild(titleLine);
-
+    content.appendChild(el('div', 'item-title', item.title));
     row.appendChild(content);
 
     var right = el('div', 'item-right');
@@ -430,7 +446,7 @@
     return row;
   }
 
-  /* Отрисовка полной карточки в выдвижной панели (с умным разбором «Ключ: Значение») */
+  /* Выдвижная панель просмотра полной карточки (с графиком и остатком платежей) */
   function renderItemDrawer(item, tab) {
     var fmt = WM.utils.formatMoney;
     var cat = tab.categories.find(function (c) { return c.id === item.categoryId; });
@@ -444,13 +460,13 @@
     var badgesWrap = document.getElementById('drawerBadges');
     badgesWrap.innerHTML = '';
     badgesWrap.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
+    if (isIndCredit) {
+      badgesWrap.appendChild(el('span', 'badge badge-credit', 'Кредит'));
+    } else if (bundle) {
+      badgesWrap.appendChild(el('span', 'badge badge-bundle', 'Кредит: ' + bundle.name));
+    }
     if (item.store || item.link) {
       badgesWrap.appendChild(createStoreBadge(item.store, item.link));
-    }
-    if (isIndCredit) {
-      badgesWrap.appendChild(el('span', 'badge badge-credit', 'КРЕДИТ / РАССРОЧКА'));
-    } else if (bundle) {
-      badgesWrap.appendChild(el('span', 'badge badge-bundle', 'ОБЩИЙ КРЕДИТ: ' + bundle.name));
     }
 
     var priceMain = document.getElementById('drawerPriceMain');
@@ -470,7 +486,6 @@
     toggle.checked = !!item.checked;
     document.getElementById('drawerCheckedText').textContent = item.checked ? 'Куплено' : 'Не куплено';
 
-    // Блок кредита
     var creditBlock = document.getElementById('drawerCreditBlock');
     creditBlock.innerHTML = '';
     if (isIndCredit) {
@@ -483,17 +498,18 @@
       if (overpay > 0) {
         creditBlock.appendChild(el('span', 'bundle-overpay', 'Переплата банку: +' + fmt(overpay)));
       }
+      appendScheduleBlock(creditBlock, item.credit.startDate, item.credit.months, item.credit.monthlyPayment);
     } else if (bundle) {
       creditBlock.classList.remove('hidden');
       creditBlock.appendChild(createMetricSpan('Общий кредит: ', bundle.name));
       if (bundle.months > 0) creditBlock.appendChild(createMetricSpan('Срок: ', bundle.months + ' мес.'));
       creditBlock.appendChild(createMetricSpan('Общий платёж: ', fmt(bundle.monthlyPayment) + '/мес'));
       creditBlock.appendChild(createMetricSpan('Общая сумма кредита: ', fmt(bundle.totalAmount)));
+      appendScheduleBlock(creditBlock, bundle.startDate, bundle.months, bundle.monthlyPayment);
     } else {
       creditBlock.classList.add('hidden');
     }
 
-    // Кнопка ссылки на товар
     var linkWrap = document.getElementById('drawerLinkWrap');
     var linkAnchor = document.getElementById('drawerLinkAnchor');
     if (item.link) {
@@ -504,7 +520,6 @@
       linkWrap.classList.add('hidden');
     }
 
-    // Заметка / характеристики (строки вида "Ключ: Значение" красиво раскладываются в 2 колонки)
     var noteSection = document.getElementById('drawerNoteSection');
     var noteContent = document.getElementById('drawerNoteContent');
     noteContent.innerHTML = '';
@@ -518,7 +533,6 @@
         var line = rawLine.trim();
         if (!line) return;
         var colonIdx = line.indexOf(':');
-        // Если есть короткий ключ до двоеточия (и это не URL), оформляем как строку характеристики
         if (colonIdx > 0 && colonIdx <= 42 && line.indexOf('http://') === -1 && line.indexOf('https://') === -1) {
           var key = line.slice(0, colonIdx).trim();
           var val = line.slice(colonIdx + 1).trim();

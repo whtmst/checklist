@@ -26,6 +26,11 @@
     };
   }
 
+  function sanitizeDate(val) {
+    var s = String(val || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+  }
+
   function sanitizeState(raw) {
     if (!raw || typeof raw !== 'object' || !Array.isArray(raw.tabs) || raw.tabs.length === 0) {
       return createDefaultState();
@@ -50,8 +55,9 @@
                 enabled: !!it.credit.enabled,
                 months: Math.max(0, parseInt(it.credit.months, 10) || 0),
                 monthlyPayment: WM.utils.toNumber(it.credit.monthlyPayment),
-                totalAmount: WM.utils.toNumber(it.credit.totalAmount)
-              } : { enabled: false, months: 0, monthlyPayment: 0, totalAmount: 0 };
+                totalAmount: WM.utils.toNumber(it.credit.totalAmount),
+                startDate: sanitizeDate(it.credit.startDate)
+              } : { enabled: false, months: 0, monthlyPayment: 0, totalAmount: 0, startDate: '' };
 
               return {
                 id: String(it.id || WM.utils.uid('item')),
@@ -78,6 +84,7 @@
                 months: Math.max(0, parseInt(b.months, 10) || 0),
                 monthlyPayment: WM.utils.toNumber(b.monthlyPayment),
                 totalAmount: WM.utils.toNumber(b.totalAmount),
+                startDate: sanitizeDate(b.startDate),
                 checked: !!b.checked
               };
             })
@@ -104,20 +111,18 @@
         state = sanitizeState(JSON.parse(text));
         return state;
       }
-    } catch (e) {
-      // Fallback to clean state
-    }
+    } catch (e) {}
     state = createDefaultState();
     return state;
   }
 
-  function persist(skipNotify) {
-    state.updatedAt = new Date().toISOString();
+  function persist(skipNotify, keepUpdatedAt) {
+    if (!keepUpdatedAt) {
+      state.updatedAt = new Date().toISOString();
+    }
     try {
       localStorage.setItem(WM.CONFIG.STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      // Storage quota exceeded or private mode
-    }
+    } catch (e) {}
     if (!skipNotify) {
       onChangeListeners.forEach(function (fn) { fn(state); });
     }
@@ -141,7 +146,7 @@
     return null;
   }
 
-  /* Расчёт итогов по вкладке (без двойного счёта для общих кредитов!) */
+  /* Расчёт итогов по вкладке (без двойного счёта для общих кредитов) */
   function calculateTabTotals(tab) {
     var spentTotal = 0;
     var spentCash = 0;
@@ -161,10 +166,9 @@
       b.itemIds.forEach(function (id) { bundledItemSet[id] = b.id; });
     });
 
-    // 1. Обычные товары и индивидуальные кредиты (не входящие в общий кредит)
     tab.items.forEach(function (it) {
       if (it.checked) checkedItemsCount++;
-      if (bundledItemSet[it.id]) return; // сумма этого товара учитывается через его общий кредит
+      if (bundledItemSet[it.id]) return;
 
       var isCredit = !!(it.credit && it.credit.enabled);
       var effectiveAmount = isCredit
@@ -190,7 +194,6 @@
       }
     });
 
-    // 2. Общие кредиты (бандлы)
     tab.creditBundles.forEach(function (b) {
       var bundleTotal = WM.utils.toNumber(b.totalAmount);
       plannedTotal += bundleTotal;
@@ -231,21 +234,20 @@
 
     replaceState: function (newRaw, skipSyncNotify) {
       state = sanitizeState(newRaw);
-      persist(skipSyncNotify);
+      persist(skipSyncNotify, true);
       return state;
     },
 
     resetAll: function () {
       state = createDefaultState();
-      persist(false);
+      persist(false, false);
       return state;
     },
 
-    // --- Вкладки ---
     setActiveTab: function (tabId) {
       if (state.tabs.some(function (t) { return t.id === tabId; })) {
         state.activeTabId = tabId;
-        persist(true);
+        persist(true, true);
       }
     },
 
@@ -253,7 +255,7 @@
       var tab = createEmptyTab(name);
       state.tabs.push(tab);
       state.activeTabId = tab.id;
-      persist(false);
+      persist(false, false);
       return tab;
     },
 
@@ -261,7 +263,7 @@
       var tab = state.tabs.find(function (t) { return t.id === tabId; });
       if (!tab) return;
       tab.name = name.trim() || tab.name;
-      persist(false);
+      persist(false, false);
     },
 
     deleteTab: function (tabId) {
@@ -270,11 +272,10 @@
       if (state.activeTabId === tabId) {
         state.activeTabId = state.tabs[0].id;
       }
-      persist(false);
+      persist(false, false);
       return true;
     },
 
-    // --- Категории ---
     addCategory: function (name) {
       var tab = getActiveTab();
       var cat = {
@@ -283,7 +284,7 @@
         collapsed: false
       };
       tab.categories.push(cat);
-      persist(false);
+      persist(false, false);
       return cat;
     },
 
@@ -292,7 +293,7 @@
       var cat = tab.categories.find(function (c) { return c.id === catId; });
       if (!cat) return;
       cat.name = name.trim() || cat.name;
-      persist(false);
+      persist(false, false);
     },
 
     toggleCategoryCollapse: function (catId) {
@@ -300,7 +301,7 @@
       var cat = tab.categories.find(function (c) { return c.id === catId; });
       if (!cat) return;
       cat.collapsed = !cat.collapsed;
-      persist(true);
+      persist(true, true);
     },
 
     deleteCategory: function (catId) {
@@ -311,15 +312,13 @@
       });
       tab.categories = tab.categories.filter(function (c) { return c.id !== catId; });
       tab.items = tab.items.filter(function (it) { return it.categoryId !== catId; });
-      // Убираем удалённые товары из общих кредитов
       tab.creditBundles.forEach(function (b) {
         b.itemIds = b.itemIds.filter(function (id) { return !removedIds[id]; });
       });
       tab.creditBundles = tab.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
-      persist(false);
+      persist(false, false);
     },
 
-    // --- Позиции ---
     saveItem: function (payload) {
       var tab = getActiveTab();
       var existing = payload.id ? tab.items.find(function (it) { return it.id === payload.id; }) : null;
@@ -333,16 +332,16 @@
         existing.store = payload.store || WM.CONFIG.STORES[0];
         existing.link = (payload.link || '').trim();
         existing.note = (payload.note || '').trim();
-        // Индивидуальный кредит разрешён только если товар не в общем кредите
         if (!existing.bundleId) {
           existing.credit = {
             enabled: !!(payload.credit && payload.credit.enabled),
             months: Math.max(0, parseInt(payload.credit && payload.credit.months, 10) || 0),
             monthlyPayment: WM.utils.toNumber(payload.credit && payload.credit.monthlyPayment),
-            totalAmount: WM.utils.toNumber(payload.credit && payload.credit.totalAmount)
+            totalAmount: WM.utils.toNumber(payload.credit && payload.credit.totalAmount),
+            startDate: sanitizeDate(payload.credit && payload.credit.startDate)
           };
         }
-        persist(false);
+        persist(false, false);
         return existing;
       }
 
@@ -360,13 +359,14 @@
           enabled: !!(payload.credit && payload.credit.enabled),
           months: Math.max(0, parseInt(payload.credit && payload.credit.months, 10) || 0),
           monthlyPayment: WM.utils.toNumber(payload.credit && payload.credit.monthlyPayment),
-          totalAmount: WM.utils.toNumber(payload.credit && payload.credit.totalAmount)
+          totalAmount: WM.utils.toNumber(payload.credit && payload.credit.totalAmount),
+          startDate: sanitizeDate(payload.credit && payload.credit.startDate)
         },
         bundleId: null,
         createdAt: new Date().toISOString()
       };
       tab.items.push(item);
-      persist(false);
+      persist(false, false);
       return item;
     },
 
@@ -375,7 +375,7 @@
       var item = tab.items.find(function (it) { return it.id === itemId; });
       if (!item) return;
       item.checked = !!checked;
-      persist(false);
+      persist(false, false);
     },
 
     deleteItem: function (itemId) {
@@ -385,10 +385,9 @@
         b.itemIds = b.itemIds.filter(function (id) { return id !== itemId; });
       });
       tab.creditBundles = tab.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
-      persist(false);
+      persist(false, false);
     },
 
-    // --- Общие кредиты (бандлы) ---
     saveCreditBundle: function (payload) {
       var tab = getActiveTab();
       var selectedIds = Array.isArray(payload.itemIds) ? payload.itemIds.slice() : [];
@@ -398,7 +397,6 @@
         ? tab.creditBundles.find(function (b) { return b.id === payload.id; })
         : null;
 
-      // Снимаем старую привязку у товаров, которые вышли из этого бандла
       if (bundle) {
         bundle.itemIds.forEach(function (oldId) {
           if (selectedIds.indexOf(oldId) === -1) {
@@ -418,6 +416,7 @@
           months: 0,
           monthlyPayment: 0,
           totalAmount: 0,
+          startDate: '',
           checked: true
         };
         tab.creditBundles.push(bundle);
@@ -428,13 +427,12 @@
       bundle.months = Math.max(0, parseInt(payload.months, 10) || 0);
       bundle.monthlyPayment = WM.utils.toNumber(payload.monthlyPayment);
       bundle.totalAmount = WM.utils.toNumber(payload.totalAmount);
+      bundle.startDate = sanitizeDate(payload.startDate);
       bundle.checked = !!payload.checked;
 
-      // Привязываем выбранные товары к этому бандлу (и снимаем индивидуальный кредит)
       selectedIds.forEach(function (id) {
         var it = tab.items.find(function (x) { return x.id === id; });
         if (it) {
-          // Если товар был в другом бандле — убираем оттуда
           if (it.bundleId && it.bundleId !== bundle.id) {
             var other = tab.creditBundles.find(function (b) { return b.id === it.bundleId; });
             if (other) {
@@ -442,7 +440,7 @@
             }
           }
           it.bundleId = bundle.id;
-          it.credit = { enabled: false, months: 0, monthlyPayment: 0, totalAmount: 0 };
+          it.credit = { enabled: false, months: 0, monthlyPayment: 0, totalAmount: 0, startDate: '' };
           if (bundle.checked) {
             it.checked = true;
           }
@@ -450,7 +448,7 @@
       });
 
       tab.creditBundles = tab.creditBundles.filter(function (b) { return b.itemIds.length > 0; });
-      persist(false);
+      persist(false, false);
       return bundle;
     },
 
@@ -463,7 +461,7 @@
         var it = tab.items.find(function (x) { return x.id === id; });
         if (it) it.checked = !!checked;
       });
-      persist(false);
+      persist(false, false);
     },
 
     deleteCreditBundle: function (bundleId) {
@@ -477,7 +475,7 @@
         }
       });
       tab.creditBundles = tab.creditBundles.filter(function (b) { return b.id !== bundleId; });
-      persist(false);
+      persist(false, false);
     }
   };
 })(window);
