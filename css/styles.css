@@ -1601,3 +1601,55 @@ a.badge-store-link:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Однострочная шапка на мобилке (иконки вместо текста) + 2 справочных блока в Кредитах */
+.ico-mobile-only {
+  display: none;
+}
+
+.credits-ref-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    flex-wrap: nowrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-title {
+    font-size: 13px;
+  }
+
+  .brand-sub {
+    font-size: 10px;
+  }
+
+  .topbar-actions {
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .topbar-actions .btn {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 6px;
+  }
+
+  .ico-mobile-only {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+
+  .credits-ref-grid {
+    grid-template-columns: 1fr;
+  }
+}

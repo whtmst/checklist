@@ -25,16 +25,18 @@
       </div>
 
       <div class="topbar-actions">
-        <button type="button" class="btn btn-ghost" id="openCreditsModalBtn" title="Сводка по всем кредитам и лимиту карты">
-          <span>Кредиты</span>
+        <button type="button" class="btn btn-ghost btn-icon" id="openCreditsModalBtn" title="Кредиты и лимит карты" aria-label="Кредиты">
+          <svg class="ico ico-mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <span class="btn-label-desktop">Кредиты</span>
           <span class="topbar-pill hidden" id="topbarCreditsPill">0 ₼</span>
         </button>
-        <button type="button" class="btn btn-ghost btn-icon" id="quickSyncBtn" title="Синхронизировать с GitHub">
+        <button type="button" class="btn btn-ghost btn-icon" id="quickSyncBtn" title="Синхронизировать с GitHub" aria-label="Синхронизировать">
           <span class="sync-indicator" id="syncIndicator"></span>
           <span class="btn-label-desktop">Синхронизировать</span>
         </button>
-        <button type="button" class="btn btn-ghost" id="openSyncModalBtn" title="Настройки синхронизации и бэкапа">
-          Настройки
+        <button type="button" class="btn btn-ghost btn-icon" id="openSyncModalBtn" title="Настройки синхронизации и бэкапа" aria-label="Настройки">
+          <svg class="ico ico-mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="btn-label-desktop">Настройки</span>
         </button>
         <button type="button" class="btn btn-ghost btn-icon" id="themeToggleBtn" title="Переключить тему" aria-label="Переключить тему">
           <span id="themeToggleIcon">☀</span>
@@ -162,18 +164,31 @@
       </div>
 
       <div class="modal-form">
-        <div class="card-limit-box">
-          <div class="card-limit-top">
-            <div class="form-group card-limit-input-group">
+        <div class="credits-ref-grid">
+          <div class="card-limit-box">
+            <div class="form-group">
               <label class="form-label" for="cardLimitInput">Лимит карты (₼, справочно)</label>
               <input type="number" class="input input-mono" id="cardLimitInput" min="0" step="1" placeholder="Например, 2450">
             </div>
             <div class="card-limit-stats" id="cardLimitStats">
               <span class="form-hint">Укажи лимит карты, чтобы видеть свободный остаток.</span>
             </div>
+            <div class="credit-progress-track hidden" id="cardLimitTrack">
+              <div class="credit-progress-fill" id="cardLimitFill" style="width: 0%;"></div>
+            </div>
           </div>
-          <div class="credit-progress-track hidden" id="cardLimitTrack">
-            <div class="credit-progress-fill" id="cardLimitFill" style="width: 0%;"></div>
+
+          <div class="card-limit-box">
+            <div class="form-group">
+              <label class="form-label" for="monthlyIncomeInput">Доход / мес (₼, справочно)</label>
+              <input type="number" class="input input-mono" id="monthlyIncomeInput" min="0" step="1" placeholder="Например, 820">
+            </div>
+            <div class="card-limit-stats" id="monthlyIncomeStats">
+              <span class="form-hint">Укажи ориентир дохода, чтобы видеть нагрузку кредитов.</span>
+            </div>
+            <div class="credit-progress-track hidden" id="monthlyIncomeTrack">
+              <div class="credit-progress-fill" id="monthlyIncomeFill" style="width: 0%;"></div>
+            </div>
           </div>
         </div>
 

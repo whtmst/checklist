@@ -16,6 +16,86 @@
   var creditsTypeFilter = 'all';
   var viewingItemId = null;
   var toastTimer = null;
+  var newItemDraft = null;
+  var formSnapshots = {};
+
+  function autoResizeTextarea(ta) {
+    if (!ta) return;
+    ta.style.height = 'auto';
+    var maxH = Math.max(220, Math.round(window.innerHeight * 0.48));
+    var next = Math.max(96, Math.min(ta.scrollHeight + 2, maxH));
+    ta.style.height = next + 'px';
+    ta.style.overflowY = ta.scrollHeight > maxH ? 'auto' : 'hidden';
+  }
+
+  function getFormSnapshot(modalId) {
+    var m = document.getElementById(modalId);
+    if (!m) return '';
+    var form = m.querySelector('form');
+    if (!form) return '';
+    var parts = [];
+    form.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (el.type === 'hidden') return;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        parts.push((el.id || el.value) + ':' + (el.checked ? '1' : '0'));
+      } else {
+        parts.push((el.id || '') + ':' + el.value);
+      }
+    });
+    return parts.join('|');
+  }
+
+  function captureFormSnapshot(modalId) {
+    formSnapshots[modalId] = getFormSnapshot(modalId);
+  }
+
+  function isFormDirty(modalId) {
+    if (!formSnapshots.hasOwnProperty(modalId)) return false;
+    return getFormSnapshot(modalId) !== formSnapshots[modalId];
+  }
+
+  function saveNewItemDraft() {
+    // Сохраняем черновик только при создании НОВОЙ позиции
+    if (document.getElementById('itemIdInput').value) return;
+    var title = document.getElementById('itemTitleInput').value;
+    var price = document.getElementById('itemPriceInput').value;
+    var link = document.getElementById('itemLinkInput').value;
+    var note = document.getElementById('itemNoteInput').value;
+    var customStore = document.getElementById('itemCustomStoreInput').value;
+    if (!title && !price && !link && !note && !customStore) {
+      newItemDraft = null;
+      return;
+    }
+    newItemDraft = {
+      title: title,
+      categoryId: document.getElementById('itemCategorySelect').value,
+      price: price,
+      priority: document.getElementById('itemPrioritySelect').value,
+      store: document.getElementById('itemStoreSelect').value,
+      customStore: customStore,
+      link: link,
+      note: note,
+      checked: document.getElementById('itemCheckedInput').checked
+    };
+  }
+
+  function clearNewItemDraft() {
+    newItemDraft = null;
+  }
+
+  function tryCloseModal(id, force) {
+    var guarded = ['itemModal', 'bundleModal', 'categoryModal', 'tabModal'];
+    if (!force && guarded.indexOf(id) !== -1 && isFormDirty(id)) {
+      if (id === 'itemModal' && !document.getElementById('itemIdInput').value) {
+        saveNewItemDraft();
+      }
+      if (!confirm('Есть несохранённые данные. Закрыть окно?')) {
+        return false;
+      }
+    }
+    closeModal(id);
+    return true;
+  }
 
   function showToast(message) {
     var node = document.getElementById('toast');
@@ -358,10 +438,29 @@
       customGroup.classList.add('hidden');
     }
 
+    // Если открываем «Новая позиция» и есть незавершённый черновик — восстанавливаем его!
+    if (!item && newItemDraft) {
+      document.getElementById('itemTitleInput').value = newItemDraft.title || '';
+      if (newItemDraft.categoryId && tab.categories.some(function (c) { return c.id === newItemDraft.categoryId; })) {
+        document.getElementById('itemCategorySelect').value = newItemDraft.categoryId;
+      }
+      document.getElementById('itemPriceInput').value = newItemDraft.price || '';
+      document.getElementById('itemPrioritySelect').value = newItemDraft.priority || 'medium';
+      document.getElementById('itemStoreSelect').value = newItemDraft.store || WM.CONFIG.STORES[0];
+      var isCustomDraft = newItemDraft.store === WM.CONFIG.CUSTOM_STORE_VALUE;
+      document.getElementById('itemCustomStoreInput').value = isCustomDraft ? (newItemDraft.customStore || '') : '';
+      document.getElementById('customStoreGroup').classList.toggle('hidden', !isCustomDraft);
+      document.getElementById('itemLinkInput').value = newItemDraft.link || '';
+      document.getElementById('itemNoteInput').value = newItemDraft.note || '';
+      document.getElementById('itemCheckedInput').checked = !!newItemDraft.checked;
+    }
+
     setupItemTransferUI(item);
     document.getElementById('deleteItemBtn').classList.toggle('hidden', !item);
     openModal('itemModal');
+    captureFormSnapshot('itemModal');
     setTimeout(function () {
+      autoResizeTextarea(document.getElementById('itemNoteInput'));
       document.getElementById('itemTitleInput').focus();
     }, 50);
   }
@@ -449,6 +548,7 @@
 
     syncBundleCreditTypeUI();
     openModal('bundleModal');
+    captureFormSnapshot('bundleModal');
   }
 
   function openCreditsModal() {
@@ -465,6 +565,7 @@
     document.getElementById('deleteCategoryBtn').classList.toggle('hidden', !cat);
     setupCategoryTransferUI(cat);
     openModal('categoryModal');
+    captureFormSnapshot('categoryModal');
     setTimeout(function () {
       document.getElementById('categoryNameInput').focus();
     }, 50);
@@ -478,6 +579,7 @@
     document.getElementById('tabNameInput').value = tab ? tab.name : '';
     document.getElementById('deleteTabBtn').classList.toggle('hidden', !tab || state.tabs.length <= 1);
     openModal('tabModal');
+    captureFormSnapshot('tabModal');
     setTimeout(function () {
       document.getElementById('tabNameInput').focus();
     }, 50);
@@ -515,14 +617,34 @@
   function bindEvents() {
     document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        closeModal(btn.getAttribute('data-close-modal'));
+        var modalId = btn.getAttribute('data-close-modal');
+        if (modalId === 'itemModal' && btn.textContent.trim() === 'Отмена') {
+          clearNewItemDraft();
+          closeModal(modalId);
+          return;
+        }
+        tryCloseModal(modalId, false);
       });
     });
 
     document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
       backdrop.addEventListener('click', function (e) {
-        if (e.target === backdrop) closeModal(backdrop.id);
+        if (e.target === backdrop) tryCloseModal(backdrop.id, false);
       });
+    });
+
+    // Авторасширение поля «Заметка / характеристики» + автосохранение черновика новой позиции
+    var noteTa = document.getElementById('itemNoteInput');
+    noteTa.addEventListener('input', function () {
+      autoResizeTextarea(noteTa);
+      saveNewItemDraft();
+    });
+    ['itemTitleInput', 'itemCategorySelect', 'itemPriceInput', 'itemPrioritySelect', 'itemStoreSelect', 'itemCustomStoreInput', 'itemLinkInput', 'itemCheckedInput'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', saveNewItemDraft);
+        el.addEventListener('change', saveNewItemDraft);
+      }
     });
 
     document.getElementById('closeDrawerBtn').addEventListener('click', closeItemDrawer);
@@ -540,7 +662,15 @@
     });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeAllOverlays();
+      if (e.key === 'Escape') {
+        var openModals = document.querySelectorAll('.modal-backdrop.open');
+        if (openModals.length > 0) {
+          var topModal = openModals[openModals.length - 1];
+          tryCloseModal(topModal.id, false);
+        } else {
+          closeItemDrawer();
+        }
+      }
     });
 
     document.addEventListener('visibilitychange', function () {
@@ -562,6 +692,11 @@
 
     document.getElementById('cardLimitInput').addEventListener('input', function (e) {
       WM.storage.setCardLimit(e.target.value);
+      WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
+    });
+
+    document.getElementById('monthlyIncomeInput').addEventListener('input', function (e) {
+      WM.storage.setMonthlyIncome(e.target.value);
       WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
     });
 
@@ -695,6 +830,7 @@
         checked: document.getElementById('itemCheckedInput').checked
       });
 
+      clearNewItemDraft();
       closeModal('itemModal');
       refreshUI();
       showToast('Позиция сохранена');

@@ -22,6 +22,7 @@
       updatedAt: new Date().toISOString(),
       activeTabId: mainTab.id,
       cardLimit: 0,
+      monthlyIncome: 0,
       creditBundles: [],
       tabs: [mainTab]
     };
@@ -157,6 +158,7 @@
       updatedAt: raw.updatedAt || new Date().toISOString(),
       activeTabId: activeExists ? raw.activeTabId : tabs[0].id,
       cardLimit: WM.utils.toNumber(raw.cardLimit),
+      monthlyIncome: WM.utils.toNumber(raw.monthlyIncome),
       creditBundles: globalBundles,
       tabs: tabs
     };
@@ -399,16 +401,24 @@
     var cardAvailable = limit > 0 ? Math.round((limit - remainingDebt) * 100) / 100 : 0;
     var limitPct = limit > 0 ? Math.min(100, Math.max(0, Math.round((remainingDebt / limit) * 100))) : 0;
 
+    var monthlySum = WM.utils.toNumber(monthlyTotal);
+    var income = WM.utils.toNumber(state.monthlyIncome);
+    var incomeAfterCredits = income > 0 ? Math.round((income - monthlySum) * 100) / 100 : 0;
+    var incomeLoadPct = income > 0 ? Math.round((monthlySum / income) * 1000) / 10 : 0;
+
     return {
       records: records,
       activeCount: activeCount,
-      monthlyTotal: WM.utils.toNumber(monthlyTotal),
+      monthlyTotal: monthlySum,
       graceTotal: WM.utils.toNumber(graceTotal),
       nearestGrace: nearestGrace,
       totalDebtRemaining: remainingDebt,
       cardLimit: limit,
       cardAvailable: cardAvailable,
-      limitPct: limitPct
+      limitPct: limitPct,
+      monthlyIncome: income,
+      incomeAfterCredits: incomeAfterCredits,
+      incomeLoadPct: incomeLoadPct
     };
   }
 
@@ -440,6 +450,11 @@
 
     setCardLimit: function (amount) {
       state.cardLimit = WM.utils.toNumber(amount);
+      persist(false, false);
+    },
+
+    setMonthlyIncome: function (amount) {
+      state.monthlyIncome = WM.utils.toNumber(amount);
       persist(false, false);
     },
 

@@ -540,6 +540,30 @@
       limitTrack.classList.add('hidden');
     }
 
+    // Справочный доход / мес и нагрузка кредитов
+    var incomeInput = document.getElementById('monthlyIncomeInput');
+    if (incomeInput && document.activeElement !== incomeInput) {
+      incomeInput.value = data.monthlyIncome > 0 ? data.monthlyIncome : '';
+    }
+    var incomeStats = document.getElementById('monthlyIncomeStats');
+    var incomeTrack = document.getElementById('monthlyIncomeTrack');
+    var incomeFill = document.getElementById('monthlyIncomeFill');
+    if (incomeStats) {
+      incomeStats.innerHTML = '';
+      if (data.monthlyIncome > 0) {
+        incomeStats.appendChild(createMetricSpan('Нагрузка: ', String(data.incomeLoadPct).replace('.', ',') + '%'));
+        var remSpan = el('span', data.incomeAfterCredits < 0 ? 'bundle-danger' : 'bundle-ok');
+        remSpan.textContent = 'Остаётся: ' + fmt(data.incomeAfterCredits);
+        incomeStats.appendChild(remSpan);
+        incomeTrack.classList.remove('hidden');
+        incomeFill.style.width = Math.min(100, Math.max(0, data.incomeLoadPct)) + '%';
+        incomeFill.className = 'credit-progress-fill' + (data.incomeAfterCredits < 0 ? ' over' : '');
+      } else {
+        incomeStats.appendChild(el('span', 'form-hint', 'Укажи ориентир дохода (напр. 820), чтобы видеть нагрузку кредитов.'));
+        incomeTrack.classList.add('hidden');
+      }
+    }
+
     document.getElementById('globalCreditMonthly').textContent = fmt(data.monthlyTotal);
     document.getElementById('globalCreditMonthlyMeta').textContent = 'Активных долгов: ' + data.activeCount;
 
