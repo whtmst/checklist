@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Finlandica";
+  src: url("../assets/fonts/Finlandica-VariableFont_wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* ==========================================================================
    WM_CHECKLIST — ЦВЕТОВЫЕ ПЕРЕМЕННЫЕ И ТОКЕНЫ
    Меняй любой цвет здесь — он обновится по всему приложению автоматически.
@@ -6,7 +14,7 @@
 
 :root {
   /* Шрифты */
-  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Фоны и поверхности (Тёмная тема по умолчанию) */

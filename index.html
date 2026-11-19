@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23181818'/%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23C84B31'/%3E%3Cpath d='M11 16.5l3.2 3.2 6.8-7.2' stroke='%23ffffff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -252,6 +252,11 @@
           </div>
         </div>
 
+        <div class="form-group hidden" id="newCategoryGroup">
+          <label class="form-label" for="itemNewCategoryInput">Название новой категории *</label>
+          <input type="text" class="input" id="itemNewCategoryInput" placeholder="Например, Экипировка, Свет, Аксессуары">
+        </div>
+
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label" for="itemPrioritySelect">Приоритет</label>
@@ -306,6 +311,10 @@
 
         <div class="modal-actions modal-actions--split">
           <button type="button" class="btn btn-danger hidden" id="deleteItemBtn">Удалить</button>
+          <button type="button" class="btn btn-danger hidden" id="clearItemFormBtn" title="Очистить все поля формы">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            <span>Очистить</span>
+          </button>
           <div class="modal-actions-right">
             <button type="button" class="btn btn-ghost" data-close-modal="itemModal">Отмена</button>
             <button type="submit" class="btn btn-accent">Сохранить</button>
