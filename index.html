@@ -29,6 +29,10 @@
           <span class="sync-indicator" id="syncIndicator"></span>
           <span class="btn-label-desktop">Синхронизировать</span>
         </button>
+        <button type="button" class="btn btn-ghost" id="openCreditsModalBtn" title="Сводка по всем кредитам и лимиту карты">
+          <span>Кредиты</span>
+          <span class="topbar-pill hidden" id="topbarCreditsPill">0 ₼</span>
+        </button>
         <button type="button" class="btn btn-ghost" id="openSyncModalBtn" title="Настройки синхронизации и бэкапа">
           Настройки
         </button>
@@ -80,7 +84,7 @@
           <option value="all">Все статусы</option>
           <option value="unchecked">Не куплено</option>
           <option value="checked">Куплено</option>
-          <option value="credit">Только в кредит</option>
+          <option value="credit">Только в кредит / рассрочку</option>
         </select>
         <select class="select" id="priorityFilter" aria-label="Фильтр по приоритету">
           <option value="all">Все приоритеты</option>
@@ -91,7 +95,7 @@
       </div>
     </section>
 
-    <!-- Блок общих кредитов -->
+    <!-- Блок общих кредитов текущей вкладки -->
     <section class="bundles-section hidden" id="bundlesSection" aria-label="Общие кредиты и рассрочки">
       <div class="section-header-bar">
         <div class="section-heading-group">
@@ -158,6 +162,70 @@
     </aside>
   </div>
 
+  <!-- МОДАЛКА: Единая сводка «Все кредиты и лимит карты» -->
+  <div class="modal-backdrop" id="creditsModal" aria-hidden="true">
+    <div class="modal-box modal-box--xl" role="dialog" aria-modal="true" aria-labelledby="creditsModalTitle">
+      <div class="modal-header">
+        <div>
+          <div class="section-kicker">GLOBAL_CREDITS // ALL_TABS</div>
+          <h3 id="creditsModalTitle">Все кредиты, рассрочки и лимит карты</h3>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="creditsModal" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="modal-form">
+        <!-- Справочный лимит карты -->
+        <div class="card-limit-box">
+          <div class="card-limit-top">
+            <div class="form-group card-limit-input-group">
+              <label class="form-label" for="cardLimitInput">Лимит карты (₼, справочно)</label>
+              <input type="number" class="input input-mono" id="cardLimitInput" min="0" step="1" placeholder="Например, 2450">
+            </div>
+            <div class="card-limit-stats" id="cardLimitStats">
+              <span class="form-hint">Укажи лимит карты, чтобы видеть свободный остаток.</span>
+            </div>
+          </div>
+          <div class="credit-progress-track hidden" id="cardLimitTrack">
+            <div class="credit-progress-fill" id="cardLimitFill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- 3 главные цифры по всем вкладкам -->
+        <div class="credits-kpi-grid">
+          <div class="summary-card summary-card--primary">
+            <div class="summary-label">ПЛАТЁЖ В МЕСЯЦ (ВСЕ ВКЛАДКИ)</div>
+            <div class="summary-value" id="globalCreditMonthly">0 ₼</div>
+            <div class="summary-meta" id="globalCreditMonthlyMeta">Активных записей: 0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">ЛЬГОТНЫЙ ДОЛГ</div>
+            <div class="summary-value" id="globalCreditGrace">0 ₼</div>
+            <div class="summary-meta" id="globalCreditGraceMeta">Без ближайших дедлайнов</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">ОСТАТОК ДОЛГА ВСЕГО</div>
+            <div class="summary-value" id="globalCreditRemaining">0 ₼</div>
+            <div class="summary-meta">По всем активным долгам</div>
+          </div>
+        </div>
+
+        <!-- Фильтры по типу долга + кнопка нового общего кредита -->
+        <div class="credits-toolbar">
+          <div class="credits-filter-pills" id="creditsTypeFilter">
+            <button type="button" class="tab-chip active" data-ctype="all">Все</button>
+            <button type="button" class="tab-chip" data-ctype="installment">Рассрочка</button>
+            <button type="button" class="tab-chip" data-ctype="ninja">Ninja</button>
+            <button type="button" class="tab-chip" data-ctype="grace">Льготный</button>
+            <button type="button" class="tab-chip" data-ctype="custom">Свой</button>
+          </div>
+          <button type="button" class="btn btn-accent btn-sm" id="addBundleFromCreditsBtn">+ Общий кредит</button>
+        </div>
+
+        <div class="global-credits-list" id="globalCreditsList"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- МОДАЛКА: Добавить / Редактировать позицию -->
   <div class="modal-backdrop" id="itemModal" aria-hidden="true">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle">
@@ -217,11 +285,11 @@
           </label>
         </div>
 
-        <!-- Индивидуальный кредит -->
+        <!-- Индивидуальный кредит / рассрочка / Ninja / льготный период -->
         <div class="credit-box" id="itemCreditSection">
           <label class="checkbox-label">
             <input type="checkbox" id="itemCreditCheck">
-            <span>Взято в кредит / рассрочку (отдельно по этому товару)</span>
+            <span>Взято в рассрочку / Ninja / льготный период</span>
           </label>
           <p class="form-hint hidden" id="itemBundleLockedHint">
             Этот товар входит в общий кредит. Чтобы настроить индивидуальный кредит, сначала уберите его из общего кредита.
@@ -230,26 +298,60 @@
           <div class="credit-fields hidden" id="itemCreditFields">
             <div class="form-row-2">
               <div class="form-group">
-                <label class="form-label" for="itemCreditStartDate">Дата оформления</label>
-                <input type="date" class="input input-mono" id="itemCreditStartDate">
+                <label class="form-label" for="itemCreditType">Тип оплаты</label>
+                <select class="select" id="itemCreditType">
+                  <option value="installment">Рассрочка (таксит 0%)</option>
+                  <option value="ninja">Ninja (разделение с %)</option>
+                  <option value="grace">Льготный период</option>
+                  <option value="custom">Свой вариант...</option>
+                </select>
               </div>
-              <div class="form-group">
-                <label class="form-label" for="itemCreditMonths">Срок (мес.)</label>
-                <input type="number" class="input input-mono" id="itemCreditMonths" min="1" step="1" placeholder="18">
-              </div>
-            </div>
-            <div class="form-row-2">
-              <div class="form-group">
-                <label class="form-label" for="itemCreditMonthly">Платёж / мес (₼)</label>
-                <input type="number" class="input input-mono" id="itemCreditMonthly" min="0" step="0.01" placeholder="14.33">
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="itemCreditTotal">Итоговая сумма (₼)</label>
-                <input type="number" class="input input-mono" id="itemCreditTotal" min="0" step="0.01" placeholder="257.99">
+              <div class="form-group hidden" id="itemCreditCustomTypeGroup">
+                <label class="form-label" for="itemCreditCustomType">Своё название</label>
+                <input type="text" class="input" id="itemCreditCustomType" placeholder="Например, Kontakt кредит">
               </div>
             </div>
+
+            <!-- Поля для Рассрочка / Ninja / Свой вариант -->
+            <div id="itemCreditInstallmentRows">
+              <div class="form-row-2" style="margin-bottom: 10px;">
+                <div class="form-group">
+                  <label class="form-label" for="itemCreditStartDate">Дата оформления</label>
+                  <input type="date" class="input input-mono" id="itemCreditStartDate">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="itemCreditMonths">Срок (мес.)</label>
+                  <input type="number" class="input input-mono" id="itemCreditMonths" min="1" step="1" placeholder="18">
+                </div>
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label class="form-label" for="itemCreditMonthly">Платёж / мес (₼)</label>
+                  <input type="number" class="input input-mono" id="itemCreditMonthly" min="0" step="0.01" placeholder="14.33">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="itemCreditTotal">Итоговая сумма (₼)</label>
+                  <input type="number" class="input input-mono" id="itemCreditTotal" min="0" step="0.01" placeholder="257.99">
+                </div>
+              </div>
+            </div>
+
+            <!-- Поля для Льготного периода -->
+            <div id="itemCreditGraceRows" class="hidden">
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label class="form-label" for="itemCreditDueDate">Оплатить до (дата)</label>
+                  <input type="date" class="input input-mono" id="itemCreditDueDate">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="itemCreditGraceTotal">Сумма к возврату (₼)</label>
+                  <input type="number" class="input input-mono" id="itemCreditGraceTotal" min="0" step="0.01" placeholder="33.50">
+                </div>
+              </div>
+            </div>
+
             <div class="credit-calc-note" id="itemCreditOverpayNote">
-              Введите реальный ежемесячный платёж и итоговую сумму из договора / банка.
+              Введите реальный ежемесячный платёж и итоговую сумму из банка.
             </div>
           </div>
         </div>
@@ -284,7 +386,7 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: Общий кредит -->
+  <!-- МОДАЛКА: Глобальный общий кредит (товары из любых вкладок) -->
   <div class="modal-backdrop" id="bundleModal" aria-hidden="true">
     <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="bundleModalTitle">
       <div class="modal-header">
@@ -294,38 +396,71 @@
       <form id="bundleForm" class="modal-form">
         <input type="hidden" id="bundleIdInput">
 
-        <div class="form-group">
-          <label class="form-label" for="bundleNameInput">Название кредита / рассрочки</label>
-          <input type="text" class="input" id="bundleNameInput" placeholder="Например, Таксит Birmarket на 6 мес.">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="bundleNameInput">Название (напр. Ozon 18.11)</label>
+            <input type="text" class="input" id="bundleNameInput" placeholder="Например, Ozon заказ от 18.11">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bundleTypeSelect">Тип оплаты</label>
+            <select class="select" id="bundleTypeSelect">
+              <option value="ninja">Ninja (разделение с %)</option>
+              <option value="installment">Рассрочка (таксит 0%)</option>
+              <option value="grace">Льготный период</option>
+              <option value="custom">Свой вариант...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="bundleCustomTypeGroup">
+          <label class="form-label" for="bundleCustomTypeInput">Своё название типа</label>
+          <input type="text" class="input" id="bundleCustomTypeInput" placeholder="Например, Кредит Kontakt">
         </div>
 
         <div class="form-group">
           <div class="form-label-row">
-            <label class="form-label">Выберите товары в этот кредит *</label>
+            <label class="form-label">Выберите товары (можно из разных вкладок) *</label>
             <span class="mono-pill" id="bundleBaseSumLabel">База: 0 ₼</span>
           </div>
           <div class="bundle-picker-list" id="bundleItemsPicker"></div>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label" for="bundleStartDateInput">Дата оформления</label>
-            <input type="date" class="input input-mono" id="bundleStartDateInput">
+        <!-- Поля для Рассрочка / Ninja / Свой -->
+        <div id="bundleInstallmentRows">
+          <div class="form-row-2" style="margin-bottom: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="bundleStartDateInput">Дата оформления</label>
+              <input type="date" class="input input-mono" id="bundleStartDateInput">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bundleMonthsInput">Срок (мес.)</label>
+              <input type="number" class="input input-mono" id="bundleMonthsInput" min="1" step="1" placeholder="12">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="bundleMonthsInput">Срок (мес.)</label>
-            <input type="number" class="input input-mono" id="bundleMonthsInput" min="1" step="1" placeholder="6">
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="bundleMonthlyInput">Платёж / мес (₼) *</label>
+              <input type="number" class="input input-mono" id="bundleMonthlyInput" min="0" step="0.01" placeholder="6.61">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bundleTotalInput">Итоговая сумма (₼) *</label>
+              <input type="number" class="input input-mono" id="bundleTotalInput" min="0" step="0.01" placeholder="79.33">
+            </div>
           </div>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label" for="bundleMonthlyInput">Платёж / мес (₼) *</label>
-            <input type="number" class="input input-mono" id="bundleMonthlyInput" min="0" step="0.01" placeholder="55" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="bundleTotalInput">Итоговая сумма (₼) *</label>
-            <input type="number" class="input input-mono" id="bundleTotalInput" min="0" step="0.01" placeholder="330" required>
+        <!-- Поля для Льготного периода -->
+        <div id="bundleGraceRows" class="hidden">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="bundleDueDateInput">Оплатить до (дата)</label>
+              <input type="date" class="input input-mono" id="bundleDueDateInput">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bundleGraceTotalInput">Сумма к возврату (₼) *</label>
+              <input type="number" class="input input-mono" id="bundleGraceTotalInput" min="0" step="0.01" placeholder="67.80">
+            </div>
           </div>
         </div>
 
@@ -336,7 +471,7 @@
         <div class="form-check-row">
           <label class="checkbox-label">
             <input type="checkbox" id="bundleCheckedInput" checked>
-            <span>Кредит уже оформлен (отметить выбранные товары как купленные)</span>
+            <span>Уже оформлено (отметить выбранные товары как купленные)</span>
           </label>
         </div>
 
@@ -365,7 +500,6 @@
           <input type="text" class="input" id="categoryNameInput" placeholder="Например, Экипировка, Свет, Инструменты" required>
         </div>
 
-        <!-- Перенести / скопировать категорию (со всеми позициями) в другую вкладку -->
         <div class="transfer-box hidden" id="categoryTransferBox">
           <div class="section-kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
           <p class="form-hint">Категория перенесётся или скопируется вместе со всеми товарами внутри неё.</p>
@@ -401,7 +535,7 @@
         <input type="hidden" id="tabIdInput">
         <div class="form-group">
           <label class="form-label" for="tabNameInput">Название вкладки *</label>
-          <input type="text" class="input" id="tabNameInput" placeholder="Например, Велосипед, Дом, Ремонт" required>
+          <input type="text" class="input" id="tabNameInput" placeholder="Например, Курьер, Дом, Ремонт" required>
         </div>
         <div class="modal-actions modal-actions--split">
           <button type="button" class="btn btn-danger hidden" id="deleteTabBtn">Удалить вкладку</button>

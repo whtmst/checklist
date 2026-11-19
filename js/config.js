@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — КОНФИГУРАЦИЯ И СПРАВОЧНИКИ
+   WM_CHECKLIST — КОНФИГУРАЦИЯ, СПРАВОЧНИКИ И УТИЛИТЫ РАСЧЁТА
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -14,8 +14,8 @@
     GIST_DESCRIPTION: 'WM_CHECKLIST — личный чек-лист (автосинхронизация)',
     CURRENCY: '₼',
     AUTO_SYNC_DELAY_MS: 1500,
-    AUTO_PULL_INTERVAL_MS: 60000,   // Фоновая проверка раз в 60 сек (только если вкладка активна)
-    AUTO_PULL_MIN_GAP_MS: 10000,    // Не чаще раза в 10 сек при переключении вкладок
+    AUTO_PULL_INTERVAL_MS: 60000,
+    AUTO_PULL_MIN_GAP_MS: 10000,
 
     PRIORITIES: [
       { id: 'critical', label: 'Критично', rank: 1 },
@@ -32,7 +32,14 @@
       'Ozon'
     ],
 
-    CUSTOM_STORE_VALUE: '__custom__'
+    CUSTOM_STORE_VALUE: '__custom__',
+
+    CREDIT_TYPES: [
+      { id: 'installment', label: 'Рассрочка', badge: 'Рассрочка' },
+      { id: 'ninja', label: 'Ninja', badge: 'Ninja' },
+      { id: 'grace', label: 'Льготный период', badge: 'Льготный' },
+      { id: 'custom', label: 'Свой вариант', badge: 'Кредит' }
+    ]
   };
 
   WM.utils = {
@@ -47,9 +54,11 @@
 
     formatMoney: function (amount) {
       var rounded = Math.round((Number(amount) || 0) * 100) / 100;
-      var parts = rounded.toString().split('.');
+      var sign = rounded < 0 ? '-' : '';
+      var abs = Math.abs(rounded);
+      var parts = abs.toString().split('.');
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-      return parts.join(',') + ' ' + WM.CONFIG.CURRENCY;
+      return sign + parts.join(',') + ' ' + WM.CONFIG.CURRENCY;
     },
 
     getPriority: function (id) {
@@ -58,6 +67,19 @@
         if (list[i].id === id) return list[i];
       }
       return list[2];
+    },
+
+    getCreditTypeLabel: function (type, customType, shortBadge) {
+      if (type === 'custom' && customType && String(customType).trim()) {
+        return String(customType).trim();
+      }
+      var list = WM.CONFIG.CREDIT_TYPES;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === type) {
+          return shortBadge ? list[i].badge : list[i].label;
+        }
+      }
+      return shortBadge ? 'Рассрочка' : 'Рассрочка';
     },
 
     formatTime: function (isoString) {
@@ -77,7 +99,7 @@
       return parts[2] + '.' + parts[1] + '.' + parts[0];
     },
 
-    /* Расчёт даты окончания кредита и оставшихся платежей по дате оформления и сроку */
+    /* График обычного кредита / рассрочки / Ninja */
     calcCreditSchedule: function (startDateStr, months, monthlyPayment) {
       var m = parseInt(months, 10) || 0;
       if (!startDateStr || m <= 0) return null;
@@ -92,7 +114,6 @@
 
       var start = new Date(y, mo, d);
       var end = new Date(y, mo + m, d);
-      // Корректировка переполнения конца месяца (например, 31 января + 1 мес -> 28/29 февраля)
       if (end.getDate() !== d) {
         end = new Date(y, mo + m + 1, 0);
       }
@@ -100,7 +121,6 @@
       var now = new Date();
       var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      // Сколько полных месяцев прошло с даты оформления
       var elapsed = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
       if (today.getDate() < start.getDate()) {
         elapsed -= 1;
@@ -125,6 +145,37 @@
         remainingAmount: remainingAmount,
         paidPct: paidPct,
         isFinished: remaining === 0
+      };
+    },
+
+    /* Статус льготного периода (сколько дней до даты возврата) */
+    calcGraceStatus: function (dueDateStr) {
+      if (!dueDateStr) return null;
+      var parts = String(dueDateStr).split('-');
+      if (parts.length !== 3) return null;
+
+      var y = parseInt(parts[0], 10);
+      var mo = parseInt(parts[1], 10) - 1;
+      var d = parseInt(parts[2], 10);
+      if (isNaN(y) || isNaN(mo) || isNaN(d)) return null;
+
+      var due = new Date(y, mo, d);
+      var now = new Date();
+      var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
+
+      var statusText = '';
+      if (diffDays > 0) statusText = 'осталось ' + diffDays + ' дн.';
+      else if (diffDays === 0) statusText = 'срок сегодня!';
+      else statusText = 'просрочено на ' + Math.abs(diffDays) + ' дн.';
+
+      return {
+        dueDate: dueDateStr,
+        dueFormatted: WM.utils.formatDateRu(dueDateStr),
+        daysLeft: diffDays,
+        isOverdue: diffDays < 0,
+        isUrgent: diffDays >= 0 && diffDays <= 7,
+        statusText: statusText
       };
     }
   };

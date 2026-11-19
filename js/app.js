@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПЕРЕНОС И АВТО-ПУЛЛ
+   WM_CHECKLIST — КОНТРОЛЛЕР ПРИЛОЖЕНИЯ, МОДАЛКИ, ПАНЕЛЬ КРЕДИТОВ И АВТО-ПУЛЛ
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -13,6 +13,7 @@
     store: 'all'
   };
 
+  var creditsTypeFilter = 'all';
   var viewingItemId = null;
   var toastTimer = null;
 
@@ -47,6 +48,11 @@
     m.setAttribute('aria-hidden', 'true');
   }
 
+  function isModalOpen(id) {
+    var m = document.getElementById(id);
+    return !!(m && m.classList.contains('open'));
+  }
+
   function openItemDrawer(itemId) {
     var tab = WM.storage.getActiveTab();
     var item = tab.items.find(function (x) { return x.id === itemId; });
@@ -73,7 +79,6 @@
     });
   }
 
-  // --- Тема ---
   function applyTheme(theme) {
     var normalized = theme === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', normalized);
@@ -95,58 +100,55 @@
     applyTheme(saved);
   }
 
-  // --- Перерисовка ---
-  function refreshUI() {
-    WM.render.renderAll(WM.storage.getState(), filters, {
+  function getCommonHandlers() {
+    return {
       onSelectTab: function (tabId) {
         closeItemDrawer();
         WM.storage.setActiveTab(tabId);
         resetFilters(false);
         refreshUI();
       },
-      onAddCategory: function () {
-        openCategoryModal(null);
-      },
-      onEditCategory: function (catId) {
-        openCategoryModal(catId);
-      },
+      onAddCategory: function () { openCategoryModal(null); },
+      onEditCategory: function (catId) { openCategoryModal(catId); },
       onToggleCategoryCollapse: function (catId) {
         WM.storage.toggleCategoryCollapse(catId);
         refreshUI();
       },
-      onAddItemInCategory: function (catId) {
-        openItemModal(null, catId);
-      },
-      onViewItem: function (itemId) {
-        openItemDrawer(itemId);
-      },
-      onEditItem: function (itemId) {
+      onAddItemInCategory: function (catId) { openItemModal(null, catId); },
+      onViewItem: function (itemId) { openItemDrawer(itemId); },
+      onEditItem: function (itemId) { openItemModal(itemId, null); },
+      onEditItemAcrossTabs: function (tabId, itemId) {
+        closeModal('creditsModal');
+        WM.storage.setActiveTab(tabId);
+        refreshUI();
         openItemModal(itemId, null);
       },
       onToggleItem: function (itemId, checked) {
         WM.storage.toggleItemChecked(itemId, checked);
         refreshUI();
       },
-      onEditBundle: function (bundleId) {
-        openBundleModal(bundleId);
-      },
+      onEditBundle: function (bundleId) { openBundleModal(bundleId); },
       onToggleBundle: function (bundleId, checked) {
         WM.storage.toggleBundleChecked(bundleId, checked);
         refreshUI();
       },
-      onResetFilters: function () {
-        resetFilters(true);
-      }
-    });
+      onResetFilters: function () { resetFilters(true); }
+    };
+  }
+
+  function refreshUI() {
+    var handlers = getCommonHandlers();
+    WM.render.renderAll(WM.storage.getState(), filters, handlers);
 
     if (viewingItemId) {
       var tab = WM.storage.getActiveTab();
       var item = tab.items.find(function (x) { return x.id === viewingItemId; });
-      if (item) {
-        WM.render.renderItemDrawer(item, tab);
-      } else {
-        closeItemDrawer();
-      }
+      if (item) WM.render.renderItemDrawer(item, tab);
+      else closeItemDrawer();
+    }
+
+    if (isModalOpen('creditsModal')) {
+      WM.render.renderGlobalCreditsModal(creditsTypeFilter, handlers);
     }
   }
 
@@ -162,34 +164,61 @@
     if (shouldRender) refreshUI();
   }
 
-  // --- Подсказки расчёта кредита ---
+  // --- Переключение полей типа долга (Рассрочка / Ninja / Льготный / Свой) ---
+  function syncItemCreditTypeUI() {
+    var type = document.getElementById('itemCreditType').value;
+    var isGrace = type === 'grace';
+    document.getElementById('itemCreditCustomTypeGroup').classList.toggle('hidden', type !== 'custom');
+    document.getElementById('itemCreditInstallmentRows').classList.toggle('hidden', isGrace);
+    document.getElementById('itemCreditGraceRows').classList.toggle('hidden', !isGrace);
+    if (isGrace && !document.getElementById('itemCreditGraceTotal').value) {
+      var p = document.getElementById('itemPriceInput').value;
+      if (p) document.getElementById('itemCreditGraceTotal').value = p;
+    }
+    updateItemOverpayHint();
+  }
+
+  function syncBundleCreditTypeUI() {
+    var type = document.getElementById('bundleTypeSelect').value;
+    var isGrace = type === 'grace';
+    document.getElementById('bundleCustomTypeGroup').classList.toggle('hidden', type !== 'custom');
+    document.getElementById('bundleInstallmentRows').classList.toggle('hidden', isGrace);
+    document.getElementById('bundleGraceRows').classList.toggle('hidden', !isGrace);
+    updateBundleCalcHints();
+  }
+
   function buildScheduleHint(startDate, months, monthly) {
     var sched = WM.utils.calcCreditSchedule(startDate, months, monthly);
     if (!sched) return '';
-    if (sched.isFinished) {
-      return 'Окончание: ' + sched.endFormatted + ' (срок завершён).';
-    }
+    if (sched.isFinished) return 'Окончание: ' + sched.endFormatted + ' (срок завершён).';
     return 'До ' + sched.endFormatted + ' · осталось ' + sched.remainingMonths + ' из ' + sched.totalMonths + ' мес.';
   }
 
   function updateItemOverpayHint() {
+    var type = document.getElementById('itemCreditType').value;
     var price = WM.utils.toNumber(document.getElementById('itemPriceInput').value);
+    var note = document.getElementById('itemCreditOverpayNote');
+
+    if (type === 'grace') {
+      var due = document.getElementById('itemCreditDueDate').value;
+      var grace = WM.utils.calcGraceStatus(due);
+      note.textContent = grace
+        ? 'Льготный долг: вернуть до ' + grace.dueFormatted + ' (' + grace.statusText + ').'
+        : 'Укажите дату, до которой нужно вернуть сумму без процентов.';
+      return;
+    }
+
     var total = WM.utils.toNumber(document.getElementById('itemCreditTotal').value);
     var startDate = document.getElementById('itemCreditStartDate').value;
     var months = document.getElementById('itemCreditMonths').value;
     var monthly = document.getElementById('itemCreditMonthly').value;
-    var note = document.getElementById('itemCreditOverpayNote');
 
     var lines = [];
     if (total > 0) {
       var diff = Math.round((total - price) * 100) / 100;
-      if (diff > 0) {
-        lines.push('Переплата банку: +' + WM.utils.formatMoney(diff) + '.');
-      } else if (diff === 0) {
-        lines.push('Рассрочка без переплаты.');
-      } else {
-        lines.push('Итоговая сумма ниже цены товара на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
-      }
+      if (diff > 0) lines.push('Переплата банку: +' + WM.utils.formatMoney(diff) + '.');
+      else if (diff === 0) lines.push('Рассрочка без переплаты.');
+      else lines.push('Итоговая сумма ниже цены товара на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
     }
     var schedLine = buildScheduleHint(startDate, months, monthly);
     if (schedLine) lines.push(schedLine);
@@ -200,32 +229,38 @@
   }
 
   function updateBundleCalcHints() {
-    var tab = WM.storage.getActiveTab();
     var checkboxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
     var baseSum = 0;
     checkboxes.forEach(function (cb) {
-      var it = tab.items.find(function (x) { return x.id === cb.value; });
-      if (it) baseSum += it.price;
+      var found = WM.storage.findItemAcrossTabs(cb.value);
+      if (found) baseSum += found.item.price;
     });
     baseSum = WM.utils.toNumber(baseSum);
     document.getElementById('bundleBaseSumLabel').textContent = 'База: ' + WM.utils.formatMoney(baseSum);
+
+    var type = document.getElementById('bundleTypeSelect').value;
+    var note = document.getElementById('bundleOverpayNote');
+
+    if (type === 'grace') {
+      var due = document.getElementById('bundleDueDateInput').value;
+      var grace = WM.utils.calcGraceStatus(due);
+      note.textContent = grace
+        ? 'Льготный долг по выбранным товарам: вернуть до ' + grace.dueFormatted + ' (' + grace.statusText + ').'
+        : 'Укажите общую сумму к возврату и дату окончания льготного периода.';
+      return;
+    }
 
     var total = WM.utils.toNumber(document.getElementById('bundleTotalInput').value);
     var startDate = document.getElementById('bundleStartDateInput').value;
     var months = document.getElementById('bundleMonthsInput').value;
     var monthly = document.getElementById('bundleMonthlyInput').value;
-    var note = document.getElementById('bundleOverpayNote');
 
     var lines = [];
     if (total > 0) {
       var diff = Math.round((total - baseSum) * 100) / 100;
-      if (diff > 0) {
-        lines.push('Переплата: +' + WM.utils.formatMoney(diff) + ' к базе ' + WM.utils.formatMoney(baseSum) + '.');
-      } else if (diff === 0) {
-        lines.push('Рассрочка без переплаты.');
-      } else {
-        lines.push('Итоговая сумма ниже базы на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
-      }
+      if (diff > 0) lines.push('Переплата: +' + WM.utils.formatMoney(diff) + ' к базе ' + WM.utils.formatMoney(baseSum) + '.');
+      else if (diff === 0) lines.push('Рассрочка без переплаты.');
+      else lines.push('Итоговая сумма ниже базы на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
     }
     var schedLine = buildScheduleHint(startDate, months, monthly);
     if (schedLine) lines.push(schedLine);
@@ -235,7 +270,7 @@
       : 'Укажите итоговую сумму, ежемесячный платёж и (по желанию) дату оформления.';
   }
 
-  // --- Заполнение селектов переноса между вкладками ---
+  // --- Перенос между вкладками ---
   function populateItemTransferCats(targetTabId, currentCatName) {
     var state = WM.storage.getState();
     var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
@@ -376,7 +411,7 @@
       customGroup.classList.add('hidden');
     }
 
-    var inBundle = item ? !!WM.storage.getBundleForItem(tab, item.id) : false;
+    var inBundle = item ? !!WM.storage.getBundleForItem(item.id) : false;
     var creditCheck = document.getElementById('itemCreditCheck');
     var creditFields = document.getElementById('itemCreditFields');
     var lockedHint = document.getElementById('itemBundleLockedHint');
@@ -387,11 +422,17 @@
     var isCredit = !inBundle && item && item.credit && item.credit.enabled;
     creditCheck.checked = !!isCredit;
     creditFields.classList.toggle('hidden', !isCredit);
+
+    var cType = isCredit ? (item.credit.type || 'installment') : 'installment';
+    document.getElementById('itemCreditType').value = cType;
+    document.getElementById('itemCreditCustomType').value = isCredit ? (item.credit.customType || '') : '';
     document.getElementById('itemCreditStartDate').value = isCredit && item.credit.startDate ? item.credit.startDate : '';
     document.getElementById('itemCreditMonths').value = isCredit && item.credit.months ? item.credit.months : '';
     document.getElementById('itemCreditMonthly').value = isCredit ? item.credit.monthlyPayment : '';
     document.getElementById('itemCreditTotal').value = isCredit ? item.credit.totalAmount : '';
-    updateItemOverpayHint();
+    document.getElementById('itemCreditDueDate').value = isCredit && item.credit.dueDate ? item.credit.dueDate : '';
+    document.getElementById('itemCreditGraceTotal').value = isCredit ? item.credit.totalAmount : '';
+    syncItemCreditTypeUI();
 
     setupItemTransferUI(item);
     document.getElementById('deleteItemBtn').classList.toggle('hidden', !item);
@@ -401,68 +442,96 @@
     }, 50);
   }
 
-  // --- Модалка: Общий кредит ---
+  // --- Модалка: Глобальный общий кредит (группировка товаров по ВСЕМ вкладкам) ---
   function openBundleModal(bundleId) {
-    var tab = WM.storage.getActiveTab();
-    if (tab.items.length === 0) {
+    var state = WM.storage.getState();
+    var totalItemsAllTabs = state.tabs.reduce(function (acc, t) { return acc + t.items.length; }, 0);
+    if (totalItemsAllTabs === 0) {
       showToast('Сначала добавь товары, чтобы объединить их в кредит');
       return;
     }
 
-    var bundle = bundleId ? tab.creditBundles.find(function (b) { return b.id === bundleId; }) : null;
+    var bundle = bundleId ? state.creditBundles.find(function (b) { return b.id === bundleId; }) : null;
     document.getElementById('bundleModalTitle').textContent = bundle ? 'Редактировать общий кредит' : 'Объединить товары в один кредит';
     document.getElementById('bundleIdInput').value = bundle ? bundle.id : '';
     document.getElementById('bundleNameInput').value = bundle ? bundle.name : '';
+    document.getElementById('bundleTypeSelect').value = bundle ? (bundle.type || 'ninja') : 'ninja';
+    document.getElementById('bundleCustomTypeInput').value = bundle ? (bundle.customType || '') : '';
     document.getElementById('bundleStartDateInput').value = bundle && bundle.startDate ? bundle.startDate : '';
     document.getElementById('bundleMonthsInput').value = bundle && bundle.months ? bundle.months : '';
     document.getElementById('bundleMonthlyInput').value = bundle ? bundle.monthlyPayment : '';
     document.getElementById('bundleTotalInput').value = bundle ? bundle.totalAmount : '';
+    document.getElementById('bundleDueDateInput').value = bundle && bundle.dueDate ? bundle.dueDate : '';
+    document.getElementById('bundleGraceTotalInput').value = bundle ? bundle.totalAmount : '';
     document.getElementById('bundleCheckedInput').checked = bundle ? !!bundle.checked : true;
     document.getElementById('deleteBundleBtn').classList.toggle('hidden', !bundle);
 
     var picker = document.getElementById('bundleItemsPicker');
     picker.innerHTML = '';
 
-    tab.items.forEach(function (it) {
-      var cat = tab.categories.find(function (c) { return c.id === it.categoryId; });
-      var isSelected = bundle ? bundle.itemIds.indexOf(it.id) !== -1 : false;
-
-      var row = document.createElement('label');
-      row.className = 'bundle-picker-row';
-
-      var left = document.createElement('div');
-      left.className = 'bundle-picker-left';
-
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = it.id;
-      cb.checked = isSelected;
-      cb.addEventListener('change', updateBundleCalcHints);
-
-      var txt = document.createElement('div');
-      var titleDiv = document.createElement('div');
-      titleDiv.className = 'bundle-picker-title';
-      titleDiv.textContent = it.title;
-      var catDiv = document.createElement('div');
-      catDiv.className = 'bundle-picker-cat';
-      catDiv.textContent = cat ? cat.name : '';
-      txt.appendChild(titleDiv);
-      txt.appendChild(catDiv);
-
-      left.appendChild(cb);
-      left.appendChild(txt);
-
-      var priceSpan = document.createElement('span');
-      priceSpan.className = 'bundle-picker-price';
-      priceSpan.textContent = WM.utils.formatMoney(it.price);
-
-      row.appendChild(left);
-      row.appendChild(priceSpan);
-      picker.appendChild(row);
+    // Сортируем вкладки: текущая вкладка первой, остальные следом
+    var activeTabId = state.activeTabId;
+    var orderedTabs = state.tabs.slice().sort(function (a, b) {
+      if (a.id === activeTabId) return -1;
+      if (b.id === activeTabId) return 1;
+      return 0;
     });
 
-    updateBundleCalcHints();
+    orderedTabs.forEach(function (tab) {
+      if (tab.items.length === 0) return;
+
+      var groupHead = document.createElement('div');
+      groupHead.className = 'bundle-picker-group-head';
+      groupHead.textContent = 'Вкладка: ' + tab.name;
+      picker.appendChild(groupHead);
+
+      tab.items.forEach(function (it) {
+        var cat = tab.categories.find(function (c) { return c.id === it.categoryId; });
+        var isSelected = bundle ? bundle.itemIds.indexOf(it.id) !== -1 : false;
+
+        var row = document.createElement('label');
+        row.className = 'bundle-picker-row';
+
+        var left = document.createElement('div');
+        left.className = 'bundle-picker-left';
+
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = it.id;
+        cb.checked = isSelected;
+        cb.addEventListener('change', updateBundleCalcHints);
+
+        var txt = document.createElement('div');
+        var titleDiv = document.createElement('div');
+        titleDiv.className = 'bundle-picker-title';
+        titleDiv.textContent = it.title;
+        var catDiv = document.createElement('div');
+        catDiv.className = 'bundle-picker-cat';
+        catDiv.textContent = cat ? cat.name : '';
+        txt.appendChild(titleDiv);
+        txt.appendChild(catDiv);
+
+        left.appendChild(cb);
+        left.appendChild(txt);
+
+        var priceSpan = document.createElement('span');
+        priceSpan.className = 'bundle-picker-price';
+        priceSpan.textContent = WM.utils.formatMoney(it.price);
+
+        row.appendChild(left);
+        row.appendChild(priceSpan);
+        picker.appendChild(row);
+      });
+    });
+
+    syncBundleCreditTypeUI();
     openModal('bundleModal');
+  }
+
+  // --- Модалка: Все кредиты и лимит карты ---
+  function openCreditsModal() {
+    WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
+    openModal('creditsModal');
   }
 
   // --- Модалки: Категория, Вкладка, Синхронизация ---
@@ -565,6 +634,29 @@
       applyTheme(cur === 'dark' ? 'light' : 'dark');
     });
 
+    document.getElementById('openCreditsModalBtn').addEventListener('click', openCreditsModal);
+    document.getElementById('addBundleFromCreditsBtn').addEventListener('click', function () {
+      openBundleModal(null);
+    });
+
+    // Ввод лимита карты в панели «Кредиты»
+    document.getElementById('cardLimitInput').addEventListener('input', function (e) {
+      WM.storage.setCardLimit(e.target.value);
+      WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
+    });
+
+    // Фильтры типа кредита внутри панели «Кредиты»
+    document.querySelectorAll('#creditsTypeFilter [data-ctype]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('#creditsTypeFilter [data-ctype]').forEach(function (b) {
+          b.classList.remove('active');
+        });
+        btn.classList.add('active');
+        creditsTypeFilter = btn.getAttribute('data-ctype');
+        WM.render.renderGlobalCreditsModal(creditsTypeFilter, getCommonHandlers());
+      });
+    });
+
     document.getElementById('addTabBtn').addEventListener('click', function () { openTabModal(null); });
     document.getElementById('manageTabBtn').addEventListener('click', function () {
       openTabModal(WM.storage.getActiveTab().id);
@@ -619,19 +711,25 @@
       document.getElementById('itemCreditFields').classList.toggle('hidden', !e.target.checked);
       if (e.target.checked && !document.getElementById('itemCreditTotal').value) {
         var priceVal = document.getElementById('itemPriceInput').value;
-        if (priceVal) document.getElementById('itemCreditTotal').value = priceVal;
+        if (priceVal) {
+          document.getElementById('itemCreditTotal').value = priceVal;
+          document.getElementById('itemCreditGraceTotal').value = priceVal;
+        }
       }
-      updateItemOverpayHint();
+      syncItemCreditTypeUI();
     });
 
-    ['itemPriceInput', 'itemCreditTotal', 'itemCreditMonths', 'itemCreditMonthly', 'itemCreditStartDate'].forEach(function (id) {
+    document.getElementById('itemCreditType').addEventListener('change', syncItemCreditTypeUI);
+    document.getElementById('bundleTypeSelect').addEventListener('change', syncBundleCreditTypeUI);
+
+    ['itemPriceInput', 'itemCreditTotal', 'itemCreditMonths', 'itemCreditMonthly', 'itemCreditStartDate', 'itemCreditDueDate', 'itemCreditGraceTotal'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', updateItemOverpayHint);
     });
-    ['bundleTotalInput', 'bundleMonthsInput', 'bundleMonthlyInput', 'bundleStartDateInput'].forEach(function (id) {
+    ['bundleTotalInput', 'bundleMonthsInput', 'bundleMonthlyInput', 'bundleStartDateInput', 'bundleDueDateInput', 'bundleGraceTotalInput'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', updateBundleCalcHints);
     });
 
-    // События переноса / копирования карточки между вкладками
+    // Перенос / копирование карточки
     document.getElementById('itemTransferTabSelect').addEventListener('change', function (e) {
       var activeTab = WM.storage.getActiveTab();
       var curCatId = document.getElementById('itemCategorySelect').value;
@@ -657,7 +755,6 @@
     document.getElementById('moveItemTabBtn').addEventListener('click', function () { handleItemTransfer('move'); });
     document.getElementById('copyItemTabBtn').addEventListener('click', function () { handleItemTransfer('copy'); });
 
-    // События переноса / копирования категории между вкладками
     function handleCategoryTransfer(mode) {
       var catId = document.getElementById('categoryIdInput').value;
       var targetTabId = document.getElementById('categoryTransferTabSelect').value;
@@ -687,6 +784,9 @@
       }
 
       var isCredit = document.getElementById('itemCreditCheck').checked;
+      var cType = document.getElementById('itemCreditType').value;
+      var isGrace = cType === 'grace';
+
       WM.storage.saveItem({
         id: document.getElementById('itemIdInput').value || null,
         title: title,
@@ -699,10 +799,15 @@
         checked: document.getElementById('itemCheckedInput').checked,
         credit: {
           enabled: isCredit,
-          startDate: document.getElementById('itemCreditStartDate').value,
-          months: document.getElementById('itemCreditMonths').value,
-          monthlyPayment: document.getElementById('itemCreditMonthly').value,
-          totalAmount: document.getElementById('itemCreditTotal').value
+          type: cType,
+          customType: document.getElementById('itemCreditCustomType').value,
+          startDate: isGrace ? '' : document.getElementById('itemCreditStartDate').value,
+          months: isGrace ? 0 : document.getElementById('itemCreditMonths').value,
+          monthlyPayment: isGrace ? 0 : document.getElementById('itemCreditMonthly').value,
+          totalAmount: isGrace
+            ? document.getElementById('itemCreditGraceTotal').value
+            : document.getElementById('itemCreditTotal').value,
+          dueDate: isGrace ? document.getElementById('itemCreditDueDate').value : ''
         }
       });
 
@@ -735,14 +840,28 @@
         return;
       }
 
+      var bType = document.getElementById('bundleTypeSelect').value;
+      var isGrace = bType === 'grace';
+      var totalVal = isGrace
+        ? document.getElementById('bundleGraceTotalInput').value
+        : document.getElementById('bundleTotalInput').value;
+
+      if (!totalVal && totalVal !== '0') {
+        showToast('Укажи итоговую сумму');
+        return;
+      }
+
       WM.storage.saveCreditBundle({
         id: document.getElementById('bundleIdInput').value || null,
         name: document.getElementById('bundleNameInput').value,
+        type: bType,
+        customType: document.getElementById('bundleCustomTypeInput').value,
         itemIds: itemIds,
-        startDate: document.getElementById('bundleStartDateInput').value,
-        months: document.getElementById('bundleMonthsInput').value,
-        monthlyPayment: document.getElementById('bundleMonthlyInput').value,
-        totalAmount: document.getElementById('bundleTotalInput').value,
+        startDate: isGrace ? '' : document.getElementById('bundleStartDateInput').value,
+        months: isGrace ? 0 : document.getElementById('bundleMonthsInput').value,
+        monthlyPayment: isGrace ? 0 : document.getElementById('bundleMonthlyInput').value,
+        totalAmount: totalVal,
+        dueDate: isGrace ? document.getElementById('bundleDueDateInput').value : '',
         checked: document.getElementById('bundleCheckedInput').checked
       });
 
