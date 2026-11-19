@@ -378,6 +378,10 @@
       opt.textContent = c.name;
       catSelect.appendChild(opt);
     });
+    var newCatOpt = document.createElement('option');
+    newCatOpt.value = '__new_category__';
+    newCatOpt.textContent = '+ Новая категория...';
+    catSelect.appendChild(newCatOpt);
     if (selectedCatId) catSelect.value = selectedCatId;
 
     var prioSelect = document.getElementById('itemPrioritySelect');
@@ -407,14 +411,9 @@
 
   function openItemModal(itemId, presetCategoryId) {
     var tab = WM.storage.getActiveTab();
-    if (tab.categories.length === 0) {
-      showToast('Сначала создай хотя бы одну категорию');
-      openCategoryModal(null);
-      return;
-    }
-
     var item = itemId ? tab.items.find(function (x) { return x.id === itemId; }) : null;
-    populateItemModalSelects(item ? item.categoryId : (presetCategoryId || tab.categories[0].id));
+    var defaultCatId = tab.categories.length > 0 ? tab.categories[0].id : '__new_category__';
+    populateItemModalSelects(item ? item.categoryId : (presetCategoryId || defaultCatId));
 
     document.getElementById('itemModalTitle').textContent = item ? 'Редактировать позицию' : 'Новая позиция';
     document.getElementById('itemIdInput').value = item ? item.id : '';
@@ -455,8 +454,13 @@
       document.getElementById('itemCheckedInput').checked = !!newItemDraft.checked;
     }
 
+    var isNewCatSelected = document.getElementById('itemCategorySelect').value === '__new_category__';
+    document.getElementById('newCategoryGroup').classList.toggle('hidden', !isNewCatSelected);
+    document.getElementById('itemNewCategoryInput').value = '';
+
     setupItemTransferUI(item);
     document.getElementById('deleteItemBtn').classList.toggle('hidden', !item);
+    document.getElementById('clearItemFormBtn').classList.toggle('hidden', !!item);
     openModal('itemModal');
     captureFormSnapshot('itemModal');
     setTimeout(function () {
@@ -754,6 +758,35 @@
       refreshUI();
     });
 
+    document.getElementById('itemCategorySelect').addEventListener('change', function (e) {
+      var isNew = e.target.value === '__new_category__';
+      document.getElementById('newCategoryGroup').classList.toggle('hidden', !isNew);
+      if (isNew) document.getElementById('itemNewCategoryInput').focus();
+    });
+
+    document.getElementById('clearItemFormBtn').addEventListener('click', function () {
+      var tab = WM.storage.getActiveTab();
+      clearNewItemDraft();
+      document.getElementById('itemTitleInput').value = '';
+      document.getElementById('itemPriceInput').value = '';
+      document.getElementById('itemPrioritySelect').value = 'medium';
+      document.getElementById('itemStoreSelect').value = WM.CONFIG.STORES[0];
+      document.getElementById('itemCustomStoreInput').value = '';
+      document.getElementById('customStoreGroup').classList.add('hidden');
+      document.getElementById('itemLinkInput').value = '';
+      var noteTa = document.getElementById('itemNoteInput');
+      noteTa.value = '';
+      autoResizeTextarea(noteTa);
+      document.getElementById('itemCheckedInput').checked = false;
+      var defCat = tab.categories.length > 0 ? tab.categories[0].id : '__new_category__';
+      document.getElementById('itemCategorySelect').value = defCat;
+      document.getElementById('itemNewCategoryInput').value = '';
+      document.getElementById('newCategoryGroup').classList.toggle('hidden', defCat !== '__new_category__');
+      captureFormSnapshot('itemModal');
+      document.getElementById('itemTitleInput').focus();
+      showToast('Поля очищены');
+    });
+
     document.getElementById('itemStoreSelect').addEventListener('change', function (e) {
       var isCustom = e.target.value === WM.CONFIG.CUSTOM_STORE_VALUE;
       document.getElementById('customStoreGroup').classList.toggle('hidden', !isCustom);
@@ -818,10 +851,22 @@
         storeVal = document.getElementById('itemCustomStoreInput').value.trim() || 'Свой вариант';
       }
 
+      var selectedCatId = document.getElementById('itemCategorySelect').value;
+      if (selectedCatId === '__new_category__') {
+        var newCatName = document.getElementById('itemNewCategoryInput').value.trim();
+        if (!newCatName) {
+          showToast('Введи название новой категории');
+          document.getElementById('itemNewCategoryInput').focus();
+          return;
+        }
+        var createdCat = WM.storage.addCategory(newCatName);
+        selectedCatId = createdCat.id;
+      }
+
       WM.storage.saveItem({
         id: document.getElementById('itemIdInput').value || null,
         title: title,
-        categoryId: document.getElementById('itemCategorySelect').value,
+        categoryId: selectedCatId,
         price: document.getElementById('itemPriceInput').value,
         priority: document.getElementById('itemPrioritySelect').value,
         store: storeVal,
