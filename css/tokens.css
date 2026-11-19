@@ -15,7 +15,7 @@
 :root {
   /* Шрифты */
   --font-sans: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Фоны и поверхности (Тёмная тема по умолчанию) */
   --bg-page: #141414;          /* Основной фон страницы */
