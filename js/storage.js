@@ -16,6 +16,10 @@
     return isFinite(t) ? t : 0;
   }
 
+  function normalizeName(name) {
+    return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
   function createEmptyTab(name) {
     var ts = nowIso();
     return {
@@ -346,6 +350,63 @@
       };
     });
 
+    // 3b. Склейка одноимённых вкладок (если параллельно создали вкладку с одинаковым именем)
+    var mergeNow = nowIso();
+    var resolvedActiveTabId = loc.activeTabId;
+    var dedupedTabs = [];
+    var tabByNormName = {};
+    mergedTabs.forEach(function (tab) {
+      var key = normalizeName(tab.name);
+      if (key && tabByNormName[key]) {
+        var targetTab = tabByNormName[key];
+        if (parseTs(tab.updatedAt) > parseTs(targetTab.updatedAt)) {
+          targetTab.updatedAt = tab.updatedAt;
+        }
+        tab.categories.forEach(function (c) { targetTab.categories.push(c); });
+        tab.items.forEach(function (it) { targetTab.items.push(it); });
+        if (resolvedActiveTabId === tab.id) {
+          resolvedActiveTabId = targetTab.id;
+        }
+        mergedDeleted[tab.id] = mergeNow;
+      } else {
+        if (key) tabByNormName[key] = tab;
+        dedupedTabs.push(tab);
+      }
+    });
+    mergedTabs = dedupedTabs;
+
+    // 3c. Склейка одноимённых категорий строго ВНУТРИ каждой вкладки
+    mergedTabs.forEach(function (tab) {
+      var uniqueCats = [];
+      var catByNormName = {};
+      var catIdRemap = {};
+
+      tab.categories.forEach(function (cat) {
+        var key = normalizeName(cat.name);
+        if (key && catByNormName[key]) {
+          var keepCat = catByNormName[key];
+          if (parseTs(cat.updatedAt) > parseTs(keepCat.updatedAt)) {
+            keepCat.updatedAt = cat.updatedAt;
+          }
+          catIdRemap[cat.id] = keepCat.id;
+          mergedDeleted[cat.id] = mergeNow;
+        } else {
+          if (key) catByNormName[key] = cat;
+          uniqueCats.push(cat);
+        }
+      });
+
+      if (Object.keys(catIdRemap).length > 0) {
+        tab.categories = uniqueCats;
+        tab.items.forEach(function (it) {
+          if (catIdRemap[it.categoryId]) {
+            it.categoryId = catIdRemap[it.categoryId];
+            it.updatedAt = mergeNow;
+          }
+        });
+      }
+    });
+
     if (mergedTabs.length === 0) {
       mergedTabs = [createEmptyTab('Основная')];
     }
@@ -362,7 +423,7 @@
       version: 4,
       updatedAt: nowIso(),
       metaUpdatedAt: locMetaNewer ? loc.metaUpdatedAt : rem.metaUpdatedAt,
-      activeTabId: loc.activeTabId,
+      activeTabId: resolvedActiveTabId,
       cardLimit: cardLimit,
       monthlyIncome: monthlyIncome,
       deleted: mergedDeleted,
@@ -643,6 +704,26 @@
     calculateGlobalCredits: calculateGlobalCredits,
     mergeStates: mergeStates,
 
+    hasTabName: function (name, excludeTabId) {
+      var key = normalizeName(name);
+      if (!key) return false;
+      return state.tabs.some(function (t) {
+        return t.id !== excludeTabId && normalizeName(t.name) === key;
+      });
+    },
+
+    hasCategoryName: function (name, excludeCatId, tabId) {
+      var key = normalizeName(name);
+      if (!key) return false;
+      var tab = tabId
+        ? state.tabs.find(function (t) { return t.id === tabId; })
+        : getActiveTab();
+      if (!tab) return false;
+      return tab.categories.some(function (c) {
+        return c.id !== excludeCatId && normalizeName(c.name) === key;
+      });
+    },
+
     onChange: function (fn) {
       onChangeListeners.push(fn);
     },
@@ -830,12 +911,18 @@
       if (!cat) return false;
 
       var isCopy = mode === 'copy';
-      var newCat = { id: WM.utils.uid('cat'), name: cat.name, collapsed: false, updatedAt: nowIso() };
-      dstTab.categories.push(newCat);
+      var existingDstCat = dstTab.categories.find(function (c) {
+        return normalizeName(c.name) === normalizeName(cat.name);
+      });
+      var targetCat = existingDstCat;
+      if (!targetCat) {
+        targetCat = { id: WM.utils.uid('cat'), name: cat.name, collapsed: false, updatedAt: nowIso() };
+        dstTab.categories.push(targetCat);
+      }
 
       var catItems = srcTab.items.filter(function (it) { return it.categoryId === catId; });
       catItems.forEach(function (it) {
-        dstTab.items.push(cloneItem(it, newCat.id, isCopy));
+        dstTab.items.push(cloneItem(it, targetCat.id, isCopy));
       });
 
       if (!isCopy) {

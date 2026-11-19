@@ -1305,6 +1305,11 @@
           document.getElementById('itemNewCategoryInput').focus();
           return;
         }
+        if (WM.storage.hasCategoryName(newCatName, null)) {
+          showToast('Категория «' + newCatName + '» уже есть в этой вкладке — выбери её в списке');
+          document.getElementById('itemNewCategoryInput').focus();
+          return;
+        }
         var createdCat = WM.storage.addCategory(newCatName);
         selectedCatId = createdCat.id;
       }
@@ -1399,6 +1404,11 @@
       var id = document.getElementById('categoryIdInput').value;
       var name = document.getElementById('categoryNameInput').value.trim();
       if (!name) return;
+      if (WM.storage.hasCategoryName(name, id || null)) {
+        showToast('Категория «' + name + '» уже есть в этой вкладке');
+        document.getElementById('categoryNameInput').focus();
+        return;
+      }
       if (id) {
         WM.storage.renameCategory(id, name);
         showToast('Категория переименована');
@@ -1427,6 +1437,11 @@
       var id = document.getElementById('tabIdInput').value;
       var name = document.getElementById('tabNameInput').value.trim();
       if (!name) return;
+      if (WM.storage.hasTabName(name, id || null)) {
+        showToast('Вкладка «' + name + '» уже существует');
+        document.getElementById('tabNameInput').focus();
+        return;
+      }
       if (id) {
         WM.storage.renameTab(id, name);
         showToast('Вкладка переименована');
