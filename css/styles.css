@@ -1768,3 +1768,235 @@ a.badge-store-link:hover {
   gap: 6px;
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   ФОТО ТОВАРА (ГАЛЕРЕЯ + LIGHTBOX) И ПОИСК/СВОРАЧИВАНИЕ В ОКНЕ КРЕДИТА
+   ========================================================================== */
+.photo-inputs-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawer-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gallery-stage {
+  position: relative;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  max-height: 280px;
+}
+
+.gallery-img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  display: block;
+  cursor: zoom-in;
+  background-color: var(--bg-input);
+}
+
+.gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background-color: rgba(20, 20, 20, 0.78);
+  color: #FFFFFF;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.gallery-nav:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.gallery-prev { left: 8px; }
+.gallery-next { right: 8px; }
+
+.gallery-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.gallery-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--border-strong);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.14s ease, transform 0.14s ease;
+}
+
+.gallery-dot.active {
+  background-color: var(--accent);
+  transform: scale(1.2);
+}
+
+/* Полноэкранный Lightbox */
+.lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.lightbox-backdrop.open {
+  display: flex;
+}
+
+.lightbox-img {
+  max-width: 92vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-modal);
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(20, 20, 20, 0.8);
+  color: #FFFFFF;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 302;
+}
+
+.lightbox-close:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.lightbox-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background-color: rgba(20, 20, 20, 0.8);
+  color: #FFFFFF;
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 302;
+}
+
+.lightbox-nav:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.lightbox-prev { left: 16px; }
+.lightbox-next { right: 16px; }
+
+.lightbox-counter {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #EFEFEF;
+  background-color: rgba(20, 20, 20, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Инструменты поиска и сворачиваемые вкладки в окне «Оформить в кредит» */
+.bundle-picker-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.bundle-picker-search {
+  flex: 1 1 200px;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13.5px;
+}
+
+.bundle-show-all-label {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.bundle-picker-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bundle-picker-group-head:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.bundle-picker-group-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bundle-picker-group.is-collapsed .bundle-picker-group-body {
+  display: none;
+}
+
+.bundle-picker-group.is-collapsed .picker-chevron {
+  transform: rotate(-90deg);
+}
+
+.picker-chevron {
+  display: inline-block;
+  transition: transform 0.14s ease;
+}
+
+.bundle-picker-used-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--warn);
+  margin-left: 6px;
+}

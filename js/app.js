@@ -18,6 +18,125 @@
   var toastTimer = null;
   var newItemDraft = null;
   var formSnapshots = {};
+  var drawerGalleryUrls = [];
+  var drawerGalleryIdx = 0;
+  var bundlePickerSelected = {};
+  var bundlePickerCollapsed = {};
+  var currentEditingBundleId = null;
+
+  function getPhotoInputs() {
+    return [
+      document.getElementById('itemImageInput1'),
+      document.getElementById('itemImageInput2'),
+      document.getElementById('itemImageInput3')
+    ];
+  }
+
+  function updatePhotoInputsVisibility() {
+    var inputs = getPhotoInputs();
+    if (!inputs[0]) return;
+    var v1 = inputs[0].value.trim();
+    var v2 = inputs[1].value.trim();
+    var v3 = inputs[2].value.trim();
+    inputs[1].classList.toggle('hidden', !v1 && !v2 && !v3);
+    inputs[2].classList.toggle('hidden', !v2 && !v3);
+  }
+
+  function setPhotoInputValues(urls) {
+    var arr = Array.isArray(urls) ? urls : [];
+    var inputs = getPhotoInputs();
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i]) inputs[i].value = arr[i] || '';
+    }
+    updatePhotoInputsVisibility();
+  }
+
+  function readPhotoInputValues() {
+    var res = [];
+    getPhotoInputs().forEach(function (inp) {
+      if (inp && inp.value.trim()) res.push(inp.value.trim());
+    });
+    return res;
+  }
+
+  function updateGalleryView() {
+    var wrap = document.getElementById('drawerGallery');
+    var img = document.getElementById('drawerGalleryImg');
+    var prevBtn = document.getElementById('galleryPrevBtn');
+    var nextBtn = document.getElementById('galleryNextBtn');
+    var dotsWrap = document.getElementById('galleryDots');
+
+    if (!wrap || drawerGalleryUrls.length === 0) {
+      if (wrap) wrap.classList.add('hidden');
+      return;
+    }
+
+    if (drawerGalleryIdx >= drawerGalleryUrls.length) drawerGalleryIdx = 0;
+    if (drawerGalleryIdx < 0) drawerGalleryIdx = drawerGalleryUrls.length - 1;
+
+    wrap.classList.remove('hidden');
+    img.src = drawerGalleryUrls[drawerGalleryIdx];
+
+    var multi = drawerGalleryUrls.length > 1;
+    prevBtn.classList.toggle('hidden', !multi);
+    nextBtn.classList.toggle('hidden', !multi);
+    dotsWrap.classList.toggle('hidden', !multi);
+    dotsWrap.innerHTML = '';
+
+    if (multi) {
+      drawerGalleryUrls.forEach(function (_, idx) {
+        var dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'gallery-dot' + (idx === drawerGalleryIdx ? ' active' : '');
+        dot.setAttribute('aria-label', 'Фото ' + (idx + 1));
+        dot.addEventListener('click', function () {
+          drawerGalleryIdx = idx;
+          updateGalleryView();
+        });
+        dotsWrap.appendChild(dot);
+      });
+    }
+  }
+
+  function setupDrawerGallery(urls) {
+    drawerGalleryUrls = (urls || []).filter(function (u) { return !!String(u || '').trim(); });
+    drawerGalleryIdx = 0;
+    updateGalleryView();
+  }
+
+  function openPhotoLightbox() {
+    if (drawerGalleryUrls.length === 0) return;
+    var lb = document.getElementById('photoLightbox');
+    lb.classList.add('open');
+    lb.setAttribute('aria-hidden', 'false');
+    updateLightboxView();
+  }
+
+  function closePhotoLightbox() {
+    var lb = document.getElementById('photoLightbox');
+    if (!lb) return;
+    lb.classList.remove('open');
+    lb.setAttribute('aria-hidden', 'true');
+  }
+
+  function updateLightboxView() {
+    if (drawerGalleryUrls.length === 0) {
+      closePhotoLightbox();
+      return;
+    }
+    if (drawerGalleryIdx >= drawerGalleryUrls.length) drawerGalleryIdx = 0;
+    if (drawerGalleryIdx < 0) drawerGalleryIdx = drawerGalleryUrls.length - 1;
+
+    document.getElementById('lightboxImg').src = drawerGalleryUrls[drawerGalleryIdx];
+    var multi = drawerGalleryUrls.length > 1;
+    document.getElementById('lightboxPrevBtn').classList.toggle('hidden', !multi);
+    document.getElementById('lightboxNextBtn').classList.toggle('hidden', !multi);
+    var counter = document.getElementById('lightboxCounter');
+    counter.classList.toggle('hidden', !multi);
+    if (multi) {
+      counter.textContent = (drawerGalleryIdx + 1) + ' / ' + drawerGalleryUrls.length;
+    }
+  }
 
   function autoResizeTextarea(ta) {
     if (!ta) return;
@@ -62,7 +181,8 @@
     var link = document.getElementById('itemLinkInput').value;
     var note = document.getElementById('itemNoteInput').value;
     var customStore = document.getElementById('itemCustomStoreInput').value;
-    if (!title && !price && !link && !note && !customStore) {
+    var images = readPhotoInputValues();
+    if (!title && !price && !link && !note && !customStore && images.length === 0) {
       newItemDraft = null;
       return;
     }
@@ -75,6 +195,7 @@
       customStore: customStore,
       link: link,
       note: note,
+      images: images,
       checked: document.getElementById('itemCheckedInput').checked
     };
   }
@@ -219,7 +340,8 @@
         WM.storage.toggleBundleChecked(bundleId, checked);
         refreshUI();
       },
-      onResetFilters: function () { resetFilters(true); }
+      onResetFilters: function () { resetFilters(true); },
+      onRenderDrawerGallery: setupDrawerGallery
     };
   }
 
@@ -275,10 +397,10 @@
   }
 
   function updateBundleCalcHints() {
-    var checkboxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
     var baseSum = 0;
-    checkboxes.forEach(function (cb) {
-      var found = WM.storage.findItemAcrossTabs(cb.value);
+    Object.keys(bundlePickerSelected).forEach(function (id) {
+      if (!bundlePickerSelected[id]) return;
+      var found = WM.storage.findItemAcrossTabs(id);
       if (found) baseSum += found.item.price;
     });
     baseSum = WM.utils.toNumber(baseSum);
@@ -440,6 +562,7 @@
     document.getElementById('itemPriceInput').value = item ? item.price : '';
     document.getElementById('itemPrioritySelect').value = item ? item.priority : 'medium';
     document.getElementById('itemLinkInput').value = item ? item.link : '';
+    setPhotoInputValues(item ? item.images : []);
     document.getElementById('itemNoteInput').value = item ? item.note : '';
     document.getElementById('itemCheckedInput').checked = item ? !!item.checked : false;
 
@@ -469,6 +592,7 @@
       document.getElementById('itemCustomStoreInput').value = isCustomDraft ? (newItemDraft.customStore || '') : '';
       document.getElementById('customStoreGroup').classList.toggle('hidden', !isCustomDraft);
       document.getElementById('itemLinkInput').value = newItemDraft.link || '';
+      setPhotoInputValues(newItemDraft.images || []);
       document.getElementById('itemNoteInput').value = newItemDraft.note || '';
       document.getElementById('itemCheckedInput').checked = !!newItemDraft.checked;
     }
@@ -486,6 +610,135 @@
       autoResizeTextarea(document.getElementById('itemNoteInput'));
       document.getElementById('itemTitleInput').focus();
     }, 50);
+  }
+
+  function renderBundlePickerList() {
+    var state = WM.storage.getState();
+    var picker = document.getElementById('bundleItemsPicker');
+    picker.innerHTML = '';
+
+    var q = (document.getElementById('bundlePickerSearch').value || '').trim().toLowerCase();
+    var showUsed = !!document.getElementById('bundleShowUsedCheck').checked;
+
+    var activeTabId = state.activeTabId;
+    var orderedTabs = state.tabs.slice().sort(function (a, b) {
+      if (a.id === activeTabId) return -1;
+      if (b.id === activeTabId) return 1;
+      return 0;
+    });
+
+    var renderedAny = false;
+
+    orderedTabs.forEach(function (tab) {
+      var matchingItems = tab.items.filter(function (it) {
+        var existingBundle = WM.storage.getBundleForItem(it.id);
+        var inOtherBundle = existingBundle && existingBundle.id !== currentEditingBundleId;
+        if (inOtherBundle && !showUsed && !bundlePickerSelected[it.id]) {
+          return false;
+        }
+        if (q) {
+          var cat = tab.categories.find(function (c) { return c.id === it.categoryId; });
+          var hay = (it.title + ' ' + (cat ? cat.name : '') + ' ' + tab.name).toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+
+      if (matchingItems.length === 0) return;
+      renderedAny = true;
+
+      var group = document.createElement('div');
+      var isCollapsed = !q && !!bundlePickerCollapsed[tab.id];
+      group.className = 'bundle-picker-group' + (isCollapsed ? ' is-collapsed' : '');
+
+      var groupHead = document.createElement('div');
+      groupHead.className = 'bundle-picker-group-head';
+      var headLeft = document.createElement('div');
+      headLeft.className = 'bundle-picker-group-left';
+      var chev = document.createElement('span');
+      chev.className = 'picker-chevron';
+      chev.textContent = '▾';
+      var nameSpan = document.createElement('span');
+      nameSpan.textContent = 'Вкладка: ' + tab.name;
+      headLeft.appendChild(chev);
+      headLeft.appendChild(nameSpan);
+
+      var countSpan = document.createElement('span');
+      countSpan.textContent = String(matchingItems.length);
+      groupHead.appendChild(headLeft);
+      groupHead.appendChild(countSpan);
+
+      groupHead.addEventListener('click', function () {
+        bundlePickerCollapsed[tab.id] = !bundlePickerCollapsed[tab.id];
+        group.classList.toggle('is-collapsed', !!bundlePickerCollapsed[tab.id]);
+      });
+
+      var groupBody = document.createElement('div');
+      groupBody.className = 'bundle-picker-group-body';
+
+      matchingItems.forEach(function (it) {
+        var cat = tab.categories.find(function (c) { return c.id === it.categoryId; });
+        var existingBundle = WM.storage.getBundleForItem(it.id);
+        var inOtherBundle = existingBundle && existingBundle.id !== currentEditingBundleId;
+
+        var row = document.createElement('label');
+        row.className = 'bundle-picker-row';
+
+        var left = document.createElement('div');
+        left.className = 'bundle-picker-left';
+
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = it.id;
+        cb.checked = !!bundlePickerSelected[it.id];
+        cb.addEventListener('change', function () {
+          bundlePickerSelected[it.id] = cb.checked;
+          updateBundleCalcHints();
+        });
+
+        var txt = document.createElement('div');
+        var titleDiv = document.createElement('div');
+        titleDiv.className = 'bundle-picker-title';
+        titleDiv.textContent = it.title;
+        if (inOtherBundle) {
+          var usedTag = document.createElement('span');
+          usedTag.className = 'bundle-picker-used-tag';
+          usedTag.textContent = '(в «' + existingBundle.name + '»)';
+          titleDiv.appendChild(usedTag);
+        }
+        var catDiv = document.createElement('div');
+        catDiv.className = 'bundle-picker-cat';
+        catDiv.textContent = cat ? cat.name : '';
+        txt.appendChild(titleDiv);
+        txt.appendChild(catDiv);
+
+        left.appendChild(cb);
+        left.appendChild(txt);
+
+        var priceSpan = document.createElement('span');
+        priceSpan.className = 'bundle-picker-price';
+        priceSpan.textContent = WM.utils.formatMoney(it.price);
+
+        row.appendChild(left);
+        row.appendChild(priceSpan);
+        groupBody.appendChild(row);
+      });
+
+      group.appendChild(groupHead);
+      group.appendChild(groupBody);
+      picker.appendChild(group);
+    });
+
+    if (!renderedAny) {
+      var emptyMsg = document.createElement('div');
+      emptyMsg.style.padding = '14px';
+      emptyMsg.style.fontSize = '13px';
+      emptyMsg.style.color = 'var(--text-muted)';
+      emptyMsg.textContent = q
+        ? 'По запросу ничего не найдено.'
+        : 'Все товары уже оформлены в кредиты (включи «Уже в кредитах», чтобы увидеть их).';
+      picker.appendChild(emptyMsg);
+    }
   }
 
   // --- Модалка: Оформить в кредит / рассрочку ---
@@ -512,62 +765,18 @@
     document.getElementById('bundleCheckedInput').checked = bundle ? !!bundle.checked : true;
     document.getElementById('deleteBundleBtn').classList.toggle('hidden', !bundle);
 
-    var picker = document.getElementById('bundleItemsPicker');
-    picker.innerHTML = '';
+    currentEditingBundleId = bundle ? bundle.id : null;
+    bundlePickerSelected = {};
+    bundlePickerCollapsed = {};
+    if (bundle) {
+      bundle.itemIds.forEach(function (id) { bundlePickerSelected[id] = true; });
+    }
+    var searchEl = document.getElementById('bundlePickerSearch');
+    var showUsedEl = document.getElementById('bundleShowUsedCheck');
+    if (searchEl) searchEl.value = '';
+    if (showUsedEl) showUsedEl.checked = false;
 
-    var activeTabId = state.activeTabId;
-    var orderedTabs = state.tabs.slice().sort(function (a, b) {
-      if (a.id === activeTabId) return -1;
-      if (b.id === activeTabId) return 1;
-      return 0;
-    });
-
-    orderedTabs.forEach(function (tab) {
-      if (tab.items.length === 0) return;
-
-      var groupHead = document.createElement('div');
-      groupHead.className = 'bundle-picker-group-head';
-      groupHead.textContent = 'Вкладка: ' + tab.name;
-      picker.appendChild(groupHead);
-
-      tab.items.forEach(function (it) {
-        var cat = tab.categories.find(function (c) { return c.id === it.categoryId; });
-        var isSelected = bundle ? bundle.itemIds.indexOf(it.id) !== -1 : false;
-
-        var row = document.createElement('label');
-        row.className = 'bundle-picker-row';
-
-        var left = document.createElement('div');
-        left.className = 'bundle-picker-left';
-
-        var cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = it.id;
-        cb.checked = isSelected;
-        cb.addEventListener('change', updateBundleCalcHints);
-
-        var txt = document.createElement('div');
-        var titleDiv = document.createElement('div');
-        titleDiv.className = 'bundle-picker-title';
-        titleDiv.textContent = it.title;
-        var catDiv = document.createElement('div');
-        catDiv.className = 'bundle-picker-cat';
-        catDiv.textContent = cat ? cat.name : '';
-        txt.appendChild(titleDiv);
-        txt.appendChild(catDiv);
-
-        left.appendChild(cb);
-        left.appendChild(txt);
-
-        var priceSpan = document.createElement('span');
-        priceSpan.className = 'bundle-picker-price';
-        priceSpan.textContent = WM.utils.formatMoney(it.price);
-
-        row.appendChild(left);
-        row.appendChild(priceSpan);
-        picker.appendChild(row);
-      });
-    });
+    renderBundlePickerList();
 
     syncBundleCreditTypeUI();
     openModal('bundleModal');
@@ -684,8 +893,60 @@
       refreshUI();
     });
 
+    // Динамические поля фото (1 -> 2 -> 3)
+    getPhotoInputs().forEach(function (inp) {
+      if (!inp) return;
+      inp.addEventListener('input', function () {
+        updatePhotoInputsVisibility();
+        saveNewItemDraft();
+      });
+    });
+
+    // Галерея в выдвижной панели + тихое скрытие битых ссылок + Lightbox
+    var galleryImg = document.getElementById('drawerGalleryImg');
+    if (galleryImg) {
+      galleryImg.addEventListener('error', function () {
+        if (drawerGalleryUrls.length > 0) {
+          drawerGalleryUrls.splice(drawerGalleryIdx, 1);
+          updateGalleryView();
+        }
+      });
+      galleryImg.addEventListener('click', openPhotoLightbox);
+    }
+    document.getElementById('galleryPrevBtn').addEventListener('click', function () {
+      drawerGalleryIdx--;
+      updateGalleryView();
+    });
+    document.getElementById('galleryNextBtn').addEventListener('click', function () {
+      drawerGalleryIdx++;
+      updateGalleryView();
+    });
+    document.getElementById('lightboxCloseBtn').addEventListener('click', closePhotoLightbox);
+    document.getElementById('photoLightbox').addEventListener('click', function (e) {
+      if (e.target === e.currentTarget) closePhotoLightbox();
+    });
+    document.getElementById('lightboxPrevBtn').addEventListener('click', function () {
+      drawerGalleryIdx--;
+      updateLightboxView();
+      updateGalleryView();
+    });
+    document.getElementById('lightboxNextBtn').addEventListener('click', function () {
+      drawerGalleryIdx++;
+      updateLightboxView();
+      updateGalleryView();
+    });
+
+    // Поиск и фильтр «Уже в кредитах» в окне «Оформить в кредит»
+    document.getElementById('bundlePickerSearch').addEventListener('input', renderBundlePickerList);
+    document.getElementById('bundleShowUsedCheck').addEventListener('change', renderBundlePickerList);
+
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+        var lb = document.getElementById('photoLightbox');
+        if (lb && lb.classList.contains('open')) {
+          closePhotoLightbox();
+          return;
+        }
         var openModals = document.querySelectorAll('.modal-backdrop.open');
         if (openModals.length > 0) {
           var topModal = openModals[openModals.length - 1];
@@ -810,6 +1071,7 @@
       document.getElementById('itemCustomStoreInput').value = '';
       document.getElementById('customStoreGroup').classList.add('hidden');
       document.getElementById('itemLinkInput').value = '';
+      setPhotoInputValues([]);
       var noteTa = document.getElementById('itemNoteInput');
       noteTa.value = '';
       autoResizeTextarea(noteTa);
@@ -907,6 +1169,7 @@
         priority: document.getElementById('itemPrioritySelect').value,
         store: storeVal,
         link: document.getElementById('itemLinkInput').value,
+        images: readPhotoInputValues(),
         note: document.getElementById('itemNoteInput').value,
         checked: document.getElementById('itemCheckedInput').checked
       });
@@ -932,9 +1195,9 @@
     // Сохранение кредита / рассрочки
     document.getElementById('bundleForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      var checkedBoxes = document.querySelectorAll('#bundleItemsPicker input[type="checkbox"]:checked');
-      var itemIds = [];
-      checkedBoxes.forEach(function (cb) { itemIds.push(cb.value); });
+      var itemIds = Object.keys(bundlePickerSelected).filter(function (id) {
+        return !!bundlePickerSelected[id];
+      });
 
       if (itemIds.length === 0) {
         showToast('Выбери хотя бы один товар');

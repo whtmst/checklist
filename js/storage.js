@@ -33,6 +33,16 @@
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
   }
 
+  function sanitizeImages(arr) {
+    if (!Array.isArray(arr)) return [];
+    var out = [];
+    for (var i = 0; i < arr.length && out.length < 3; i++) {
+      var u = String(arr[i] || '').trim();
+      if (u) out.push(u);
+    }
+    return out;
+  }
+
   function sanitizeCreditType(val) {
     var allowed = ['installment', 'ninja', 'grace', 'custom'];
     return allowed.indexOf(val) !== -1 ? val : 'installment';
@@ -128,6 +138,7 @@
                 store: String(it.store || WM.CONFIG.STORES[0]),
                 link: String(it.link || '').trim(),
                 note: String(it.note || '').trim(),
+                images: sanitizeImages(it.images),
                 bundleId: null,
                 createdAt: it.createdAt || new Date().toISOString()
               };
@@ -258,6 +269,7 @@
       store: it.store,
       link: it.link,
       note: it.note,
+      images: sanitizeImages(it.images),
       bundleId: forceNewId ? null : it.bundleId,
       createdAt: forceNewId ? new Date().toISOString() : it.createdAt
     };
@@ -659,6 +671,7 @@
         existing.store = payload.store || WM.CONFIG.STORES[0];
         existing.link = (payload.link || '').trim();
         existing.note = (payload.note || '').trim();
+        existing.images = sanitizeImages(payload.images);
         persist(false, false);
         return existing;
       }
@@ -673,6 +686,7 @@
         store: payload.store || WM.CONFIG.STORES[0],
         link: (payload.link || '').trim(),
         note: (payload.note || '').trim(),
+        images: sanitizeImages(payload.images),
         bundleId: null,
         createdAt: new Date().toISOString()
       };

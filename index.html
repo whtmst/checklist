@@ -140,6 +140,15 @@
 
         <div class="drawer-credit-block hidden" id="drawerCreditBlock"></div>
 
+        <div class="drawer-gallery hidden" id="drawerGallery">
+          <div class="gallery-stage">
+            <img id="drawerGalleryImg" class="gallery-img" alt="Фото товара" referrerpolicy="no-referrer" loading="lazy">
+            <button type="button" class="gallery-nav gallery-prev hidden" id="galleryPrevBtn" aria-label="Предыдущее фото">‹</button>
+            <button type="button" class="gallery-nav gallery-next hidden" id="galleryNextBtn" aria-label="Следующее фото">›</button>
+          </div>
+          <div class="gallery-dots hidden" id="galleryDots"></div>
+        </div>
+
         <div class="drawer-link-wrap hidden" id="drawerLinkWrap">
           <a class="btn btn-accent drawer-link-btn" id="drawerLinkAnchor" href="#" target="_blank" rel="noopener noreferrer">
             Открыть товар ↗
@@ -281,6 +290,15 @@
         </div>
 
         <div class="form-group">
+          <label class="form-label" for="itemImageInput1">Фото товара (URL картинки, до 3 шт.)</label>
+          <div class="photo-inputs-stack" id="itemPhotoInputs">
+            <input type="url" class="input" id="itemImageInput1" placeholder="https://... (фото 1)">
+            <input type="url" class="input hidden" id="itemImageInput2" placeholder="https://... (фото 2)">
+            <input type="url" class="input hidden" id="itemImageInput3" placeholder="https://... (фото 3)">
+          </div>
+        </div>
+
+        <div class="form-group">
           <label class="form-label" for="itemNoteInput">Заметка / характеристики</label>
           <textarea class="textarea" id="itemNoteInput" rows="4" placeholder="Размер, цвет, характеристики вида «Ключ: Значение»..."></textarea>
         </div>
@@ -361,6 +379,13 @@
           <div class="form-label-row">
             <label class="form-label">Выберите 1 или несколько товаров (можно из разных вкладок) *</label>
             <span class="mono-pill" id="bundleBaseSumLabel">База: 0 ₼</span>
+          </div>
+          <div class="bundle-picker-tools">
+            <input type="search" class="input bundle-picker-search" id="bundlePickerSearch" placeholder="Поиск товара, категории или вкладки..." aria-label="Поиск товаров">
+            <label class="checkbox-label bundle-show-all-label" title="Показать товары, которые уже входят в другие кредиты">
+              <input type="checkbox" id="bundleShowUsedCheck">
+              <span>Уже в кредитах</span>
+            </label>
           </div>
           <div class="bundle-picker-list" id="bundleItemsPicker"></div>
         </div>
@@ -587,6 +612,15 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР ФОТО (LIGHTBOX) -->
+  <div class="lightbox-backdrop" id="photoLightbox" aria-hidden="true">
+    <button type="button" class="lightbox-close" id="lightboxCloseBtn" aria-label="Закрыть">✕</button>
+    <button type="button" class="lightbox-nav lightbox-prev hidden" id="lightboxPrevBtn" aria-label="Предыдущее фото">‹</button>
+    <img id="lightboxImg" class="lightbox-img" alt="Фото товара" referrerpolicy="no-referrer">
+    <button type="button" class="lightbox-nav lightbox-next hidden" id="lightboxNextBtn" aria-label="Следующее фото">›</button>
+    <div class="lightbox-counter hidden" id="lightboxCounter"></div>
   </div>
 
   <!-- Уведомления -->

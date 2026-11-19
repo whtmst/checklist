@@ -454,6 +454,10 @@
       creditBlock.classList.add('hidden');
     }
 
+    if (handlers && handlers.onRenderDrawerGallery) {
+      handlers.onRenderDrawerGallery(Array.isArray(item.images) ? item.images : []);
+    }
+
     var linkWrap = document.getElementById('drawerLinkWrap');
     var linkAnchor = document.getElementById('drawerLinkAnchor');
     if (item.link) {
