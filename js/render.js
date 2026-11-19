@@ -267,25 +267,6 @@
       var right = el('div', 'category-header-right');
       right.appendChild(el('span', 'category-sum', fmt(catSum)));
 
-      var quickAddBtn = el('button', 'icon-action', '+');
-      quickAddBtn.type = 'button';
-      quickAddBtn.title = 'Добавить позицию в эту категорию';
-      quickAddBtn.addEventListener('click', function () {
-        handlers.onAddItemInCategory(cat.id);
-      });
-
-      var editCatBtn = el('button', 'icon-action');
-      editCatBtn.type = 'button';
-      editCatBtn.title = 'Переименовать, перенести или удалить категорию';
-      editCatBtn.setAttribute('aria-label', 'Редактировать категорию');
-      editCatBtn.appendChild(createPencilIcon());
-      editCatBtn.addEventListener('click', function () {
-        handlers.onEditCategory(cat.id);
-      });
-
-      right.appendChild(quickAddBtn);
-      right.appendChild(editCatBtn);
-
       header.appendChild(left);
       header.appendChild(right);
       block.appendChild(header);
@@ -655,6 +636,130 @@
     });
   }
 
+  function renderSortableManagerList(container, entries, callbacks) {
+    container.innerHTML = '';
+    if (entries.length === 0) {
+      var empty = el('div', 'empty-state');
+      empty.appendChild(el('p', '', callbacks.emptyText || 'Список пуст.'));
+      container.appendChild(empty);
+      return;
+    }
+
+    var dragFromIdx = -1;
+
+    entries.forEach(function (entry, idx) {
+      var row = el('div', 'manager-row' + (entry.isActive ? ' is-active' : ''));
+      row.draggable = true;
+      row.dataset.index = String(idx);
+
+      row.addEventListener('dragstart', function (e) {
+        dragFromIdx = idx;
+        row.classList.add('dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(idx));
+        }
+      });
+
+      row.addEventListener('dragend', function () {
+        row.classList.remove('dragging');
+        container.querySelectorAll('.drag-over').forEach(function (n) { n.classList.remove('drag-over'); });
+      });
+
+      row.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        if (dragFromIdx !== -1 && dragFromIdx !== idx) {
+          row.classList.add('drag-over');
+        }
+      });
+
+      row.addEventListener('dragleave', function () {
+        row.classList.remove('drag-over');
+      });
+
+      row.addEventListener('drop', function (e) {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        if (dragFromIdx !== -1 && dragFromIdx !== idx) {
+          callbacks.onReorder(dragFromIdx, idx);
+        }
+        dragFromIdx = -1;
+      });
+
+      var left = el('div', 'manager-row-left');
+      left.appendChild(el('span', 'drag-handle', '⋮⋮'));
+      left.appendChild(el('span', 'manager-row-name', entry.name));
+      left.appendChild(el('span', 'manager-row-count', entry.countText));
+
+      var actions = el('div', 'manager-row-actions');
+
+      var upBtn = el('button', 'icon-action', '↑');
+      upBtn.type = 'button';
+      upBtn.title = 'Выше';
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener('click', function () { callbacks.onMove(entry.id, -1); });
+
+      var downBtn = el('button', 'icon-action', '↓');
+      downBtn.type = 'button';
+      downBtn.title = 'Ниже';
+      downBtn.disabled = idx === entries.length - 1;
+      downBtn.addEventListener('click', function () { callbacks.onMove(entry.id, 1); });
+
+      var editBtn = el('button', 'icon-action');
+      editBtn.type = 'button';
+      editBtn.title = 'Редактировать';
+      editBtn.appendChild(createPencilIcon());
+      editBtn.addEventListener('click', function () { callbacks.onEdit(entry.id); });
+
+      actions.appendChild(upBtn);
+      actions.appendChild(downBtn);
+      actions.appendChild(editBtn);
+
+      row.appendChild(left);
+      row.appendChild(actions);
+      container.appendChild(row);
+    });
+  }
+
+  function renderTabsManager(state, handlers) {
+    var list = document.getElementById('tabsManagerList');
+    var entries = state.tabs.map(function (t) {
+      return {
+        id: t.id,
+        name: t.name,
+        countText: t.items.length + ' поз.',
+        isActive: t.id === state.activeTabId
+      };
+    });
+    renderSortableManagerList(list, entries, {
+      emptyText: 'Вкладок пока нет.',
+      onMove: handlers.onMoveTab,
+      onReorder: handlers.onReorderTab,
+      onEdit: handlers.onEditTab
+    });
+  }
+
+  function renderCategoriesManager(tab, handlers) {
+    var kicker = document.getElementById('categoriesManagerKicker');
+    if (kicker) kicker.textContent = 'ВКЛАДКА // ' + tab.name.toUpperCase();
+    var list = document.getElementById('categoriesManagerList');
+    var entries = tab.categories.map(function (c) {
+      var count = tab.items.filter(function (it) { return it.categoryId === c.id; }).length;
+      return {
+        id: c.id,
+        name: c.name,
+        countText: count + ' поз.',
+        isActive: false
+      };
+    });
+    renderSortableManagerList(list, entries, {
+      emptyText: 'В этой вкладке пока нет категорий.',
+      onMove: handlers.onMoveCategory,
+      onReorder: handlers.onReorderCategory,
+      onEdit: handlers.onEditCategory
+    });
+  }
+
   WM.render = {
     renderAll: function (state, filters, handlers) {
       var tab = WM.storage.getActiveTab();
@@ -664,6 +769,8 @@
       renderChecklist(tab, filters, handlers);
     },
     renderItemDrawer: renderItemDrawer,
-    renderGlobalCreditsModal: renderGlobalCreditsModal
+    renderGlobalCreditsModal: renderGlobalCreditsModal,
+    renderTabsManager: renderTabsManager,
+    renderCategoriesManager: renderCategoriesManager
   };
 })(window);

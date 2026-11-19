@@ -480,6 +480,25 @@
       persist(false, false);
     },
 
+    moveTab: function (tabId, delta) {
+      var idx = state.tabs.findIndex(function (t) { return t.id === tabId; });
+      if (idx === -1) return false;
+      var target = idx + delta;
+      if (target < 0 || target >= state.tabs.length) return false;
+      var item = state.tabs.splice(idx, 1)[0];
+      state.tabs.splice(target, 0, item);
+      persist(false, false);
+      return true;
+    },
+
+    reorderTab: function (fromIdx, toIdx) {
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= state.tabs.length || toIdx >= state.tabs.length) return false;
+      var item = state.tabs.splice(fromIdx, 1)[0];
+      state.tabs.splice(toIdx, 0, item);
+      persist(false, false);
+      return true;
+    },
+
     deleteTab: function (tabId) {
       if (state.tabs.length <= 1) return false;
       var tab = state.tabs.find(function (t) { return t.id === tabId; });
@@ -521,6 +540,27 @@
       if (!cat) return;
       cat.collapsed = !cat.collapsed;
       persist(true, true);
+    },
+
+    moveCategory: function (catId, delta) {
+      var tab = getActiveTab();
+      var idx = tab.categories.findIndex(function (c) { return c.id === catId; });
+      if (idx === -1) return false;
+      var target = idx + delta;
+      if (target < 0 || target >= tab.categories.length) return false;
+      var item = tab.categories.splice(idx, 1)[0];
+      tab.categories.splice(target, 0, item);
+      persist(false, false);
+      return true;
+    },
+
+    reorderCategory: function (fromIdx, toIdx) {
+      var tab = getActiveTab();
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= tab.categories.length || toIdx >= tab.categories.length) return false;
+      var item = tab.categories.splice(fromIdx, 1)[0];
+      tab.categories.splice(toIdx, 0, item);
+      persist(false, false);
+      return true;
     },
 
     deleteCategory: function (catId) {

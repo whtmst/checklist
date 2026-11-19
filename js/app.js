@@ -190,6 +190,19 @@
       },
       onAddCategory: function () { openCategoryModal(null); },
       onEditCategory: function (catId) { openCategoryModal(catId); },
+      onMoveCategory: function (catId, delta) {
+        if (WM.storage.moveCategory(catId, delta)) refreshUI();
+      },
+      onReorderCategory: function (fromIdx, toIdx) {
+        if (WM.storage.reorderCategory(fromIdx, toIdx)) refreshUI();
+      },
+      onEditTab: function (tabId) { openTabModal(tabId); },
+      onMoveTab: function (tabId, delta) {
+        if (WM.storage.moveTab(tabId, delta)) refreshUI();
+      },
+      onReorderTab: function (fromIdx, toIdx) {
+        if (WM.storage.reorderTab(fromIdx, toIdx)) refreshUI();
+      },
       onToggleCategoryCollapse: function (catId) {
         WM.storage.toggleCategoryCollapse(catId);
         refreshUI();
@@ -223,6 +236,12 @@
 
     if (isModalOpen('creditsModal')) {
       WM.render.renderGlobalCreditsModal(creditsTypeFilter, handlers);
+    }
+    if (isModalOpen('tabsManagerModal')) {
+      WM.render.renderTabsManager(WM.storage.getState(), handlers);
+    }
+    if (isModalOpen('categoriesManagerModal')) {
+      WM.render.renderCategoriesManager(WM.storage.getActiveTab(), handlers);
     }
   }
 
@@ -715,9 +734,19 @@
       });
     });
 
-    document.getElementById('addTabBtn').addEventListener('click', function () { openTabModal(null); });
-    document.getElementById('manageTabBtn').addEventListener('click', function () {
-      openTabModal(WM.storage.getActiveTab().id);
+    document.getElementById('manageTabsBtn').addEventListener('click', function () {
+      WM.render.renderTabsManager(WM.storage.getState(), getCommonHandlers());
+      openModal('tabsManagerModal');
+    });
+    document.getElementById('addTabFromManagerBtn').addEventListener('click', function () {
+      openTabModal(null);
+    });
+    document.getElementById('manageCategoriesBtn').addEventListener('click', function () {
+      WM.render.renderCategoriesManager(WM.storage.getActiveTab(), getCommonHandlers());
+      openModal('categoriesManagerModal');
+    });
+    document.getElementById('addCategoryFromManagerBtn').addEventListener('click', function () {
+      openCategoryModal(null);
     });
     document.getElementById('addItemBtn').addEventListener('click', function () { openItemModal(null, null); });
     document.getElementById('addCategoryBtn').addEventListener('click', function () { openCategoryModal(null); });

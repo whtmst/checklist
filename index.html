@@ -45,8 +45,7 @@
     <nav class="tabs-bar" aria-label="Списки">
       <div class="tabs-list" id="tabsList"></div>
       <div class="tabs-controls">
-        <button type="button" class="btn btn-accent btn-sm" id="addTabBtn">+ Вкладка</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="manageTabBtn" title="Переименовать или удалить текущую вкладку">•••</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="manageTabsBtn" title="Управление вкладками (создать, порядок, редактировать)">•••</button>
       </div>
     </nav>
 
@@ -72,9 +71,12 @@
     <!-- Основные действия и фильтры -->
     <section class="toolbar">
       <div class="toolbar-primary">
-        <button type="button" class="btn btn-accent" id="addItemBtn">+ Позиция</button>
-        <button type="button" class="btn btn-secondary" id="addCategoryBtn">+ Категория</button>
-        <button type="button" class="btn btn-secondary" id="addBundleBtn">Оформить в кредит</button>
+        <div class="toolbar-primary-left">
+          <button type="button" class="btn btn-accent" id="addItemBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Позиция</span></button>
+          <button type="button" class="btn btn-secondary" id="addCategoryBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Категория</span></button>
+          <button type="button" class="btn btn-secondary" id="addBundleBtn">Оформить в кредит</button>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="manageCategoriesBtn" title="Управление категориями (порядок, переименование, перенос)">•••</button>
       </div>
 
       <div class="toolbar-filters">
@@ -215,7 +217,7 @@
             <button type="button" class="tab-chip" data-ctype="grace">Льготный</button>
             <button type="button" class="tab-chip" data-ctype="custom">Свой</button>
           </div>
-          <button type="button" class="btn btn-accent btn-sm" id="addBundleFromCreditsBtn">+ Оформить в кредит</button>
+          <button type="button" class="btn btn-accent btn-sm" id="addBundleFromCreditsBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Оформить в кредит</span></button>
         </div>
 
         <div class="global-credits-list" id="globalCreditsList"></div>
@@ -418,6 +420,46 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Управление вкладками (создать, порядок, редактировать) -->
+  <div class="modal-backdrop" id="tabsManagerModal" aria-hidden="true">
+    <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="tabsManagerTitle">
+      <div class="modal-header">
+        <div>
+          <div class="section-kicker">TABS_MANAGER</div>
+          <h3 id="tabsManagerTitle">Управление вкладками</h3>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="tabsManagerModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form">
+        <div class="manager-top-bar">
+          <span class="form-hint">Меняй порядок стрелками ↑↓ или перетаскиванием за ⋮⋮</span>
+          <button type="button" class="btn btn-accent btn-sm" id="addTabFromManagerBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Новая вкладка</span></button>
+        </div>
+        <div class="manager-list" id="tabsManagerList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Управление категориями текущей вкладки -->
+  <div class="modal-backdrop" id="categoriesManagerModal" aria-hidden="true">
+    <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="categoriesManagerTitle">
+      <div class="modal-header">
+        <div>
+          <div class="section-kicker" id="categoriesManagerKicker">CATEGORIES_MANAGER</div>
+          <h3 id="categoriesManagerTitle">Управление категориями</h3>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="categoriesManagerModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form">
+        <div class="manager-top-bar">
+          <span class="form-hint">Меняй порядок стрелками ↑↓ или перетаскиванием за ⋮⋮</span>
+          <button type="button" class="btn btn-accent btn-sm" id="addCategoryFromManagerBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Новая категория</span></button>
+        </div>
+        <div class="manager-list" id="categoriesManagerList"></div>
+      </div>
     </div>
   </div>
 
