@@ -35,6 +35,66 @@
     return svg;
   }
 
+  function createEyeIcon(isHidden) {
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
+
+    if (isHidden) {
+      var p1 = document.createElementNS(svgNS, 'path');
+      p1.setAttribute('d', 'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94');
+      var p2 = document.createElementNS(svgNS, 'path');
+      p2.setAttribute('d', 'M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19');
+      var p3 = document.createElementNS(svgNS, 'line');
+      p3.setAttribute('x1', '1'); p3.setAttribute('y1', '1'); p3.setAttribute('x2', '23'); p3.setAttribute('y2', '23');
+      svg.appendChild(p1); svg.appendChild(p2); svg.appendChild(p3);
+    } else {
+      var p = document.createElementNS(svgNS, 'path');
+      p.setAttribute('d', 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z');
+      var c = document.createElementNS(svgNS, 'circle');
+      c.setAttribute('cx', '12'); c.setAttribute('cy', '12'); c.setAttribute('r', '3');
+      svg.appendChild(p); svg.appendChild(c);
+    }
+    return svg;
+  }
+
+  function createTrashIcon() {
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
+    var p1 = document.createElementNS(svgNS, 'polyline');
+    p1.setAttribute('points', '3 6 5 6 21 6');
+    var p2 = document.createElementNS(svgNS, 'path');
+    p2.setAttribute('d', 'M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6');
+    var p3 = document.createElementNS(svgNS, 'path');
+    p3.setAttribute('d', 'M10 11v6');
+    var p4 = document.createElementNS(svgNS, 'path');
+    p4.setAttribute('d', 'M14 11v6');
+    svg.appendChild(p1); svg.appendChild(p2); svg.appendChild(p3); svg.appendChild(p4);
+    return svg;
+  }
+
+  function syncCurrencyLabels() {
+    var cur = WM.utils.getCurrency();
+    document.querySelectorAll('.js-currency-symbol').forEach(function (n) {
+      n.textContent = cur;
+    });
+  }
+
   function createStoreBadge(storeName, link) {
     if (link) {
       var a = document.createElement('a');
@@ -107,11 +167,17 @@
   }
 
   function renderTabs(state, handlers) {
+    var allBtn = document.getElementById('allTabBtn');
+    var allCount = document.getElementById('allTabCount');
+    var isAll = state.activeTabId === WM.CONFIG.ALL_TAB_ID;
+    if (allBtn) allBtn.classList.toggle('active', isAll);
+    if (allCount) allCount.textContent = String(WM.storage.getTotalItemsCount());
+
     var container = document.getElementById('tabsList');
     container.innerHTML = '';
 
     state.tabs.forEach(function (tab) {
-      var btn = el('button', 'tab-chip' + (tab.id === state.activeTabId ? ' active' : ''));
+      var btn = el('button', 'tab-chip' + (!isAll && tab.id === state.activeTabId ? ' active' : ''));
       btn.type = 'button';
       btn.appendChild(el('span', '', tab.name));
       btn.appendChild(el('span', 'tab-chip-count', String(tab.items.length)));
@@ -122,8 +188,8 @@
     });
   }
 
-  function renderSummary(tab) {
-    var totals = WM.storage.calculateTabTotals(tab);
+  function renderSummary(tab, isAllMode, state) {
+    var totals = isAllMode ? WM.storage.calculateAllTabsTotals() : WM.storage.calculateTabTotals(tab);
     var globalSummary = WM.storage.calculateGlobalCredits();
     var fmt = WM.utils.formatMoney;
 
@@ -146,17 +212,18 @@
     document.getElementById('statSpentMeta').textContent = spentParts.join(' · ');
 
     document.getElementById('statMonthly').textContent = fmt(totals.monthlyCreditTotal);
-    document.getElementById('statMonthlyMeta').textContent = 'Активных кредитов во вкладке: ' + totals.activeCreditsCount;
+    document.getElementById('statMonthlyMeta').textContent = (isAllMode ? 'Активных кредитов всего: ' : 'Активных кредитов во вкладке: ') + totals.activeCreditsCount;
 
     document.getElementById('statPlanned').textContent = fmt(totals.plannedTotal);
     document.getElementById('statPlannedMeta').textContent =
       'Нал: ' + fmt(totals.plannedCash) + ' · Кредит: ' + fmt(totals.plannedCredit);
 
-    document.getElementById('footerStats').textContent =
-      tab.name.toUpperCase() + ' // КАТЕГОРИЙ: ' + tab.categories.length + ' · ПОЗИЦИЙ: ' + tab.items.length;
+    document.getElementById('footerStats').textContent = isAllMode
+      ? ('ВСЕ ВКЛАДКИ // ВКЛАДОК: ' + state.tabs.length + ' · ПОЗИЦИЙ: ' + totals.totalItemsCount)
+      : (tab.name.toUpperCase() + ' // КАТЕГОРИЙ: ' + tab.categories.length + ' · ПОЗИЦИЙ: ' + tab.items.length);
   }
 
-  function renderFilterOptions(tab, filters) {
+  function renderFilterOptions(tab, filters, isAllMode, state) {
     var prioSelect = document.getElementById('priorityFilter');
     if (prioSelect.options.length <= 1) {
       WM.CONFIG.PRIORITIES.forEach(function (p) {
@@ -171,15 +238,18 @@
     var storeSelect = document.getElementById('storeFilter');
     var seen = {};
     var stores = [];
-    WM.CONFIG.STORES.forEach(function (s) {
-      seen[s] = true;
-      stores.push(s);
+    WM.storage.getStores(false).forEach(function (s) {
+      seen[s.name] = true;
+      stores.push(s.name);
     });
-    tab.items.forEach(function (it) {
-      if (it.store && !seen[it.store]) {
-        seen[it.store] = true;
-        stores.push(it.store);
-      }
+    var sourceTabs = isAllMode ? state.tabs : [tab];
+    sourceTabs.forEach(function (t) {
+      t.items.forEach(function (it) {
+        if (it.store && !seen[it.store]) {
+          seen[it.store] = true;
+          stores.push(it.store);
+        }
+      });
     });
 
     storeSelect.innerHTML = '<option value="all">Все магазины</option>';
@@ -316,7 +386,93 @@
     }
   }
 
-  function renderItemRow(item, handlers) {
+  function sortItemsList(items, sortMode) {
+    var mode = sortMode || 'priority';
+    return items.slice().sort(function (a, b) {
+      var ia = a.item || a;
+      var ib = b.item || b;
+      if (mode === 'price_desc') {
+        if (ib.price !== ia.price) return ib.price - ia.price;
+        return ia.title.localeCompare(ib.title, 'ru');
+      }
+      if (mode === 'price_asc') {
+        if (ia.price !== ib.price) return ia.price - ib.price;
+        return ia.title.localeCompare(ib.title, 'ru');
+      }
+      if (mode === 'newest') {
+        var ta = Date.parse(ia.createdAt || '') || 0;
+        var tb = Date.parse(ib.createdAt || '') || 0;
+        if (tb !== ta) return tb - ta;
+        return ia.title.localeCompare(ib.title, 'ru');
+      }
+      if (mode === 'alpha') {
+        return ia.title.localeCompare(ib.title, 'ru');
+      }
+      if (ia.checked !== ib.checked) return ia.checked ? 1 : -1;
+      return WM.utils.getPriority(ia.priority).rank - WM.utils.getPriority(ib.priority).rank;
+    });
+  }
+
+  function renderAllItemsFlat(state, filters, handlers) {
+    var root = document.getElementById('checklistRoot');
+    root.innerHTML = '';
+
+    var entries = [];
+    state.tabs.forEach(function (tab) {
+      var catMap = {};
+      tab.categories.forEach(function (c) { catMap[c.id] = c.name; });
+      tab.items.forEach(function (it) {
+        if (itemMatchesFilters(it, filters)) {
+          var catName = catMap[it.categoryId] || '';
+          entries.push({
+            tab: tab,
+            item: it,
+            originLabel: catName ? (tab.name + ' · ' + catName) : tab.name
+          });
+        }
+      });
+    });
+
+    var totalAll = WM.storage.getTotalItemsCount();
+    if (totalAll === 0) {
+      var empty = el('div', 'empty-state');
+      empty.appendChild(el('h2', '', 'Список пока пуст'));
+      empty.appendChild(el('p', '', 'Перейди в нужную вкладку, создай категорию и добавь первую позицию.'));
+      root.appendChild(empty);
+      return;
+    }
+
+    if (entries.length === 0) {
+      var noMatch = el('div', 'empty-state');
+      noMatch.appendChild(el('h2', '', 'Ничего не найдено'));
+      noMatch.appendChild(el('p', '', 'По выбранным фильтрам позиций нет во всех вкладках.'));
+      var resetBtn = el('button', 'btn btn-secondary', 'Сбросить фильтры');
+      resetBtn.type = 'button';
+      resetBtn.addEventListener('click', handlers.onResetFilters);
+      noMatch.appendChild(resetBtn);
+      root.appendChild(noMatch);
+      return;
+    }
+
+    var sorted = sortItemsList(entries, filters.sort);
+    var sum = 0;
+    sorted.forEach(function (e) { sum += e.item.price; });
+
+    var block = el('section', 'all-items-flat-block');
+    var head = el('div', 'all-items-flat-head');
+    head.appendChild(el('span', '', 'Все позиции · ' + sorted.length + ' из ' + totalAll));
+    head.appendChild(el('span', 'category-sum', WM.utils.formatMoney(sum)));
+    block.appendChild(head);
+
+    var wrap = el('div', 'category-items');
+    sorted.forEach(function (entry) {
+      wrap.appendChild(renderItemRow(entry.item, handlers, entry.originLabel));
+    });
+    block.appendChild(wrap);
+    root.appendChild(block);
+  }
+
+  function renderItemRow(item, handlers, originLabel) {
     var fmt = WM.utils.formatMoney;
     var prio = WM.utils.getPriority(item.priority);
     var bundle = WM.storage.getBundleForItem(item.id);
@@ -341,6 +497,9 @@
     });
 
     var badges = el('div', 'item-badges');
+    if (originLabel) {
+      badges.appendChild(el('span', 'badge badge-origin', originLabel));
+    }
     badges.appendChild(el('span', 'badge badge-prio-' + prio.id, prio.label));
     if (bundle) {
       badges.appendChild(createCreditBadge(bundle.type, bundle.customType, isSingleCredit ? null : bundle.name));
@@ -813,12 +972,14 @@
     return '';
   }
 
-  function renderGlobalSearch(query, activeIdx, handlers) {
+  function renderGlobalSearch(query, activeIdx, chipFilters, handlers) {
     var state = WM.storage.getState();
     var metaEl = document.getElementById('globalSearchMeta');
     var listEl = document.getElementById('globalSearchResults');
     listEl.innerHTML = '';
 
+    var cf = chipFilters || {};
+    var hasChip = !!(cf.status || cf.pay);
     var raw = String(query || '').trim().toLowerCase();
     var tokens = raw ? raw.split(/\s+/).filter(Boolean) : [];
     var allEntries = [];
@@ -843,21 +1004,24 @@
     });
 
     var matches;
-    if (tokens.length === 0) {
-      // Без запроса показываем последние добавленные позиции для быстрого доступа
+    if (tokens.length === 0 && !hasChip) {
       matches = allEntries.slice().sort(function (a, b) {
         return (Date.parse(b.item.createdAt || '') || 0) - (Date.parse(a.item.createdAt || '') || 0);
       }).slice(0, 8);
       metaEl.textContent = 'ВСЕГО ПОЗИЦИЙ ВО ВСЕХ ВКЛАДКАХ: ' + allEntries.length + (matches.length ? ' · НЕДАВНИЕ:' : '');
     } else {
       matches = allEntries.filter(function (entry) {
+        if (cf.status === 'unchecked' && entry.item.checked) return false;
+        if (cf.status === 'checked' && !entry.item.checked) return false;
+        if (cf.pay === 'credit' && !entry.bundle) return false;
+        if (cf.pay === 'cash' && entry.bundle) return false;
         return tokens.every(function (tok) { return entry.haystack.indexOf(tok) !== -1; });
       });
       metaEl.textContent = 'НАЙДЕНО: ' + matches.length + ' ИЗ ' + allEntries.length;
     }
 
     if (matches.length === 0) {
-      listEl.appendChild(el('div', 'spotlight-empty', tokens.length ? 'Ничего не найдено по всем вкладкам.' : 'Позиций пока нет.'));
+      listEl.appendChild(el('div', 'spotlight-empty', (tokens.length || hasChip) ? 'Ничего не найдено по всем вкладкам.' : 'Позиций пока нет.'));
       return [];
     }
 
@@ -901,26 +1065,174 @@
     return matches;
   }
 
+  function renderGeneralSettings(handlers) {
+    var cur = WM.storage.getCurrency();
+    var curSel = document.getElementById('currencyPresetSelect');
+    var curCustomGroup = document.getElementById('customCurrencyGroup');
+    var curCustomInput = document.getElementById('customCurrencyInput');
+
+    if (curSel) {
+      curSel.innerHTML = '';
+      var isPreset = false;
+      WM.CONFIG.CURRENCY_PRESETS.forEach(function (p) {
+        var opt = document.createElement('option');
+        opt.value = p.symbol;
+        opt.textContent = p.label;
+        if (p.symbol === cur) isPreset = true;
+        curSel.appendChild(opt);
+      });
+      var customOpt = document.createElement('option');
+      customOpt.value = '__custom__';
+      customOpt.textContent = 'Свой символ...';
+      curSel.appendChild(customOpt);
+
+      if (isPreset) {
+        curSel.value = cur;
+        if (curCustomGroup) curCustomGroup.classList.add('hidden');
+      } else {
+        curSel.value = '__custom__';
+        if (curCustomGroup) curCustomGroup.classList.remove('hidden');
+        if (curCustomInput && document.activeElement !== curCustomInput) {
+          curCustomInput.value = cur;
+        }
+      }
+    }
+
+    // Магазины
+    var storesList = document.getElementById('storesPrefsList');
+    if (storesList) {
+      storesList.innerHTML = '';
+      WM.storage.getStores(true).forEach(function (st) {
+        var row = el('div', 'pref-row' + (st.hidden ? ' is-hidden-pref' : ''));
+        var left = el('div', 'pref-row-left');
+        left.appendChild(el('span', 'pref-row-name', st.name));
+        if (st.builtin) left.appendChild(el('span', 'pref-row-tag', 'Базовый'));
+        row.appendChild(left);
+
+        var actions = el('div', 'pref-row-actions');
+        var renameBtn = el('button', 'icon-action');
+        renameBtn.type = 'button';
+        renameBtn.title = 'Переименовать';
+        renameBtn.appendChild(createPencilIcon());
+        renameBtn.addEventListener('click', function () { handlers.onRenameStorePref(st.id, st.name); });
+        actions.appendChild(renameBtn);
+
+        var eyeBtn = el('button', 'icon-action');
+        eyeBtn.type = 'button';
+        eyeBtn.title = st.hidden ? 'Показать в списке' : 'Скрыть из списка';
+        eyeBtn.appendChild(createEyeIcon(st.hidden));
+        eyeBtn.addEventListener('click', function () { handlers.onToggleStorePref(st.id); });
+        actions.appendChild(eyeBtn);
+
+        if (!st.builtin) {
+          var delBtn = el('button', 'icon-action icon-action--danger');
+          delBtn.type = 'button';
+          delBtn.title = 'Удалить из списка';
+          delBtn.appendChild(createTrashIcon());
+          delBtn.addEventListener('click', function () { handlers.onDeleteStorePref(st.id, st.name); });
+          actions.appendChild(delBtn);
+        }
+
+        row.appendChild(actions);
+        storesList.appendChild(row);
+      });
+    }
+
+    // Типы кредитов
+    var ctList = document.getElementById('creditTypesPrefsList');
+    if (ctList) {
+      ctList.innerHTML = '';
+      var ctPrefs = WM.storage.getCreditTypePrefs();
+
+      ctPrefs.builtins.forEach(function (bt) {
+        var row = el('div', 'pref-row' + (bt.hidden ? ' is-hidden-pref' : ''));
+        var left = el('div', 'pref-row-left');
+        left.appendChild(el('span', 'pref-row-name', bt.label));
+        left.appendChild(el('span', 'pref-row-tag', 'Базовый'));
+        row.appendChild(left);
+
+        var actions = el('div', 'pref-row-actions');
+        var eyeBtn = el('button', 'icon-action');
+        eyeBtn.type = 'button';
+        eyeBtn.title = bt.hidden ? 'Показать в списке' : 'Скрыть из списка';
+        eyeBtn.appendChild(createEyeIcon(bt.hidden));
+        eyeBtn.addEventListener('click', function () { handlers.onToggleBuiltinCreditPref(bt.id); });
+        actions.appendChild(eyeBtn);
+
+        row.appendChild(actions);
+        ctList.appendChild(row);
+      });
+
+      ctPrefs.customs.forEach(function (ct) {
+        var row = el('div', 'pref-row' + (ct.hidden ? ' is-hidden-pref' : ''));
+        var left = el('div', 'pref-row-left');
+        left.appendChild(el('span', 'pref-row-name', ct.name));
+        left.appendChild(el('span', 'pref-row-tag', 'Свой'));
+        row.appendChild(left);
+
+        var actions = el('div', 'pref-row-actions');
+        var renameBtn = el('button', 'icon-action');
+        renameBtn.type = 'button';
+        renameBtn.title = 'Переименовать';
+        renameBtn.appendChild(createPencilIcon());
+        renameBtn.addEventListener('click', function () { handlers.onRenameCustomCreditPref(ct.id, ct.name); });
+        actions.appendChild(renameBtn);
+
+        var eyeBtn = el('button', 'icon-action');
+        eyeBtn.type = 'button';
+        eyeBtn.title = ct.hidden ? 'Показать в списке' : 'Скрыть из списка';
+        eyeBtn.appendChild(createEyeIcon(ct.hidden));
+        eyeBtn.addEventListener('click', function () { handlers.onToggleCustomCreditPref(ct.id); });
+        actions.appendChild(eyeBtn);
+
+        var delBtn = el('button', 'icon-action icon-action--danger');
+        delBtn.type = 'button';
+        delBtn.title = 'Удалить';
+        delBtn.appendChild(createTrashIcon());
+        delBtn.addEventListener('click', function () { handlers.onDeleteCustomCreditPref(ct.id, ct.name); });
+        actions.appendChild(delBtn);
+
+        row.appendChild(actions);
+        ctList.appendChild(row);
+      });
+    }
+  }
+
   WM.render = {
     renderAll: function (state, filters, handlers) {
+      syncCurrencyLabels();
+      var isAllMode = WM.storage.isAllTabActive();
       var tab = WM.storage.getActiveTab();
       renderTabs(state, handlers);
-      renderSummary(tab);
-      renderFilterOptions(tab, filters);
-      renderChecklist(tab, filters, handlers);
+      renderSummary(tab, isAllMode, state);
+      renderFilterOptions(tab, filters, isAllMode, state);
 
+      var addItemBtn = document.getElementById('addItemBtn');
+      var addCatBtn = document.getElementById('addCategoryBtn');
+      var manageCatsBtn = document.getElementById('manageCategoriesBtn');
       var toggleAllBtn = document.getElementById('toggleAllCategoriesBtn');
-      if (toggleAllBtn) {
-        if (tab.categories.length === 0) {
-          toggleAllBtn.classList.add('hidden');
-        } else {
-          toggleAllBtn.classList.remove('hidden');
-          var allCollapsed = tab.categories.every(function (c) { return !!c.collapsed; });
-          toggleAllBtn.dataset.allCollapsed = allCollapsed ? '1' : '0';
-          toggleAllBtn.title = allCollapsed ? 'Развернуть все категории' : 'Свернуть все категории';
-          toggleAllBtn.innerHTML = allCollapsed
-            ? '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
-            : '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+      if (addItemBtn) addItemBtn.classList.toggle('hidden', isAllMode);
+      if (addCatBtn) addCatBtn.classList.toggle('hidden', isAllMode);
+      if (manageCatsBtn) manageCatsBtn.classList.toggle('hidden', isAllMode);
+
+      if (isAllMode) {
+        if (toggleAllBtn) toggleAllBtn.classList.add('hidden');
+        renderAllItemsFlat(state, filters, handlers);
+      } else {
+        renderChecklist(tab, filters, handlers);
+        if (toggleAllBtn) {
+          if (tab.categories.length === 0) {
+            toggleAllBtn.classList.add('hidden');
+          } else {
+            toggleAllBtn.classList.remove('hidden');
+            var allCollapsed = tab.categories.every(function (c) { return !!c.collapsed; });
+            toggleAllBtn.dataset.allCollapsed = allCollapsed ? '1' : '0';
+            toggleAllBtn.title = allCollapsed ? 'Развернуть все категории' : 'Свернуть все категории';
+            toggleAllBtn.innerHTML = allCollapsed
+              ? '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+              : '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+          }
         }
       }
     },
@@ -928,6 +1240,7 @@
     renderGlobalCreditsModal: renderGlobalCreditsModal,
     renderTabsManager: renderTabsManager,
     renderCategoriesManager: renderCategoriesManager,
-    renderGlobalSearch: renderGlobalSearch
+    renderGlobalSearch: renderGlobalSearch,
+    renderGeneralSettings: renderGeneralSettings
   };
 })(window);

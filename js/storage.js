@@ -20,6 +20,128 @@
     return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
+  function createDefaultStores() {
+    return [
+      { id: 'st_local', name: 'Местный рынок', hidden: false, builtin: true },
+      { id: 'st_birmarket', name: 'Birmarket', hidden: false, builtin: true },
+      { id: 'st_temu', name: 'Temu', hidden: false, builtin: true },
+      { id: 'st_ozon', name: 'Ozon', hidden: false, builtin: true }
+    ];
+  }
+
+  function createDefaultPrefs() {
+    return {
+      currency: WM.CONFIG.CURRENCY || '₼',
+      stores: createDefaultStores(),
+      hiddenCreditTypes: [],
+      customCreditTypes: []
+    };
+  }
+
+  function sanitizePrefs(rawPrefs, tabs, bundles) {
+    var def = createDefaultPrefs();
+    var p = (rawPrefs && typeof rawPrefs === 'object') ? rawPrefs : {};
+    var currency = String(p.currency || '').trim().slice(0, 5) || def.currency;
+
+    var stores = [];
+    var seenStoreIds = {};
+    var seenStoreNames = {};
+
+    if (Array.isArray(p.stores) && p.stores.length > 0) {
+      p.stores.forEach(function (s) {
+        if (!s || typeof s !== 'object') return;
+        var name = String(s.name || '').trim();
+        var key = normalizeName(name);
+        if (!name || !key || seenStoreNames[key]) return;
+        var id = String(s.id || WM.utils.uid('st'));
+        if (seenStoreIds[id]) id = WM.utils.uid('st');
+        seenStoreIds[id] = true;
+        seenStoreNames[key] = true;
+        stores.push({
+          id: id,
+          name: name,
+          hidden: !!s.hidden,
+          builtin: !!s.builtin
+        });
+      });
+    } else {
+      stores = createDefaultStores();
+      stores.forEach(function (s) {
+        seenStoreIds[s.id] = true;
+        seenStoreNames[normalizeName(s.name)] = true;
+      });
+    }
+
+    // Автоматически подхватываем пользовательские магазины из уже существующих карточек
+    if (Array.isArray(tabs)) {
+      tabs.forEach(function (t) {
+        if (!Array.isArray(t.items)) return;
+        t.items.forEach(function (it) {
+          var sName = String(it.store || '').trim();
+          var key = normalizeName(sName);
+          if (sName && key && !seenStoreNames[key]) {
+            seenStoreNames[key] = true;
+            stores.push({
+              id: WM.utils.uid('st'),
+              name: sName,
+              hidden: false,
+              builtin: false
+            });
+          }
+        });
+      });
+    }
+
+    var allowedBuiltinCredit = ['installment', 'ninja', 'grace'];
+    var hiddenCreditTypes = Array.isArray(p.hiddenCreditTypes)
+      ? p.hiddenCreditTypes.filter(function (id, idx, arr) {
+          return allowedBuiltinCredit.indexOf(id) !== -1 && arr.indexOf(id) === idx;
+        })
+      : [];
+
+    var customCreditTypes = [];
+    var seenCtNames = {};
+    if (Array.isArray(p.customCreditTypes)) {
+      p.customCreditTypes.forEach(function (ct) {
+        if (!ct || typeof ct !== 'object') return;
+        var name = String(ct.name || '').trim();
+        var key = normalizeName(name);
+        if (!name || !key || seenCtNames[key]) return;
+        seenCtNames[key] = true;
+        customCreditTypes.push({
+          id: String(ct.id || WM.utils.uid('ct')),
+          name: name,
+          hidden: !!ct.hidden
+        });
+      });
+    }
+
+    // Автоматически подхватываем пользовательские названия из уже оформленных кредитов
+    if (Array.isArray(bundles)) {
+      bundles.forEach(function (b) {
+        if (b && b.type === 'custom' && b.customType) {
+          var name = String(b.customType).trim();
+          var key = normalizeName(name);
+          if (name && key && !seenCtNames[key]) {
+            seenCtNames[key] = true;
+            customCreditTypes.push({
+              id: WM.utils.uid('ct'),
+              name: name,
+              hidden: false
+            });
+          }
+        }
+      });
+    }
+
+    return {
+      currency: currency,
+      stores: stores,
+      hiddenCreditTypes: hiddenCreditTypes,
+      customCreditTypes: customCreditTypes
+    };
+  }
+
   function createEmptyTab(name) {
     var ts = nowIso();
     return {
@@ -41,6 +163,7 @@
       activeTabId: mainTab.id,
       cardLimit: 0,
       monthlyIncome: 0,
+      prefs: createDefaultPrefs(),
       deleted: {},
       creditBundles: [],
       tabs: [mainTab]
@@ -199,7 +322,8 @@
       });
     });
 
-    var activeExists = tabs.some(function (t) { return t.id === raw.activeTabId; });
+    var isAllTab = raw.activeTabId === WM.CONFIG.ALL_TAB_ID;
+    var activeExists = isAllTab || tabs.some(function (t) { return t.id === raw.activeTabId; });
     return {
       version: 4,
       updatedAt: fallbackTs,
@@ -207,6 +331,7 @@
       activeTabId: activeExists ? raw.activeTabId : tabs[0].id,
       cardLimit: WM.utils.toNumber(raw.cardLimit),
       monthlyIncome: WM.utils.toNumber(raw.monthlyIncome),
+      prefs: sanitizePrefs(raw.prefs, tabs, globalBundles),
       deleted: sanitizeDeleted(raw.deleted),
       creditBundles: globalBundles,
       tabs: tabs
@@ -414,10 +539,11 @@
     // 4. Объединяем глобальные кредиты
     var mergedBundles = mergeEntityArrays(loc.creditBundles, rem.creditBundles, mergedDeleted, localNewer);
 
-    // 5. Мета-поля (лимит карты и доход)
+    // 5. Мета-поля (лимит карты, доход и общие настройки)
     var locMetaNewer = parseTs(loc.metaUpdatedAt) >= parseTs(rem.metaUpdatedAt);
     var cardLimit = locMetaNewer ? (loc.cardLimit || rem.cardLimit) : (rem.cardLimit || loc.cardLimit);
     var monthlyIncome = locMetaNewer ? (loc.monthlyIncome || rem.monthlyIncome) : (rem.monthlyIncome || loc.monthlyIncome);
+    var winningPrefs = locMetaNewer ? loc.prefs : rem.prefs;
 
     return sanitizeState({
       version: 4,
@@ -426,6 +552,7 @@
       activeTabId: resolvedActiveTabId,
       cardLimit: cardLimit,
       monthlyIncome: monthlyIncome,
+      prefs: winningPrefs,
       deleted: mergedDeleted,
       creditBundles: mergedBundles,
       tabs: mergedTabs
@@ -465,12 +592,82 @@
     }
   }
 
+  function isAllTabActive() {
+    return state.activeTabId === WM.CONFIG.ALL_TAB_ID;
+  }
+
   function getActiveTab() {
     for (var i = 0; i < state.tabs.length; i++) {
       if (state.tabs[i].id === state.activeTabId) return state.tabs[i];
     }
-    state.activeTabId = state.tabs[0].id;
+    if (!isAllTabActive()) {
+      state.activeTabId = state.tabs[0].id;
+    }
     return state.tabs[0];
+  }
+
+  function getTotalItemsCount() {
+    var total = 0;
+    state.tabs.forEach(function (t) { total += t.items.length; });
+    return total;
+  }
+
+  function calculateAllTabsTotals() {
+    var spentTotal = 0;
+    var spentCash = 0;
+    var spentCredit = 0;
+    var monthlyCreditTotal = 0;
+    var activeCreditsCount = 0;
+    var plannedTotal = 0;
+    var plannedCash = 0;
+    var plannedCredit = 0;
+    var totalItemsCount = 0;
+    var checkedItemsCount = 0;
+
+    var bundledItemSet = {};
+    state.creditBundles.forEach(function (b) {
+      b.itemIds.forEach(function (id) { bundledItemSet[id] = b.id; });
+    });
+
+    state.tabs.forEach(function (tab) {
+      tab.items.forEach(function (it) {
+        totalItemsCount++;
+        if (it.checked) checkedItemsCount++;
+        if (bundledItemSet[it.id]) return;
+        plannedTotal += it.price;
+        plannedCash += it.price;
+        if (it.checked) {
+          spentTotal += it.price;
+          spentCash += it.price;
+        }
+      });
+    });
+
+    state.creditBundles.forEach(function (b) {
+      plannedTotal += b.totalAmount;
+      plannedCredit += b.totalAmount;
+      if (b.checked) {
+        spentTotal += b.totalAmount;
+        spentCredit += b.totalAmount;
+        activeCreditsCount++;
+        if (b.type !== 'grace') {
+          monthlyCreditTotal += b.monthlyPayment;
+        }
+      }
+    });
+
+    return {
+      spentTotal: WM.utils.toNumber(spentTotal),
+      spentCash: WM.utils.toNumber(spentCash),
+      spentCredit: WM.utils.toNumber(spentCredit),
+      monthlyCreditTotal: WM.utils.toNumber(monthlyCreditTotal),
+      activeCreditsCount: activeCreditsCount,
+      plannedTotal: WM.utils.toNumber(plannedTotal),
+      plannedCash: WM.utils.toNumber(plannedCash),
+      plannedCredit: WM.utils.toNumber(plannedCredit),
+      checkedItemsCount: checkedItemsCount,
+      totalItemsCount: totalItemsCount
+    };
   }
 
   function findItemAcrossTabs(itemId) {
@@ -696,12 +893,219 @@
   WM.storage = {
     load: load,
     getState: function () { return state; },
+    isAllTabActive: isAllTabActive,
     getActiveTab: getActiveTab,
+    getTotalItemsCount: getTotalItemsCount,
     findItemAcrossTabs: findItemAcrossTabs,
     getBundleForItem: getBundleForItem,
     getBundleDetails: getBundleDetails,
     calculateTabTotals: calculateTabTotals,
+    calculateAllTabsTotals: calculateAllTabsTotals,
     calculateGlobalCredits: calculateGlobalCredits,
+
+    getPrefs: function () {
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      return state.prefs;
+    },
+
+    getCurrency: function () {
+      var p = state.prefs || createDefaultPrefs();
+      return p.currency || WM.CONFIG.CURRENCY || '₼';
+    },
+
+    setCurrency: function (symbol) {
+      var clean = String(symbol || '').trim().slice(0, 5);
+      if (!clean) return false;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      state.prefs.currency = clean;
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
+    getStores: function (includeHidden) {
+      var p = state.prefs || createDefaultPrefs();
+      var list = Array.isArray(p.stores) ? p.stores : createDefaultStores();
+      return includeHidden ? list.slice() : list.filter(function (s) { return !s.hidden; });
+    },
+
+    ensureStoreInPrefs: function (storeName) {
+      var clean = String(storeName || '').trim();
+      var key = normalizeName(clean);
+      if (!clean || !key) return null;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      var found = state.prefs.stores.find(function (s) { return normalizeName(s.name) === key; });
+      if (found) {
+        if (found.hidden) {
+          found.hidden = false;
+          state.metaUpdatedAt = nowIso();
+        }
+        return found;
+      }
+      var created = { id: WM.utils.uid('st'), name: clean, hidden: false, builtin: false };
+      state.prefs.stores.push(created);
+      state.metaUpdatedAt = nowIso();
+      return created;
+    },
+
+    addCustomStore: function (name) {
+      var clean = String(name || '').trim();
+      var key = normalizeName(clean);
+      if (!clean || !key) return null;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      if (state.prefs.stores.some(function (s) { return normalizeName(s.name) === key; })) {
+        return null;
+      }
+      var created = { id: WM.utils.uid('st'), name: clean, hidden: false, builtin: false };
+      state.prefs.stores.push(created);
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return created;
+    },
+
+    renameStore: function (storeId, newName) {
+      var clean = String(newName || '').trim();
+      var key = normalizeName(clean);
+      if (!clean || !key || !state.prefs) return false;
+      var target = state.prefs.stores.find(function (s) { return s.id === storeId; });
+      if (!target) return false;
+      var dup = state.prefs.stores.some(function (s) {
+        return s.id !== storeId && normalizeName(s.name) === key;
+      });
+      if (dup) return false;
+      var oldKey = normalizeName(target.name);
+      target.name = clean;
+      // Обновляем название магазина на всех существующих карточках
+      var ts = nowIso();
+      state.tabs.forEach(function (t) {
+        t.items.forEach(function (it) {
+          if (normalizeName(it.store) === oldKey) {
+            it.store = clean;
+            it.updatedAt = ts;
+          }
+        });
+      });
+      state.metaUpdatedAt = ts;
+      persist(false, false);
+      return true;
+    },
+
+    toggleStoreHidden: function (storeId) {
+      if (!state.prefs) return false;
+      var target = state.prefs.stores.find(function (s) { return s.id === storeId; });
+      if (!target) return false;
+      target.hidden = !target.hidden;
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
+    deleteStore: function (storeId) {
+      if (!state.prefs) return false;
+      var target = state.prefs.stores.find(function (s) { return s.id === storeId; });
+      if (!target || target.builtin) return false;
+      state.prefs.stores = state.prefs.stores.filter(function (s) { return s.id !== storeId; });
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
+    getCreditTypePrefs: function () {
+      var p = state.prefs || createDefaultPrefs();
+      var hiddenMap = {};
+      (p.hiddenCreditTypes || []).forEach(function (id) { hiddenMap[id] = true; });
+      var builtins = [
+        { id: 'installment', label: 'Рассрочка (таксит 0%)', shortLabel: 'Рассрочка', hidden: !!hiddenMap['installment'] },
+        { id: 'ninja', label: 'Ninja (разделение с %)', shortLabel: 'Ninja', hidden: !!hiddenMap['ninja'] },
+        { id: 'grace', label: 'Льготный период', shortLabel: 'Льготный', hidden: !!hiddenMap['grace'] }
+      ];
+      return {
+        builtins: builtins,
+        customs: Array.isArray(p.customCreditTypes) ? p.customCreditTypes.slice() : []
+      };
+    },
+
+    toggleBuiltinCreditHidden: function (typeId) {
+      var allowed = ['installment', 'ninja', 'grace'];
+      if (allowed.indexOf(typeId) === -1) return false;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      var idx = state.prefs.hiddenCreditTypes.indexOf(typeId);
+      if (idx === -1) state.prefs.hiddenCreditTypes.push(typeId);
+      else state.prefs.hiddenCreditTypes.splice(idx, 1);
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
+    ensureCustomCreditType: function (name) {
+      var clean = String(name || '').trim();
+      var key = normalizeName(clean);
+      if (!clean || !key) return null;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      var found = state.prefs.customCreditTypes.find(function (c) { return normalizeName(c.name) === key; });
+      if (found) return found;
+      var created = { id: WM.utils.uid('ct'), name: clean, hidden: false };
+      state.prefs.customCreditTypes.push(created);
+      state.metaUpdatedAt = nowIso();
+      return created;
+    },
+
+    addCustomCreditType: function (name) {
+      var clean = String(name || '').trim();
+      var key = normalizeName(clean);
+      if (!clean || !key) return null;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      if (state.prefs.customCreditTypes.some(function (c) { return normalizeName(c.name) === key; })) {
+        return null;
+      }
+      var created = { id: WM.utils.uid('ct'), name: clean, hidden: false };
+      state.prefs.customCreditTypes.push(created);
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return created;
+    },
+
+    renameCustomCreditType: function (ctId, newName) {
+      var clean = String(newName || '').trim();
+      var key = normalizeName(clean);
+      if (!clean || !key || !state.prefs) return false;
+      var target = state.prefs.customCreditTypes.find(function (c) { return c.id === ctId; });
+      if (!target) return false;
+      var dup = state.prefs.customCreditTypes.some(function (c) {
+        return c.id !== ctId && normalizeName(c.name) === key;
+      });
+      if (dup) return false;
+      var oldKey = normalizeName(target.name);
+      target.name = clean;
+      var ts = nowIso();
+      state.creditBundles.forEach(function (b) {
+        if (b.type === 'custom' && normalizeName(b.customType) === oldKey) {
+          b.customType = clean;
+          b.updatedAt = ts;
+        }
+      });
+      state.metaUpdatedAt = ts;
+      persist(false, false);
+      return true;
+    },
+
+    toggleCustomCreditHidden: function (ctId) {
+      if (!state.prefs) return false;
+      var target = state.prefs.customCreditTypes.find(function (c) { return c.id === ctId; });
+      if (!target) return false;
+      target.hidden = !target.hidden;
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
+    deleteCustomCreditType: function (ctId) {
+      if (!state.prefs) return false;
+      state.prefs.customCreditTypes = state.prefs.customCreditTypes.filter(function (c) { return c.id !== ctId; });
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
     mergeStates: mergeStates,
 
     hasTabName: function (name, excludeTabId) {
@@ -759,7 +1163,7 @@
     },
 
     setActiveTab: function (tabId) {
-      if (state.tabs.some(function (t) { return t.id === tabId; })) {
+      if (tabId === WM.CONFIG.ALL_TAB_ID || state.tabs.some(function (t) { return t.id === tabId; })) {
         state.activeTabId = tabId;
         persist(true, true);
       }
@@ -936,12 +1340,12 @@
     },
 
     transferItem: function (itemId, targetTabId, targetCatIdOrNew, mode) {
-      var srcTab = getActiveTab();
+      var foundSrc = findItemAcrossTabs(itemId);
+      var srcTab = foundSrc ? foundSrc.tab : getActiveTab();
       var dstTab = state.tabs.find(function (t) { return t.id === targetTabId; });
-      if (!dstTab || dstTab.id === srcTab.id) return false;
+      if (!dstTab || !foundSrc || dstTab.id === srcTab.id) return false;
 
-      var item = srcTab.items.find(function (it) { return it.id === itemId; });
-      if (!item) return false;
+      var item = foundSrc.item;
 
       var dstCatId = targetCatIdOrNew;
       if (!dstCatId || dstCatId === '__create_same__') {
@@ -971,8 +1375,9 @@
     },
 
     saveItem: function (payload) {
-      var tab = getActiveTab();
-      var existing = payload.id ? tab.items.find(function (it) { return it.id === payload.id; }) : null;
+      var foundExisting = payload.id ? findItemAcrossTabs(payload.id) : null;
+      var tab = foundExisting ? foundExisting.tab : getActiveTab();
+      var existing = foundExisting ? foundExisting.item : null;
       var ts = nowIso();
 
       if (existing) {

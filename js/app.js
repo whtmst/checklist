@@ -14,6 +14,8 @@
   };
   var spotlightMatches = [];
   var spotlightIdx = 0;
+  var spotlightChipFilters = { status: '', pay: '' };
+  var settingsActiveTab = 'general';
 
   var creditsTypeFilter = 'all';
   var viewingItemId = null;
@@ -257,11 +259,10 @@
   }
 
   function openItemDrawer(itemId) {
-    var tab = WM.storage.getActiveTab();
-    var item = tab.items.find(function (x) { return x.id === itemId; });
-    if (!item) return;
+    var found = WM.storage.findItemAcrossTabs(itemId);
+    if (!found) return;
     viewingItemId = itemId;
-    WM.render.renderItemDrawer(item, tab, getCommonHandlers());
+    WM.render.renderItemDrawer(found.item, found.tab, getCommonHandlers());
     var drawer = document.getElementById('itemDetailDrawer');
     drawer.classList.add('open');
     drawer.setAttribute('aria-hidden', 'false');
@@ -437,10 +438,12 @@
     setTimeout(updateTabsScrollArrows, 0);
 
     if (viewingItemId) {
-      var tab = WM.storage.getActiveTab();
-      var item = tab.items.find(function (x) { return x.id === viewingItemId; });
-      if (item) WM.render.renderItemDrawer(item, tab, handlers);
+      var foundView = WM.storage.findItemAcrossTabs(viewingItemId);
+      if (foundView) WM.render.renderItemDrawer(foundView.item, foundView.tab, handlers);
       else closeItemDrawer();
+    }
+    if (isModalOpen('syncModal')) {
+      WM.render.renderGeneralSettings(getGeneralSettingsHandlers());
     }
 
     if (isModalOpen('creditsModal')) {
@@ -466,12 +469,20 @@
     if (shouldRender) refreshUI();
   }
 
+  function syncSpotlightChipButtons() {
+    document.querySelectorAll('#spotlightChips .spotlight-chip').forEach(function (btn) {
+      var grp = btn.getAttribute('data-chip-group');
+      var val = btn.getAttribute('data-chip-val');
+      btn.classList.toggle('active', spotlightChipFilters[grp] === val);
+    });
+  }
+
   function refreshSpotlight() {
     var q = document.getElementById('globalSearchInput').value;
-    spotlightMatches = WM.render.renderGlobalSearch(q, spotlightIdx, {
+    spotlightMatches = WM.render.renderGlobalSearch(q, spotlightIdx, spotlightChipFilters, {
       onSelectSearchResult: function (tabId, itemId) {
         closeModal('globalSearchModal');
-        if (WM.storage.getActiveTab().id !== tabId) {
+        if (!WM.storage.isAllTabActive() && WM.storage.getActiveTab().id !== tabId) {
           WM.storage.setActiveTab(tabId);
           resetFilters(false);
         }
@@ -486,6 +497,8 @@
     var inp = document.getElementById('globalSearchInput');
     inp.value = '';
     spotlightIdx = 0;
+    spotlightChipFilters = { status: '', pay: '' };
+    syncSpotlightChipButtons();
     openModal('globalSearchModal');
     refreshSpotlight();
     setTimeout(function () { inp.focus(); }, 40);
@@ -572,10 +585,10 @@
     }
   }
 
-  function setupItemTransferUI(item) {
+  function setupItemTransferUI(item, ownerTab) {
     var box = document.getElementById('itemTransferBox');
     var state = WM.storage.getState();
-    var activeTab = WM.storage.getActiveTab();
+    var activeTab = ownerTab || WM.storage.getActiveTab();
     var otherTabs = state.tabs.filter(function (t) { return t.id !== activeTab.id; });
 
     if (!item || otherTabs.length === 0) {
@@ -621,8 +634,8 @@
   }
 
   // --- Модалка: Позиция ---
-  function populateItemModalSelects(selectedCatId) {
-    var tab = WM.storage.getActiveTab();
+  function populateItemModalSelects(selectedCatId, ownerTab, currentStoreName) {
+    var tab = ownerTab || WM.storage.getActiveTab();
     var catSelect = document.getElementById('itemCategorySelect');
     catSelect.innerHTML = '';
     tab.categories.forEach(function (c) {
@@ -648,25 +661,30 @@
     }
 
     var storeSelect = document.getElementById('itemStoreSelect');
-    if (storeSelect.options.length === 0) {
-      WM.CONFIG.STORES.forEach(function (s) {
-        var opt = document.createElement('option');
-        opt.value = s;
-        opt.textContent = s;
-        storeSelect.appendChild(opt);
-      });
-      var customOpt = document.createElement('option');
-      customOpt.value = WM.CONFIG.CUSTOM_STORE_VALUE;
-      customOpt.textContent = 'Свой вариант...';
-      storeSelect.appendChild(customOpt);
+    storeSelect.innerHTML = '';
+    var visibleStores = WM.storage.getStores(false);
+    var storeNames = visibleStores.map(function (s) { return s.name; });
+    if (currentStoreName && storeNames.indexOf(currentStoreName) === -1) {
+      storeNames.push(currentStoreName);
     }
+    storeNames.forEach(function (s) {
+      var opt = document.createElement('option');
+      opt.value = s;
+      opt.textContent = s;
+      storeSelect.appendChild(opt);
+    });
+    var customOpt = document.createElement('option');
+    customOpt.value = WM.CONFIG.CUSTOM_STORE_VALUE;
+    customOpt.textContent = 'Свой вариант...';
+    storeSelect.appendChild(customOpt);
   }
 
   function openItemModal(itemId, presetCategoryId) {
-    var tab = WM.storage.getActiveTab();
-    var item = itemId ? tab.items.find(function (x) { return x.id === itemId; }) : null;
+    var found = itemId ? WM.storage.findItemAcrossTabs(itemId) : null;
+    var tab = found ? found.tab : WM.storage.getActiveTab();
+    var item = found ? found.item : null;
     var defaultCatId = tab.categories.length > 0 ? tab.categories[0].id : '__new_category__';
-    populateItemModalSelects(item ? item.categoryId : (presetCategoryId || defaultCatId));
+    populateItemModalSelects(item ? item.categoryId : (presetCategoryId || defaultCatId), tab, item ? item.store : '');
 
     document.getElementById('itemModalTitle').textContent = item ? 'Редактировать позицию' : 'Новая позиция';
     document.getElementById('itemIdInput').value = item ? item.id : '';
@@ -681,15 +699,10 @@
     var storeSelect = document.getElementById('itemStoreSelect');
     var customGroup = document.getElementById('customStoreGroup');
     var customInput = document.getElementById('itemCustomStoreInput');
-    if (item && WM.CONFIG.STORES.indexOf(item.store) === -1 && item.store) {
-      storeSelect.value = WM.CONFIG.CUSTOM_STORE_VALUE;
-      customInput.value = item.store;
-      customGroup.classList.remove('hidden');
-    } else {
-      storeSelect.value = item ? item.store : WM.CONFIG.STORES[0];
-      customInput.value = '';
-      customGroup.classList.add('hidden');
-    }
+    var defaultStore = storeSelect.options.length > 1 ? storeSelect.options[0].value : WM.CONFIG.CUSTOM_STORE_VALUE;
+    storeSelect.value = item ? (item.store || defaultStore) : defaultStore;
+    customInput.value = '';
+    customGroup.classList.toggle('hidden', storeSelect.value !== WM.CONFIG.CUSTOM_STORE_VALUE);
 
     // Если открываем «Новая позиция» и есть незавершённый черновик — восстанавливаем его!
     if (!item && newItemDraft) {
@@ -713,7 +726,7 @@
     document.getElementById('newCategoryGroup').classList.toggle('hidden', !isNewCatSelected);
     document.getElementById('itemNewCategoryInput').value = '';
 
-    setupItemTransferUI(item);
+    setupItemTransferUI(item, tab);
     document.getElementById('deleteItemBtn').classList.toggle('hidden', !item);
     document.getElementById('clearItemFormBtn').classList.toggle('hidden', !!item);
     openModal('itemModal');
@@ -866,8 +879,43 @@
     document.getElementById('bundleModalTitle').textContent = bundle ? 'Редактировать кредит / рассрочку' : 'Оформить в кредит / рассрочку';
     document.getElementById('bundleIdInput').value = bundle ? bundle.id : '';
     document.getElementById('bundleNameInput').value = bundle ? bundle.name : '';
-    document.getElementById('bundleTypeSelect').value = bundle ? (bundle.type || 'installment') : 'installment';
-    document.getElementById('bundleCustomTypeInput').value = bundle ? (bundle.customType || '') : '';
+
+    var typeSelect = document.getElementById('bundleTypeSelect');
+    typeSelect.innerHTML = '';
+    var ctPrefs = WM.storage.getCreditTypePrefs();
+    ctPrefs.builtins.forEach(function (bt) {
+      if (!bt.hidden || (bundle && bundle.type === bt.id)) {
+        var opt = document.createElement('option');
+        opt.value = bt.id;
+        opt.textContent = bt.label;
+        typeSelect.appendChild(opt);
+      }
+    });
+    ctPrefs.customs.forEach(function (ct) {
+      if (!ct.hidden || (bundle && bundle.type === 'custom' && bundle.customType === ct.name)) {
+        var opt = document.createElement('option');
+        opt.value = 'custom_preset:' + ct.name;
+        opt.textContent = ct.name;
+        typeSelect.appendChild(opt);
+      }
+    });
+    var customTypeOpt = document.createElement('option');
+    customTypeOpt.value = 'custom';
+    customTypeOpt.textContent = 'Свой вариант...';
+    typeSelect.appendChild(customTypeOpt);
+
+    var initialTypeVal = typeSelect.options[0] ? typeSelect.options[0].value : 'custom';
+    if (bundle) {
+      if (bundle.type === 'custom' && bundle.customType) {
+        var presetKey = 'custom_preset:' + bundle.customType;
+        var hasPreset = Array.prototype.some.call(typeSelect.options, function (o) { return o.value === presetKey; });
+        initialTypeVal = hasPreset ? presetKey : 'custom';
+      } else {
+        initialTypeVal = bundle.type || initialTypeVal;
+      }
+    }
+    typeSelect.value = initialTypeVal;
+    document.getElementById('bundleCustomTypeInput').value = (bundle && initialTypeVal === 'custom') ? (bundle.customType || '') : '';
     document.getElementById('bundleStartDateInput').value = bundle && bundle.startDate ? bundle.startDate : '';
     document.getElementById('bundleMonthsInput').value = bundle && bundle.months ? bundle.months : '';
     document.getElementById('bundleMonthlyInput').value = bundle ? bundle.monthlyPayment : '';
@@ -929,7 +977,76 @@
     }, 50);
   }
 
-  function openSyncModal() {
+  function switchSettingsTab(tabKey) {
+    settingsActiveTab = tabKey === 'sync' ? 'sync' : 'general';
+    document.querySelectorAll('#settingsModalTabs [data-settings-tab]').forEach(function (btn) {
+      var active = btn.getAttribute('data-settings-tab') === settingsActiveTab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.getElementById('settingsTabGeneral').classList.toggle('hidden', settingsActiveTab !== 'general');
+    document.getElementById('settingsTabSync').classList.toggle('hidden', settingsActiveTab !== 'sync');
+  }
+
+  function getGeneralSettingsHandlers() {
+    return {
+      onRenameStorePref: function (storeId, currentName) {
+        var next = prompt('Новое название магазина:', currentName);
+        if (next === null) return;
+        next = next.trim();
+        if (!next || next === currentName) return;
+        if (WM.storage.renameStore(storeId, next)) {
+          refreshUI();
+          showToast('Магазин переименован');
+        } else {
+          showToast('Такой магазин уже есть в списке');
+        }
+      },
+      onToggleStorePref: function (storeId) {
+        if (WM.storage.toggleStoreHidden(storeId)) {
+          refreshUI();
+        }
+      },
+      onDeleteStorePref: function (storeId, name) {
+        if (confirm('Удалить магазин «' + name + '» из списка? На уже созданных карточках название останется.')) {
+          WM.storage.deleteStore(storeId);
+          refreshUI();
+          showToast('Магазин удалён из списка');
+        }
+      },
+      onToggleBuiltinCreditPref: function (typeId) {
+        if (WM.storage.toggleBuiltinCreditHidden(typeId)) {
+          refreshUI();
+        }
+      },
+      onRenameCustomCreditPref: function (ctId, currentName) {
+        var next = prompt('Новое название типа кредита:', currentName);
+        if (next === null) return;
+        next = next.trim();
+        if (!next || next === currentName) return;
+        if (WM.storage.renameCustomCreditType(ctId, next)) {
+          refreshUI();
+          showToast('Тип кредита переименован');
+        } else {
+          showToast('Такой тип кредита уже есть');
+        }
+      },
+      onToggleCustomCreditPref: function (ctId) {
+        if (WM.storage.toggleCustomCreditHidden(ctId)) {
+          refreshUI();
+        }
+      },
+      onDeleteCustomCreditPref: function (ctId, name) {
+        if (confirm('Удалить тип «' + name + '» из списка? Оформленные кредиты сохранятся.')) {
+          WM.storage.deleteCustomCreditType(ctId);
+          refreshUI();
+          showToast('Тип кредита удалён из списка');
+        }
+      }
+    };
+  }
+
+  function openSyncModal(defaultTab) {
     var s = WM.sync.getSettings();
     document.getElementById('ghTokenInput').value = s.token;
     document.getElementById('ghGistIdInput').value = s.gistId;
@@ -937,6 +1054,8 @@
     document.getElementById('syncModalStatus').textContent = s.lastSyncAt
       ? 'Последняя синхронизация: ' + WM.utils.formatTime(s.lastSyncAt)
       : 'Синхронизация с GitHub ещё не выполнялась.';
+    WM.render.renderGeneralSettings(getGeneralSettingsHandlers());
+    switchSettingsTab(defaultTab || 'general');
     openModal('syncModal');
   }
 
@@ -1052,12 +1171,23 @@
     document.getElementById('bundlePickerSearch').addEventListener('input', renderBundlePickerList);
     document.getElementById('bundleShowUsedCheck').addEventListener('change', renderBundlePickerList);
 
-    document.addEventListener('keydown', function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    window.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyK' || e.key.toLowerCase() === 'k')) {
         e.preventDefault();
+        e.stopPropagation();
         if (isModalOpen('globalSearchModal')) closeModal('globalSearchModal');
         else openGlobalSearch();
         return;
+      }
+      var tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '';
+      var isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+      if (!isEditable && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === '/') {
+        var anyModalOpen = document.querySelectorAll('.modal-backdrop.open').length > 0;
+        if (!anyModalOpen) {
+          e.preventDefault();
+          openGlobalSearch();
+          return;
+        }
       }
       if (e.key === 'Escape') {
         var lb = document.getElementById('photoLightbox');
@@ -1073,7 +1203,7 @@
           closeItemDrawer();
         }
       }
-    });
+    }, true);
 
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) runAutoPull(false);
@@ -1137,11 +1267,91 @@
     document.getElementById('addItemBtn').addEventListener('click', function () { openItemModal(null, null); });
     document.getElementById('addCategoryBtn').addEventListener('click', function () { openCategoryModal(null); });
     document.getElementById('addBundleBtn').addEventListener('click', function () { openBundleModal(null); });
-    document.getElementById('openSyncModalBtn').addEventListener('click', openSyncModal);
+    document.getElementById('allTabBtn').addEventListener('click', function () {
+      closeItemDrawer();
+      WM.storage.setActiveTab(WM.CONFIG.ALL_TAB_ID);
+      resetFilters(false);
+      refreshUI();
+    });
+
+    document.querySelectorAll('#spotlightChips .spotlight-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var grp = btn.getAttribute('data-chip-group');
+        var val = btn.getAttribute('data-chip-val');
+        spotlightChipFilters[grp] = (spotlightChipFilters[grp] === val) ? '' : val;
+        spotlightIdx = 0;
+        syncSpotlightChipButtons();
+        refreshSpotlight();
+        document.getElementById('globalSearchInput').focus();
+      });
+    });
+
+    document.querySelectorAll('#settingsModalTabs [data-settings-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        switchSettingsTab(btn.getAttribute('data-settings-tab'));
+      });
+    });
+
+    document.getElementById('currencyPresetSelect').addEventListener('change', function (e) {
+      var val = e.target.value;
+      var customGroup = document.getElementById('customCurrencyGroup');
+      var customInp = document.getElementById('customCurrencyInput');
+      if (val === '__custom__') {
+        customGroup.classList.remove('hidden');
+        customInp.value = WM.storage.getCurrency();
+        customInp.focus();
+      } else {
+        customGroup.classList.add('hidden');
+        WM.storage.setCurrency(val);
+        refreshUI();
+        showToast('Валюта изменена на ' + val);
+      }
+    });
+
+    document.getElementById('applyCustomCurrencyBtn').addEventListener('click', function () {
+      var val = document.getElementById('customCurrencyInput').value.trim();
+      if (!val) {
+        showToast('Введи символ валюты');
+        return;
+      }
+      WM.storage.setCurrency(val);
+      refreshUI();
+      showToast('Валюта изменена на ' + val);
+    });
+
+    document.getElementById('addStorePrefBtn').addEventListener('click', function () {
+      var inp = document.getElementById('newStorePrefInput');
+      var name = inp.value.trim();
+      if (!name) return;
+      if (WM.storage.addCustomStore(name)) {
+        inp.value = '';
+        refreshUI();
+        showToast('Магазин добавлен');
+      } else {
+        showToast('Такой магазин уже есть в списке');
+      }
+    });
+
+    document.getElementById('addCreditTypePrefBtn').addEventListener('click', function () {
+      var inp = document.getElementById('newCreditTypePrefInput');
+      var name = inp.value.trim();
+      if (!name) return;
+      if (WM.storage.addCustomCreditType(name)) {
+        inp.value = '';
+        refreshUI();
+        showToast('Тип кредита добавлен');
+      } else {
+        showToast('Такой тип кредита уже есть');
+      }
+    });
+
+    document.getElementById('openSyncModalBtn').addEventListener('click', function () {
+      openSyncModal('general');
+    });
 
     document.getElementById('quickSyncBtn').addEventListener('click', async function () {
       if (!WM.sync.hasToken()) {
-        openSyncModal();
+        openSyncModal('sync');
         return;
       }
       setSyncStatus('pending', 'SYNC // PULL...');
@@ -1295,6 +1505,9 @@
       var storeVal = document.getElementById('itemStoreSelect').value;
       if (storeVal === WM.CONFIG.CUSTOM_STORE_VALUE) {
         storeVal = document.getElementById('itemCustomStoreInput').value.trim() || 'Свой вариант';
+        if (storeVal !== 'Свой вариант') {
+          WM.storage.ensureStoreInPrefs(storeVal);
+        }
       }
 
       var selectedCatId = document.getElementById('itemCategorySelect').value;
@@ -1357,7 +1570,15 @@
         return;
       }
 
-      var bType = document.getElementById('bundleTypeSelect').value;
+      var rawType = document.getElementById('bundleTypeSelect').value;
+      var bType = rawType;
+      var customTypeVal = document.getElementById('bundleCustomTypeInput').value.trim();
+      if (rawType.indexOf('custom_preset:') === 0) {
+        bType = 'custom';
+        customTypeVal = rawType.slice('custom_preset:'.length);
+      } else if (rawType === 'custom' && customTypeVal) {
+        WM.storage.ensureCustomCreditType(customTypeVal);
+      }
       var isGrace = bType === 'grace';
       var totalVal = isGrace
         ? document.getElementById('bundleGraceTotalInput').value
@@ -1372,7 +1593,7 @@
         id: document.getElementById('bundleIdInput').value || null,
         name: document.getElementById('bundleNameInput').value,
         type: bType,
-        customType: document.getElementById('bundleCustomTypeInput').value,
+        customType: customTypeVal,
         itemIds: itemIds,
         startDate: isGrace ? '' : document.getElementById('bundleStartDateInput').value,
         months: isGrace ? 0 : document.getElementById('bundleMonthsInput').value,

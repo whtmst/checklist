@@ -111,10 +111,21 @@
     if (etag) lastEtag = etag;
     var data = await res.json();
     var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
-    if (!file || !file.content) {
+    if (!file) {
       throw new Error('В выбранном Gist нет файла ' + WM.CONFIG.GIST_FILENAME);
     }
-    return { notModified: false, state: JSON.parse(file.content) };
+    var rawText = file.content || '';
+    if (file.truncated && file.raw_url) {
+      var rawRes = await fetch(file.raw_url);
+      if (!rawRes.ok) {
+        throw new Error('Не удалось загрузить полный файл из Gist (' + rawRes.status + ').');
+      }
+      rawText = await rawRes.text();
+    }
+    if (!rawText) {
+      throw new Error('В выбранном Gist пустой файл ' + WM.CONFIG.GIST_FILENAME);
+    }
+    return { notModified: false, state: JSON.parse(rawText) };
   }
 
   async function pushToGist(mergeBeforePush) {

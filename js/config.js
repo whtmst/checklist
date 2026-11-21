@@ -13,6 +13,17 @@
     GIST_FILENAME: 'wm-checklist-data.json',
     GIST_DESCRIPTION: 'WM_CHECKLIST — личный чек-лист (автосинхронизация)',
     CURRENCY: '₼',
+    ALL_TAB_ID: '__all__',
+    CURRENCY_PRESETS: [
+      { symbol: '₼', label: '₼ — Манат (AZN)' },
+      { symbol: '$', label: '$ — Доллар (USD)' },
+      { symbol: '€', label: '€ — Евро (EUR)' },
+      { symbol: '₽', label: '₽ — Рубль (RUB)' },
+      { symbol: '₺', label: '₺ — Лира (TRY)' },
+      { symbol: '₸', label: '₸ — Тенге (KZT)' },
+      { symbol: '₴', label: '₴ — Гривна (UAH)' },
+      { symbol: '₾', label: '₾ — Лари (GEL)' }
+    ],
     AUTO_SYNC_DELAY_MS: 1500,
     AUTO_PULL_INTERVAL_MS: 60000,
     AUTO_PULL_MIN_GAP_MS: 10000,
@@ -52,13 +63,20 @@
       return isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
     },
 
+    getCurrency: function () {
+      if (WM.storage && typeof WM.storage.getCurrency === 'function') {
+        return WM.storage.getCurrency() || WM.CONFIG.CURRENCY;
+      }
+      return WM.CONFIG.CURRENCY;
+    },
+
     formatMoney: function (amount) {
       var rounded = Math.round((Number(amount) || 0) * 100) / 100;
       var sign = rounded < 0 ? '-' : '';
       var abs = Math.abs(rounded);
       var parts = abs.toString().split('.');
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-      return sign + parts.join(',') + ' ' + WM.CONFIG.CURRENCY;
+      return sign + parts.join(',') + ' ' + WM.utils.getCurrency();
     },
 
     getPriority: function (id) {

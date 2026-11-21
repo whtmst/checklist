@@ -2311,3 +2311,226 @@ a.badge-store-link:hover {
     display: none !important;
   }
 }
+
+
+/* ==========================================================================
+   V21: ЗАКРЕПЛЁННАЯ КНОПКА «ВСЕ», СИММЕТРИЧНЫЕ РАЗДЕЛИТЕЛИ, ЧИПЫ SPOTLIGHT, НАСТРОЙКИ
+   ========================================================================== */
+.tabs-pinned-left {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.tab-chip--all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+}
+
+.tab-chip--all .ico {
+  width: 14px;
+  height: 14px;
+}
+
+.tabs-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-subtle);
+  flex: 0 0 auto;
+  margin: 0 2px;
+}
+
+.all-items-flat-block {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.all-items-flat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.badge-origin {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Spotlight 4 кликабельных чипа */
+.spotlight-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.spotlight-chip {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.spotlight-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.spotlight-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Вкладки в шапке окна Настроек */
+.modal-header--tabs {
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.settings-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+}
+
+.settings-tab-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.settings-tab-btn.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+/* Списки справочников в Настройках */
+.prefs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.pref-row.is-hidden-pref {
+  opacity: 0.55;
+}
+
+.pref-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pref-row-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pref-row.is-hidden-pref .pref-row-name {
+  text-decoration: line-through;
+}
+
+.pref-row-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.pref-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.icon-action--danger:hover {
+  color: var(--danger, #e05252);
+  border-color: var(--danger, #e05252);
+}
+
+@media (max-width: 600px) {
+  .spotlight-chips {
+    padding: 7px 10px;
+    gap: 5px;
+  }
+  .spotlight-chip {
+    font-size: 11.5px;
+    padding: 4px 9px;
+  }
+  .settings-header-left {
+    gap: 8px;
+  }
+}

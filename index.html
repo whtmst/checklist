@@ -26,7 +26,7 @@
       </div>
 
       <div class="topbar-actions">
-        <button type="button" class="btn btn-ghost btn-icon" id="openSearchModalBtn" title="Глобальный поиск по всем вкладкам (Ctrl+K)" aria-label="Поиск">
+        <button type="button" class="btn btn-ghost btn-icon" id="openSearchModalBtn" title="Глобальный поиск по всем вкладкам (Ctrl+K или /)" aria-label="Поиск">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <span class="btn-label-desktop">Поиск</span>
         </button>
@@ -39,7 +39,7 @@
           <span class="sync-indicator" id="syncIndicator"></span>
           <span class="btn-label-desktop">Синхронизировать</span>
         </button>
-        <button type="button" class="btn btn-ghost btn-icon" id="openSyncModalBtn" title="Настройки синхронизации и бэкапа" aria-label="Настройки">
+        <button type="button" class="btn btn-ghost btn-icon" id="openSyncModalBtn" title="Общие настройки, справочники и синхронизация" aria-label="Настройки">
           <svg class="ico ico-mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span class="btn-label-desktop">Настройки</span>
         </button>
@@ -51,11 +51,19 @@
 
     <!-- Панель вкладок (списков) -->
     <nav class="tabs-bar" aria-label="Списки">
+      <div class="tabs-pinned-left">
+        <button type="button" class="tab-chip tab-chip--all" id="allTabBtn" title="Все позиции из всех вкладок (единый список)" aria-label="Все позиции">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span class="tab-chip-count" id="allTabCount">0</span>
+        </button>
+      </div>
+      <div class="tabs-divider" aria-hidden="true"></div>
       <div class="tabs-scroll-wrap">
         <button type="button" class="tabs-scroll-btn tabs-scroll-prev hidden" id="tabsScrollLeftBtn" aria-label="Прокрутить вкладки влево">‹</button>
         <div class="tabs-list" id="tabsList"></div>
         <button type="button" class="tabs-scroll-btn tabs-scroll-next hidden" id="tabsScrollRightBtn" aria-label="Прокрутить вкладки вправо">›</button>
       </div>
+      <div class="tabs-divider" aria-hidden="true"></div>
       <div class="tabs-controls">
         <button type="button" class="btn btn-ghost btn-sm" id="manageTabsBtn" title="Управление вкладками (создать, порядок, редактировать)">•••</button>
       </div>
@@ -195,6 +203,12 @@
         <kbd class="spotlight-kbd">ESC</kbd>
         <button type="button" class="modal-close" data-close-modal="globalSearchModal" aria-label="Закрыть">✕</button>
       </div>
+      <div class="spotlight-chips" id="spotlightChips">
+        <button type="button" class="spotlight-chip" data-chip-group="status" data-chip-val="unchecked">Не куплено</button>
+        <button type="button" class="spotlight-chip" data-chip-group="status" data-chip-val="checked">Куплено</button>
+        <button type="button" class="spotlight-chip" data-chip-group="pay" data-chip-val="credit">В кредите</button>
+        <button type="button" class="spotlight-chip" data-chip-group="pay" data-chip-val="cash">Наличные</button>
+      </div>
       <div class="spotlight-meta" id="globalSearchMeta"></div>
       <div class="spotlight-results" id="globalSearchResults"></div>
     </div>
@@ -215,7 +229,7 @@
         <div class="credits-ref-grid">
           <div class="card-limit-box">
             <div class="form-group">
-              <label class="form-label" for="cardLimitInput">Лимит карты (₼, справочно)</label>
+              <label class="form-label" for="cardLimitInput">Лимит карты (<span class="js-currency-symbol">₼</span>, справочно)</label>
               <input type="number" class="input input-mono" id="cardLimitInput" min="0" step="1" placeholder="Например, 2450">
             </div>
             <div class="card-limit-stats" id="cardLimitStats">
@@ -228,7 +242,7 @@
 
           <div class="card-limit-box">
             <div class="form-group">
-              <label class="form-label" for="monthlyIncomeInput">Доход / мес (₼, справочно)</label>
+              <label class="form-label" for="monthlyIncomeInput">Доход / мес (<span class="js-currency-symbol">₼</span>, справочно)</label>
               <input type="number" class="input input-mono" id="monthlyIncomeInput" min="0" step="1" placeholder="Например, 820">
             </div>
             <div class="card-limit-stats" id="monthlyIncomeStats">
@@ -295,7 +309,7 @@
             <select class="select" id="itemCategorySelect" required></select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="itemPriceInput">Цена (₼)</label>
+            <label class="form-label" for="itemPriceInput">Цена (<span class="js-currency-symbol">₼</span>)</label>
             <input type="number" class="input input-mono" id="itemPriceInput" min="0" step="0.01" placeholder="0">
           </div>
         </div>
@@ -442,11 +456,11 @@
 
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label" for="bundleMonthlyInput">Платёж / мес (₼) *</label>
+              <label class="form-label" for="bundleMonthlyInput">Платёж / мес (<span class="js-currency-symbol">₼</span>) *</label>
               <input type="number" class="input input-mono" id="bundleMonthlyInput" min="0" step="0.01" placeholder="6.61">
             </div>
             <div class="form-group">
-              <label class="form-label" for="bundleTotalInput">Итоговая сумма (₼) *</label>
+              <label class="form-label" for="bundleTotalInput">Итоговая сумма (<span class="js-currency-symbol">₼</span>) *</label>
               <input type="number" class="input input-mono" id="bundleTotalInput" min="0" step="0.01" placeholder="79.33">
             </div>
           </div>
@@ -460,7 +474,7 @@
               <input type="date" class="input input-mono" id="bundleDueDateInput">
             </div>
             <div class="form-group">
-              <label class="form-label" for="bundleGraceTotalInput">Сумма к возврату (₼) *</label>
+              <label class="form-label" for="bundleGraceTotalInput">Сумма к возврату (<span class="js-currency-symbol">₼</span>) *</label>
               <input type="number" class="input input-mono" id="bundleGraceTotalInput" min="0" step="0.01" placeholder="33.50">
             </div>
           </div>
@@ -590,15 +604,67 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: Синхронизация GitHub Gist и Резервный JSON -->
+  <!-- МОДАЛКА: Настройки (Общие и Синхронизация) -->
   <div class="modal-backdrop" id="syncModal" aria-hidden="true">
     <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
-      <div class="modal-header">
-        <h3 id="syncModalTitle">Синхронизация (GitHub Gist) и JSON</h3>
+      <div class="modal-header modal-header--tabs">
+        <div class="settings-header-left">
+          <h3 id="syncModalTitle">Настройки</h3>
+          <div class="settings-tabs" id="settingsModalTabs" role="tablist">
+            <button type="button" class="settings-tab-btn active" data-settings-tab="general" role="tab" aria-selected="true">Общие</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="sync" role="tab" aria-selected="false">Синхронизация</button>
+          </div>
+        </div>
         <button type="button" class="modal-close" data-close-modal="syncModal" aria-label="Закрыть">✕</button>
       </div>
 
-      <div class="modal-form">
+      <!-- ВКЛАДКА 1: ОБЩИЕ НАСТРОЙКИ (Валюта, Магазины, Типы кредитов) -->
+      <div class="modal-form" id="settingsTabGeneral">
+        <div class="sync-panel">
+          <div class="section-kicker">ВАЛЮТА ОТОБРАЖЕНИЯ</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="currencyPresetSelect">Валюта</label>
+              <select class="select" id="currencyPresetSelect"></select>
+            </div>
+            <div class="form-group hidden" id="customCurrencyGroup">
+              <label class="form-label" for="customCurrencyInput">Свой символ (1–5 знаков)</label>
+              <div class="input-with-btn">
+                <input type="text" class="input input-mono" id="customCurrencyInput" maxlength="5" placeholder="£, BYN, zł...">
+                <button type="button" class="btn btn-accent btn-sm" id="applyCustomCurrencyBtn">ОК</button>
+              </div>
+            </div>
+          </div>
+          <p class="form-hint">Символ меняется сразу во всём приложении и синхронизируется между устройствами.</p>
+        </div>
+
+        <div class="sync-divider"></div>
+
+        <div class="sync-panel">
+          <div class="section-kicker">МАГАЗИНЫ И ИСТОЧНИКИ</div>
+          <p class="form-hint">Скрытые магазины не мешают в списке при создании новых позиций, но старые карточки сохраняют своё название. Свои варианты из карточек добавляются сюда автоматически.</p>
+          <div class="prefs-list" id="storesPrefsList"></div>
+          <div class="input-with-btn">
+            <input type="text" class="input" id="newStorePrefInput" placeholder="Добавить свой магазин (напр. Wildberries, Tap.az)">
+            <button type="button" class="btn btn-secondary btn-sm" id="addStorePrefBtn">+ Добавить</button>
+          </div>
+        </div>
+
+        <div class="sync-divider"></div>
+
+        <div class="sync-panel">
+          <div class="section-kicker">ТИПЫ КРЕДИТОВ И РАССРОЧЕК</div>
+          <p class="form-hint">Ненужные встроенные типы (например, Ninja) можно скрыть глазиком. Свои типы работают по стандартной помесячной схеме.</p>
+          <div class="prefs-list" id="creditTypesPrefsList"></div>
+          <div class="input-with-btn">
+            <input type="text" class="input" id="newCreditTypePrefInput" placeholder="Добавить свой тип (напр. Сплит, Халва, Долями)">
+            <button type="button" class="btn btn-secondary btn-sm" id="addCreditTypePrefBtn">+ Добавить</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВКЛАДКА 2: СИНХРОНИЗАЦИЯ И БЭКАП -->
+      <div class="modal-form hidden" id="settingsTabSync">
         <div class="sync-panel">
           <div class="section-kicker">GITHUB SECRET GIST SYNC</div>
           <p class="form-hint">
