@@ -65,16 +65,37 @@
     p, li { font-size: 14.5px; color: var(--text-secondary); }
     ul { padding-left: 20px; margin: 8px 0 14px; }
     li { margin-bottom: 6px; }
-    a { color: var(--accent); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { opacity: 0.85; text-decoration: none; }
     .legal-foot {
-      padding: 14px 24px;
+      padding: 12px 24px;
       border-top: 1px solid var(--border-subtle);
-      font-size: 12.5px;
+      font-size: 12px;
       color: var(--text-muted);
       display: flex;
       justify-content: space-between;
+      align-items: center;
       flex-wrap: wrap;
       gap: 10px;
+    }
+    .legal-foot a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+    .legal-foot a:hover {
+      color: var(--accent);
+      opacity: 1;
+      text-decoration: none;
+    }
+    .legal-foot-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
     [data-lang-block] { display: none; }
     [data-lang-block].active { display: block; }
@@ -149,7 +170,7 @@
 
     <div class="legal-foot">
       <span>© 2026 <a href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a></span>
-      <span><a href="privacy.html" id="footPrivacy">Privacy</a> · <a href="terms.html" id="footTerms">Terms</a> · <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+      <span class="legal-foot-links"><a href="privacy.html" id="footPrivacy">Privacy</a> · <a href="terms.html" id="footTerms">Terms</a> · <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a></span>
     </div>
   </main>
 

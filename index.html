@@ -155,9 +155,9 @@
         <div class="footer-links">
           <button type="button" class="footer-action-link" id="openDonateModalBtn" data-i18n="footer_support">ПОДДЕРЖАТЬ ПРОЕКТ</button>
           <span class="footer-sep" aria-hidden="true">·</span>
-          <a class="footer-legal-link" href="privacy.html" data-i18n="footer_privacy">КОНФИДЕНЦИАЛЬНОСТЬ</a>
+          <button type="button" class="footer-legal-link" id="openPrivacyModalBtn" data-i18n="footer_privacy">КОНФИДЕНЦИАЛЬНОСТЬ</button>
           <span class="footer-sep" aria-hidden="true">·</span>
-          <a class="footer-legal-link" href="terms.html" data-i18n="footer_terms">УСЛОВИЯ</a>
+          <button type="button" class="footer-legal-link" id="openTermsModalBtn" data-i18n="footer_terms">УСЛОВИЯ</button>
         </div>
       </div>
     </footer>
@@ -629,7 +629,7 @@
 
   <!-- МОДАЛКА: Настройки (Общие и Синхронизация) -->
   <div class="modal-backdrop" id="syncModal" aria-hidden="true">
-    <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
+    <div class="modal-box modal-box--xl" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
       <div class="modal-header modal-header--tabs">
         <div class="settings-header-left">
           <h3 id="syncModalTitle" data-i18n="settings_title">Настройки</h3>
@@ -777,8 +777,8 @@
             <button type="button" class="btn btn-ghost btn-sm" id="replayTourBtn" data-i18n="about_btn_tour">Показать тур заново</button>
           </div>
           <div class="sync-buttons-row" style="margin-top: 8px;">
-            <a class="btn btn-ghost btn-sm" href="privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_privacy">Политика конфиденциальности ↗</a>
-            <a class="btn btn-ghost btn-sm" href="terms.html" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_terms">Условия использования ↗</a>
+            <button type="button" class="btn btn-ghost btn-sm" id="aboutPrivacyBtn" data-i18n="about_btn_privacy">Политика конфиденциальности</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="aboutTermsBtn" data-i18n="about_btn_terms">Условия использования</button>
           </div>
         </div>
 
@@ -795,7 +795,7 @@
 
   <!-- МОДАЛКА: Поддержать проект (открывается из футера) -->
   <div class="modal-backdrop" id="donateModal" aria-hidden="true">
-    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="donateModalTitle">
+    <div class="modal-box modal-box--xl" role="dialog" aria-modal="true" aria-labelledby="donateModalTitle">
       <div class="modal-header">
         <h3 id="donateModalTitle" data-i18n="donate_modal_title">Поддержать WM_CHECKLIST</h3>
         <button type="button" class="modal-close" data-close-modal="donateModal" aria-label="Закрыть">✕</button>
@@ -803,6 +803,64 @@
       <div class="modal-form">
         <p class="about-story" data-i18n="about_donate_desc">Приложение полностью бесплатно, без рекламы и подписок. Если WM_CHECKLIST экономит тебе время и деньги — можно сказать спасибо автору любым удобным способом:</p>
         <div class="donate-links-grid" id="modalDonateLinks"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Политика конфиденциальности -->
+  <div class="modal-backdrop" id="privacyModal" aria-hidden="true">
+    <div class="modal-box modal-box--xl" role="dialog" aria-modal="true" aria-labelledby="privacyModalTitle">
+      <div class="modal-header">
+        <h3 id="privacyModalTitle" data-i18n="privacy_modal_title">Политика конфиденциальности</h3>
+        <button type="button" class="modal-close" data-close-modal="privacyModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form legal-modal-content">
+        <div class="legal-modal-updated" data-i18n="legal_updated">Последнее обновление: ноябрь 2026</div>
+        <p data-i18n="privacy_intro"></p>
+        <h4 data-i18n="privacy_h1"></h4>
+        <ul>
+          <li data-i18n="privacy_l1_1"></li>
+          <li data-i18n="privacy_l1_2"></li>
+          <li data-i18n="privacy_l1_3"></li>
+        </ul>
+        <h4 data-i18n="privacy_h2"></h4>
+        <p data-i18n="privacy_p2"></p>
+        <h4 data-i18n="privacy_h3"></h4>
+        <p data-i18n="privacy_p3"></p>
+        <h4 data-i18n="privacy_h4"></h4>
+        <p data-i18n="privacy_p4"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal="privacyModal" data-i18n="legal_btn_close">Закрыть</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Условия использования -->
+  <div class="modal-backdrop" id="termsModal" aria-hidden="true">
+    <div class="modal-box modal-box--xl" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle">
+      <div class="modal-header">
+        <h3 id="termsModalTitle" data-i18n="terms_modal_title">Условия использования</h3>
+        <button type="button" class="modal-close" data-close-modal="termsModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form legal-modal-content">
+        <div class="legal-modal-updated" data-i18n="legal_updated">Последнее обновление: ноябрь 2026</div>
+        <p data-i18n="terms_intro"></p>
+        <h4 data-i18n="terms_h1"></h4>
+        <p data-i18n="terms_p1"></p>
+        <h4 data-i18n="terms_h2"></h4>
+        <ul>
+          <li data-i18n="terms_l2_1"></li>
+          <li data-i18n="terms_l2_2"></li>
+          <li data-i18n="terms_l2_3"></li>
+        </ul>
+        <h4 data-i18n="terms_h3"></h4>
+        <p data-i18n="terms_p3"></p>
+        <h4 data-i18n="terms_h4"></h4>
+        <p data-i18n="terms_p4"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal="termsModal" data-i18n="legal_btn_close">Закрыть</button>
+        </div>
       </div>
     </div>
   </div>

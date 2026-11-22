@@ -1459,6 +1459,24 @@
       openModal('donateModal');
     });
 
+    document.getElementById('openPrivacyModalBtn').addEventListener('click', function () {
+      openModal('privacyModal');
+    });
+
+    document.getElementById('openTermsModalBtn').addEventListener('click', function () {
+      openModal('termsModal');
+    });
+
+    document.getElementById('aboutPrivacyBtn').addEventListener('click', function () {
+      closeModal('syncModal');
+      openModal('privacyModal');
+    });
+
+    document.getElementById('aboutTermsBtn').addEventListener('click', function () {
+      closeModal('syncModal');
+      openModal('termsModal');
+    });
+
     document.getElementById('replayTourBtn').addEventListener('click', function () {
       closeModal('syncModal');
       openOnboardingTour();
