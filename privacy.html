@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#141414">
+  <title>Privacy Policy · WM_CHECKLIST</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141414'/%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23C84B31'/%3E%3Cpath d='M11 16.5l3.2 3.2 6.8-7.2' stroke='%23ffffff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/tokens.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      padding: 24px 16px 48px;
+    }
+    .legal-shell {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .legal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 16px 22px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .legal-back {
+      color: var(--text-primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+    }
+    .legal-back:hover { border-color: var(--accent); color: var(--accent); }
+    .lang-pills {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      border-radius: 8px;
+      background: var(--bg-page);
+      border: 1px solid var(--border-subtle);
+    }
+    .lang-pill {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .lang-pill.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .legal-body { padding: 26px 24px 30px; }
+    .legal-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    h1 { margin: 0 0 10px; font-size: 24px; line-height: 1.25; }
+    .legal-updated { font-size: 12.5px; color: var(--text-muted); margin-bottom: 22px; }
+    h2 { margin: 22px 0 8px; font-size: 16px; color: var(--text-primary); }
+    p, li { font-size: 14.5px; color: var(--text-secondary); }
+    ul { padding-left: 20px; margin: 8px 0 14px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--accent); }
+    .legal-foot {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 12.5px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    [data-lang-block] { display: none; }
+    [data-lang-block].active { display: block; }
+  </style>
+</head>
+<body>
+  <main class="legal-shell">
+    <div class="legal-top">
+      <a class="legal-back" href="./index.html" id="backLink">← WM_CHECKLIST</a>
+      <div class="lang-pills" role="tablist" aria-label="Language">
+        <button type="button" class="lang-pill" data-set-lang="ru">RU</button>
+        <button type="button" class="lang-pill" data-set-lang="en">EN</button>
+        <button type="button" class="lang-pill" data-set-lang="az">AZ</button>
+      </div>
+    </div>
+
+    <div class="legal-body">
+      
+      <article data-lang-block="ru">
+        <div class="legal-kicker">WM_CHECKLIST // PRIVACY POLICY</div>
+        <h1>Политика конфиденциальности</h1>
+        <div class="legal-updated">Последнее обновление: ноябрь 2026</div>
+        <p><strong>WM_CHECKLIST</strong> — это открытое статическое веб-приложение (PWA) без собственного сервера. Автор приложения не собирает, не хранит и не имеет доступа к вашим личным данным.</p>
+        <h2>1. Где хранятся ваши данные</h2>
+        <ul>
+          <li>Все ваши вкладки, категории, товары, заметки, цены, кредиты и настройки хранятся <strong>локально в localStorage вашего браузера</strong>.</li>
+          <li>Если вы включаете облачную синхронизацию (например, GitHub Secret Gist), данные отправляются напрямую из вашего браузера в <strong>ваш личный аккаунт</strong> выбранного сервиса.</li>
+          <li>Токены доступа (например, GitHub Personal Access Token) сохраняются исключительно локально в вашем браузере и никогда не передаются третьим лицам.</li>
+        </ul>
+        <h2>2. Аналитика и трекинг</h2>
+        <p>Приложение не использует рекламные сети, сторонние трекеры, Google Analytics или маркетинговые cookie. Локальный шрифт загружается непосредственно с того же хоста.</p>
+        <h2>3. Внешние ссылки и изображения</h2>
+        <p>Если вы добавляете в карточки ссылки на товары или URL изображений со сторонних магазинов, ваш браузер загружает эти изображения напрямую с указанных вами доменов в соответствии с их политиками конфиденциальности.</p>
+        <h2>4. Удаление данных</h2>
+        <p>Вы можете в любой момент экспортировать свои данные в <code>.json</code> или полностью удалить их через «Настройки → Синхронизация → Очистить всё», а также очистить кэш браузера или удалить ваш Secret Gist в GitHub.</p>
+      </article>
+
+      <article data-lang-block="en">
+        <div class="legal-kicker">WM_CHECKLIST // PRIVACY POLICY</div>
+        <h1>Privacy Policy</h1>
+        <div class="legal-updated">Last updated: November 2026</div>
+        <p><strong>WM_CHECKLIST</strong> is an open-source static web application (PWA) with no backend server. The author does not collect, store, or have access to any of your personal data.</p>
+        <h2>1. Where your data is stored</h2>
+        <ul>
+          <li>All tabs, categories, items, notes, prices, credits, and preferences are stored <strong>locally in your browser's localStorage</strong>.</li>
+          <li>If you enable cloud sync (such as GitHub Secret Gist), your browser communicates directly with <strong>your own personal account</strong> at that provider.</li>
+          <li>Access tokens (such as a GitHub Personal Access Token) stay strictly in your local browser storage and are never sent anywhere else.</li>
+        </ul>
+        <h2>2. Analytics and tracking</h2>
+        <p>This app uses zero ad networks, zero analytics scripts, and zero tracking cookies. Fonts and assets are bundled locally for full offline privacy.</p>
+        <h2>3. External links and images</h2>
+        <p>When you attach external product links or image URLs, your browser fetches those images directly from the domains you entered, subject to their respective privacy policies.</p>
+        <h2>4. Deleting your data</h2>
+        <p>You can export your data to <code>.json</code> or erase everything anytime via Settings → Sync → Clear All, clear your browser storage, or delete your personal Secret Gist on GitHub.</p>
+      </article>
+
+      <article data-lang-block="az">
+        <div class="legal-kicker">WM_CHECKLIST // MƏXFİLİK SİYASƏTİ</div>
+        <h1>Məxfilik Siyasəti</h1>
+        <div class="legal-updated">Son yenilənmə: Noyabr 2026</div>
+        <p><strong>WM_CHECKLIST</strong> öz serveri olmayan açıq mənbəli statik veb-tətbiqdir (PWA). Müəllif sizin şəxsi məlumatlarınızı toplamır, saxlamır və onlara çıxışı yoxdur.</p>
+        <h2>1. Məlumatlarınız harada saxlanılır</h2>
+        <ul>
+          <li>Bütün vərəqlər, kateqoriyalar, məhsullar, qeydlər, qiymətlər, kreditlər və ayarlar <strong>brauzerinizin localStorage yaddaşında lokal olaraq</strong> saxlanılır.</li>
+          <li>Bulud sinxronizasiyasını (məsələn, GitHub Secret Gist) aktiv etsəniz, məlumatlar birbaşa brauzerinizdən <strong>öz şəxsi hesabınıza</strong> göndərilir.</li>
+          <li>Giriş tokenləri yalnız brauzerinizdə lokal saxlanılır və heç bir kənar tərəfə ötürülmür.</li>
+        </ul>
+        <h2>2. Analitika və izləmə</h2>
+        <p>Tətbiqdə reklam şəbəkələri, izləmə skriptləri və marketinq cookie-ləri yoxdur. Şriftlər və fayllar oflayn işləmək üçün lokal saxlanılır.</p>
+        <h2>3. Xarici linklər və şəkillər</h2>
+        <p>Kartlara əlavə etdiyiniz xarici mağaza linkləri və şəkil URL-ləri brauzeriniz tərəfindən birbaşa həmin saytlardan yüklənir.</p>
+        <h2>4. Məlumatların silinməsi</h2>
+        <p>İstənilən vaxt məlumatlarınızı <code>.json</code> kimi ixrac edə və ya «Ayarlar → Sinxronizasiya → Hamısını təmizlə» bölməsindən silə bilərsiniz.</p>
+      </article>
+
+    </div>
+
+    <div class="legal-foot">
+      <span>© 2026 <a href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a></span>
+      <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      try {
+        var savedTheme = localStorage.getItem('wm_checklist_theme_v1') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
+      } catch (e) {}
+
+      var supported = ['ru', 'en', 'az'];
+      var lang = 'ru';
+      try {
+        var savedLang = localStorage.getItem('wm_checklist_lang_v1');
+        if (savedLang && supported.indexOf(savedLang) !== -1) lang = savedLang;
+        else {
+          var nav = String(navigator.language || '').toLowerCase();
+          if (nav.indexOf('az') === 0) lang = 'az';
+          else if (nav.indexOf('en') === 0) lang = 'en';
+        }
+      } catch (e) {}
+
+      function apply(next) {
+        lang = supported.indexOf(next) !== -1 ? next : 'ru';
+        document.documentElement.lang = lang;
+        document.querySelectorAll('[data-lang-block]').forEach(function (el) {
+          el.classList.toggle('active', el.getAttribute('data-lang-block') === lang);
+        });
+        document.querySelectorAll('[data-set-lang]').forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-set-lang') === lang);
+        });
+        var back = document.getElementById('backLink');
+        if (back) {
+          back.textContent = lang === 'en' ? '← Back to WM_CHECKLIST' : (lang === 'az' ? '← WM_CHECKLIST-ə qayıt' : '← Вернуться в WM_CHECKLIST');
+        }
+      }
+
+      document.querySelectorAll('[data-set-lang]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var next = btn.getAttribute('data-set-lang');
+          try { localStorage.setItem('wm_checklist_lang_v1', next); } catch (e) {}
+          apply(next);
+        });
+      });
+      apply(lang);
+    })();
+  </script>
+</body>
+</html>

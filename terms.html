@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#141414">
+  <title>Terms of Use · WM_CHECKLIST</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141414'/%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23C84B31'/%3E%3Cpath d='M11 16.5l3.2 3.2 6.8-7.2' stroke='%23ffffff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/tokens.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      padding: 24px 16px 48px;
+    }
+    .legal-shell {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .legal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 16px 22px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .legal-back {
+      color: var(--text-primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+    }
+    .legal-back:hover { border-color: var(--accent); color: var(--accent); }
+    .lang-pills {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      border-radius: 8px;
+      background: var(--bg-page);
+      border: 1px solid var(--border-subtle);
+    }
+    .lang-pill {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .lang-pill.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .legal-body { padding: 26px 24px 30px; }
+    .legal-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    h1 { margin: 0 0 10px; font-size: 24px; line-height: 1.25; }
+    .legal-updated { font-size: 12.5px; color: var(--text-muted); margin-bottom: 22px; }
+    h2 { margin: 22px 0 8px; font-size: 16px; color: var(--text-primary); }
+    p, li { font-size: 14.5px; color: var(--text-secondary); }
+    ul { padding-left: 20px; margin: 8px 0 14px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--accent); }
+    .legal-foot {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 12.5px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    [data-lang-block] { display: none; }
+    [data-lang-block].active { display: block; }
+  </style>
+</head>
+<body>
+  <main class="legal-shell">
+    <div class="legal-top">
+      <a class="legal-back" href="./index.html" id="backLink">← WM_CHECKLIST</a>
+      <div class="lang-pills" role="tablist" aria-label="Language">
+        <button type="button" class="lang-pill" data-set-lang="ru">RU</button>
+        <button type="button" class="lang-pill" data-set-lang="en">EN</button>
+        <button type="button" class="lang-pill" data-set-lang="az">AZ</button>
+      </div>
+    </div>
+
+    <div class="legal-body">
+      
+      <article data-lang-block="ru">
+        <div class="legal-kicker">WM_CHECKLIST // TERMS OF USE</div>
+        <h1>Условия использования</h1>
+        <div class="legal-updated">Последнее обновление: ноябрь 2026</div>
+        <p>Используя <strong>WM_CHECKLIST</strong>, вы соглашаетесь с простыми и честными правилами ниже:</p>
+        <h2>1. Предоставление «как есть» (AS IS)</h2>
+        <p>Приложение распространяется бесплатно и с открытым исходным кодом на условиях «как есть», без каких-либо явных или подразумеваемых гарантий.</p>
+        <h2>2. Ответственность за данные и резервные копии</h2>
+        <ul>
+          <li>Поскольку данные хранятся в вашем браузере и/или вашем личном облаке, вы самостоятельно отвечаете за сохранность своих записей и токенов доступа.</li>
+          <li>Рекомендуется периодически сохранять резервную копию в формате <code>.json</code> (для этого в настройках предусмотрено напоминание о бэкапе).</li>
+          <li>Автор не несёт ответственности за потерю данных в результате очистки кэша браузера, сбоев сторонних сервисов или неверного ввода финансовых цифр.</li>
+        </ul>
+        <h2>3. Справочный характер расчётов</h2>
+        <p>Все суммы по кредитам, рассрочкам, переплатам и лимиту карты носят исключительно справочный характер и не являются банковской или финансовой консультацией.</p>
+        <h2>4. Открытый код и добровольная поддержка</h2>
+        <p>Исходный код доступен на <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a>. Вы можете свободно пользоваться приложением или делать форки. Любые пожертвования автору являются строго добровольными и не открывают платных ограничений.</p>
+      </article>
+
+      <article data-lang-block="en">
+        <div class="legal-kicker">WM_CHECKLIST // TERMS OF USE</div>
+        <h1>Terms of Use</h1>
+        <div class="legal-updated">Last updated: November 2026</div>
+        <p>By using <strong>WM_CHECKLIST</strong>, you agree to the following simple terms:</p>
+        <h2>1. Provided "As Is"</h2>
+        <p>This application is provided free of charge and open-source on an "AS IS" basis, without warranties of any kind.</p>
+        <h2>2. Your data and backups</h2>
+        <ul>
+          <li>Because all data is stored locally in your browser and/or your personal cloud account, you are solely responsible for keeping your records and access tokens safe.</li>
+          <li>We recommend regularly exporting a <code>.json</code> backup (you can enable the built-in backup reminder in Settings).</li>
+          <li>The author is not liable for data loss caused by clearing browser storage, third-party outages, or manual input errors.</li>
+        </ul>
+        <h2>3. Informational calculations only</h2>
+        <p>All installment schedules, overpayments, and card limit numbers are estimates for personal planning only and do not constitute financial or banking advice.</p>
+        <h2>4. Open source and voluntary donations</h2>
+        <p>The source code is available on <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a>. You are free to use or fork it. Any donations to the author are completely voluntary.</p>
+      </article>
+
+      <article data-lang-block="az">
+        <div class="legal-kicker">WM_CHECKLIST // İSTİFADƏ ŞƏRTLƏRİ</div>
+        <h1>İstifadə Şərtləri</h1>
+        <div class="legal-updated">Son yenilənmə: Noyabr 2026</div>
+        <p><strong>WM_CHECKLIST</strong> tətbiqindən istifadə etməklə aşağıdakı sadə şərtlərlə razılaşırsınız:</p>
+        <h2>1. «Olduğu kimi» (AS IS) təqdimat</h2>
+        <p>Tətbiq pulsuz və açıq mənbəli olaraq «olduğu kimi» təqdim olunur, heç bir zəmanət verilmir.</p>
+        <h2>2. Məlumatlar və ehtiyat nüsxələr</h2>
+        <ul>
+          <li>Məlumatlar brauzerinizdə və ya şəxsi bulud hesabınızda saxlandığı üçün onların və tokenlərin təhlükəsizliyinə özünüz cavabdehsiniz.</li>
+          <li>Müntəzəm olaraq <code>.json</code> ehtiyat nüsxəsi saxlamaq tövsiyə olunur (Ayarlarda xatırlatma mövcuddur).</li>
+          <li>Brauzer yaddaşının təmizlənməsi və ya kənar xidmətlərin nasazlığı səbəbindən məlumat itkisinə görə müəllif məsuliyyət daşımır.</li>
+        </ul>
+        <h2>3. Hesablamaların məlumat xarakteri</h2>
+        <p>Kredit, taksit və kart limiti üzrə göstəricilər yalnız şəxsi planlama üçündür və bank və ya maliyyə məsləhəti sayılmır.</p>
+        <h2>4. Açıq kod və könüllü dəstək</h2>
+        <p>Mənbə kodu <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a>-da açıqdır. Müəllifə edilən bütün dəstək ödənişləri tamamilə könüllüdür.</p>
+      </article>
+
+    </div>
+
+    <div class="legal-foot">
+      <span>© 2026 <a href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a></span>
+      <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      try {
+        var savedTheme = localStorage.getItem('wm_checklist_theme_v1') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : 'dark');
+      } catch (e) {}
+
+      var supported = ['ru', 'en', 'az'];
+      var lang = 'ru';
+      try {
+        var savedLang = localStorage.getItem('wm_checklist_lang_v1');
+        if (savedLang && supported.indexOf(savedLang) !== -1) lang = savedLang;
+        else {
+          var nav = String(navigator.language || '').toLowerCase();
+          if (nav.indexOf('az') === 0) lang = 'az';
+          else if (nav.indexOf('en') === 0) lang = 'en';
+        }
+      } catch (e) {}
+
+      function apply(next) {
+        lang = supported.indexOf(next) !== -1 ? next : 'ru';
+        document.documentElement.lang = lang;
+        document.querySelectorAll('[data-lang-block]').forEach(function (el) {
+          el.classList.toggle('active', el.getAttribute('data-lang-block') === lang);
+        });
+        document.querySelectorAll('[data-set-lang]').forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-set-lang') === lang);
+        });
+        var back = document.getElementById('backLink');
+        if (back) {
+          back.textContent = lang === 'en' ? '← Back to WM_CHECKLIST' : (lang === 'az' ? '← WM_CHECKLIST-ə qayıt' : '← Вернуться в WM_CHECKLIST');
+        }
+      }
+
+      document.querySelectorAll('[data-set-lang]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var next = btn.getAttribute('data-set-lang');
+          try { localStorage.setItem('wm_checklist_lang_v1', next); } catch (e) {}
+          apply(next);
+        });
+      });
+      apply(lang);
+    })();
+  </script>
+</body>
+</html>

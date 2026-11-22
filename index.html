@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: blob:; font-src 'self'; connect-src 'self' https://api.github.com https://gist.githubusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="theme-color" content="#141414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,6 +15,19 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <!-- Выезжающее сверху по центру напоминание о резервной копии -->
+  <div class="backup-banner" id="backupReminderBanner" role="status" aria-live="polite" aria-hidden="true">
+    <div class="backup-banner-text">
+      <div class="backup-banner-title" data-i18n="backup_banner_title">Пора сохранить резервную копию</div>
+      <div class="backup-banner-sub" data-i18n="backup_banner_sub">Данные хранятся локально в браузере — сохрани свежий .json в 1 клик.</div>
+    </div>
+    <div class="backup-banner-actions">
+      <button type="button" class="btn btn-accent btn-sm" id="backupBannerSaveBtn" data-i18n="backup_banner_save">Сохранить .json</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="backupBannerLaterBtn" data-i18n="backup_banner_later">Позже</button>
+      <button type="button" class="modal-close backup-banner-close" id="backupBannerCloseBtn" aria-label="Закрыть">✕</button>
+    </div>
+  </div>
+
   <div class="app-shell">
     <!-- Шапка: Кредиты -> Синхронизировать -> Настройки -> Тема -->
     <header class="topbar">
@@ -26,24 +40,24 @@
       </div>
 
       <div class="topbar-actions">
-        <button type="button" class="btn btn-ghost btn-icon" id="openSearchModalBtn" title="Глобальный поиск по всем вкладкам (Ctrl+K или /)" aria-label="Поиск">
+        <button type="button" class="btn btn-ghost btn-icon" id="openSearchModalBtn" data-i18n-title="nav_search_title" title="Глобальный поиск по всем вкладкам (Ctrl+K или /)" aria-label="Поиск">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span class="btn-label-desktop">Поиск</span>
+          <span class="btn-label-desktop" data-i18n="nav_search">Поиск</span>
         </button>
-        <button type="button" class="btn btn-ghost btn-icon" id="openCreditsModalBtn" title="Кредиты и лимит карты" aria-label="Кредиты">
+        <button type="button" class="btn btn-ghost btn-icon" id="openCreditsModalBtn" data-i18n-title="nav_credits_title" title="Кредиты и лимит карты" aria-label="Кредиты">
           <svg class="ico ico-mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <span class="btn-label-desktop">Кредиты</span>
+          <span class="btn-label-desktop" data-i18n="nav_credits">Кредиты</span>
           <span class="topbar-pill hidden" id="topbarCreditsPill">0 ₼</span>
         </button>
-        <button type="button" class="btn btn-ghost btn-icon" id="quickSyncBtn" title="Синхронизировать с GitHub" aria-label="Синхронизировать">
+        <button type="button" class="btn btn-ghost btn-icon" id="quickSyncBtn" data-i18n-title="nav_sync_title" title="Синхронизировать с GitHub" aria-label="Синхронизировать">
           <span class="sync-indicator" id="syncIndicator"></span>
-          <span class="btn-label-desktop">Синхронизировать</span>
+          <span class="btn-label-desktop" data-i18n="nav_sync">Синхронизировать</span>
         </button>
-        <button type="button" class="btn btn-ghost btn-icon" id="openSyncModalBtn" title="Общие настройки, справочники и синхронизация" aria-label="Настройки">
+        <button type="button" class="btn btn-ghost btn-icon" id="openSyncModalBtn" data-i18n-title="nav_settings_title" title="Общие настройки, справочники и синхронизация" aria-label="Настройки">
           <svg class="ico ico-mobile-only" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span class="btn-label-desktop">Настройки</span>
+          <span class="btn-label-desktop" data-i18n="nav_settings">Настройки</span>
         </button>
-        <button type="button" class="btn btn-ghost btn-icon" id="themeToggleBtn" title="Переключить тему" aria-label="Переключить тему">
+        <button type="button" class="btn btn-ghost btn-icon" id="themeToggleBtn" data-i18n-title="nav_theme_title" title="Переключить тему" aria-label="Переключить тему">
           <span id="themeToggleIcon">☀</span>
         </button>
       </div>
@@ -52,7 +66,7 @@
     <!-- Панель вкладок (списков) -->
     <nav class="tabs-bar" aria-label="Списки">
       <div class="tabs-pinned-left">
-        <button type="button" class="tab-chip tab-chip--all" id="allTabBtn" title="Все позиции из всех вкладок (единый список)" aria-label="Все позиции">
+        <button type="button" class="tab-chip tab-chip--all" id="allTabBtn" data-i18n-title="nav_all_title" title="Все позиции из всех вкладок (единый список)" aria-label="Все позиции">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span class="tab-chip-count" id="allTabCount">0</span>
         </button>
@@ -65,24 +79,24 @@
       </div>
       <div class="tabs-divider" aria-hidden="true"></div>
       <div class="tabs-controls">
-        <button type="button" class="btn btn-ghost btn-sm" id="manageTabsBtn" title="Управление вкладками (создать, порядок, редактировать)">•••</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="manageTabsBtn" data-i18n-title="nav_manage_tabs_title" title="Управление вкладками (создать, порядок, редактировать)">•••</button>
       </div>
     </nav>
 
     <!-- Итоговая полоса текущей вкладки -->
     <section class="summary-grid" aria-label="Итоги по вкладке">
       <div class="summary-card summary-card--primary">
-        <div class="summary-label">ПОТРАЧЕНО (ОТМЕЧЕНО)</div>
+        <div class="summary-label" data-i18n="sum_spent">ПОТРАЧЕНО (ОТМЕЧЕНО)</div>
         <div class="summary-value" id="statSpent">0 ₼</div>
         <div class="summary-meta" id="statSpentMeta">Отмечено: 0 из 0</div>
       </div>
       <div class="summary-card">
-        <div class="summary-label">В МЕСЯЦ ПО КРЕДИТАМ</div>
+        <div class="summary-label" data-i18n="sum_monthly">В МЕСЯЦ ПО КРЕДИТАМ</div>
         <div class="summary-value" id="statMonthly">0 ₼</div>
         <div class="summary-meta" id="statMonthlyMeta">Активных кредитов: 0</div>
       </div>
       <div class="summary-card">
-        <div class="summary-label">ВСЕГО ЗАПЛАНИРОВАНО</div>
+        <div class="summary-label" data-i18n="sum_planned">ВСЕГО ЗАПЛАНИРОВАНО</div>
         <div class="summary-value" id="statPlanned">0 ₼</div>
         <div class="summary-meta" id="statPlannedMeta">Нал: 0 ₼ · Кредит: 0 ₼</div>
       </div>
@@ -92,35 +106,35 @@
     <section class="toolbar">
       <div class="toolbar-primary">
         <div class="toolbar-primary-left">
-          <button type="button" class="btn btn-accent" id="addItemBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Позиция</span></button>
-          <button type="button" class="btn btn-secondary" id="addCategoryBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Категория</span></button>
-          <button type="button" class="btn btn-secondary" id="addBundleBtn">Оформить в кредит</button>
+          <button type="button" class="btn btn-accent" id="addItemBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="btn_add_item">Позиция</span></button>
+          <button type="button" class="btn btn-secondary" id="addCategoryBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="btn_add_cat">Категория</span></button>
+          <button type="button" class="btn btn-secondary" id="addBundleBtn" data-i18n="btn_add_bundle">Оформить в кредит</button>
         </div>
         <div class="toolbar-primary-right">
           <button type="button" class="btn btn-ghost btn-sm btn-icon hidden" id="toggleAllCategoriesBtn" title="Свернуть все категории" aria-label="Свернуть или развернуть все категории"></button>
-          <button type="button" class="btn btn-ghost btn-sm" id="manageCategoriesBtn" title="Управление категориями (порядок, переименование, перенос)">•••</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="manageCategoriesBtn" data-i18n-title="nav_manage_cats_title" title="Управление категориями (порядок, переименование, перенос)">•••</button>
         </div>
       </div>
 
       <div class="toolbar-filters">
         <select class="select" id="sortFilter" aria-label="Сортировка позиций">
-          <option value="priority">По приоритету</option>
-          <option value="price_desc">Сначала дорогие</option>
-          <option value="price_asc">Сначала дешёвые</option>
-          <option value="newest">Сначала новые</option>
-          <option value="alpha">По алфавиту (А–Я)</option>
+          <option value="priority" data-i18n="sort_priority">По приоритету</option>
+          <option value="price_desc" data-i18n="sort_price_desc">Сначала дорогие</option>
+          <option value="price_asc" data-i18n="sort_price_asc">Сначала дешёвые</option>
+          <option value="newest" data-i18n="sort_newest">Сначала новые</option>
+          <option value="alpha" data-i18n="sort_alpha">По алфавиту (А–Я)</option>
         </select>
         <select class="select" id="statusFilter" aria-label="Фильтр по статусу">
-          <option value="all">Все статусы</option>
-          <option value="unchecked">Не куплено</option>
-          <option value="checked">Куплено</option>
-          <option value="credit">Только в кредит / рассрочку</option>
+          <option value="all" data-i18n="filter_status_all">Все статусы</option>
+          <option value="unchecked" data-i18n="filter_status_unchecked">Не куплено</option>
+          <option value="checked" data-i18n="filter_status_checked">Куплено</option>
+          <option value="credit" data-i18n="filter_status_credit">Только в кредит / рассрочку</option>
         </select>
         <select class="select" id="priorityFilter" aria-label="Фильтр по приоритету">
-          <option value="all">Все приоритеты</option>
+          <option value="all" data-i18n="filter_prio_all">Все приоритеты</option>
         </select>
         <select class="select" id="storeFilter" aria-label="Фильтр по магазину">
-          <option value="all">Все магазины</option>
+          <option value="all" data-i18n="filter_store_all">Все магазины</option>
         </select>
       </div>
     </section>
@@ -137,6 +151,13 @@
       <div class="footer-bottom">
         © 2026 <a class="footer-copy-link" href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a>
       </div>
+      <div class="footer-links">
+        <button type="button" class="footer-action-link" id="openDonateModalBtn" data-i18n="footer_support">Поддержать ♥</button>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a class="footer-copy-link" href="privacy.html" data-i18n="footer_privacy">Privacy</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a class="footer-copy-link" href="terms.html" data-i18n="footer_terms">Terms</a>
+      </div>
     </footer>
   </div>
 
@@ -148,7 +169,7 @@
         <div class="drawer-header-actions">
           <button type="button" class="btn btn-secondary btn-sm" id="drawerEditBtn" title="Редактировать позицию">
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            <span>Редактировать</span>
+            <span data-i18n="btn_edit">Редактировать</span>
           </button>
           <button type="button" class="modal-close" id="closeDrawerBtn" aria-label="Закрыть">✕</button>
         </div>
@@ -187,7 +208,7 @@
         </div>
 
         <div class="drawer-note-section" id="drawerNoteSection">
-          <div class="drawer-section-label">ЗАМЕТКА / ХАРАКТЕРИСТИКИ</div>
+          <div class="drawer-section-label" data-i18n="drawer_note_label">ЗАМЕТКА / ХАРАКТЕРИСТИКИ</div>
           <div class="drawer-note-content" id="drawerNoteContent"></div>
         </div>
       </div>
@@ -199,15 +220,15 @@
     <div class="modal-box modal-box--xl spotlight-box" role="dialog" aria-modal="true" aria-label="Глобальный поиск">
       <div class="spotlight-input-wrap">
         <svg class="ico spotlight-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="search" class="spotlight-input" id="globalSearchInput" placeholder="Поиск по всем вкладкам, характеристикам, магазинам, кредитам..." autocomplete="off">
+        <input type="search" class="spotlight-input" id="globalSearchInput" placeholder="Поиск по всем вкладкам, характеристикам, магазинам, кредитам..." data-i18n-placeholder="spotlight_placeholder" autocomplete="off">
         <kbd class="spotlight-kbd">ESC</kbd>
         <button type="button" class="modal-close" data-close-modal="globalSearchModal" aria-label="Закрыть">✕</button>
       </div>
       <div class="spotlight-chips" id="spotlightChips">
-        <button type="button" class="spotlight-chip" data-chip-group="status" data-chip-val="unchecked">Не куплено</button>
-        <button type="button" class="spotlight-chip" data-chip-group="status" data-chip-val="checked">Куплено</button>
-        <button type="button" class="spotlight-chip" data-chip-group="pay" data-chip-val="credit">В кредите</button>
-        <button type="button" class="spotlight-chip" data-chip-group="pay" data-chip-val="cash">Наличные</button>
+        <button type="button" class="spotlight-chip" data-chip-group="status" data-chip-val="unchecked" data-i18n="chip_unchecked">Не куплено</button>
+        <button type="button" class="spotlight-chip" data-chip-group="status" data-chip-val="checked" data-i18n="chip_checked">Куплено</button>
+        <button type="button" class="spotlight-chip" data-chip-group="pay" data-chip-val="credit" data-i18n="chip_credit">В кредите</button>
+        <button type="button" class="spotlight-chip" data-chip-group="pay" data-chip-val="cash" data-i18n="chip_cash">Наличные</button>
       </div>
       <div class="spotlight-meta" id="globalSearchMeta"></div>
       <div class="spotlight-results" id="globalSearchResults"></div>
@@ -220,7 +241,7 @@
       <div class="modal-header">
         <div>
           <div class="section-kicker">GLOBAL_CREDITS // ALL_TABS</div>
-          <h3 id="creditsModalTitle">Все кредиты, рассрочки и лимит карты</h3>
+          <h3 id="creditsModalTitle" data-i18n="credits_modal_title">Все кредиты, рассрочки и лимит карты</h3>
         </div>
         <button type="button" class="modal-close" data-close-modal="creditsModal" aria-label="Закрыть">✕</button>
       </div>
@@ -229,7 +250,7 @@
         <div class="credits-ref-grid">
           <div class="card-limit-box">
             <div class="form-group">
-              <label class="form-label" for="cardLimitInput">Лимит карты (<span class="js-currency-symbol">₼</span>, справочно)</label>
+              <label class="form-label" for="cardLimitInput"><span data-i18n="credits_card_limit_label">Лимит карты</span> (<span class="js-currency-symbol">₼</span>, <span data-i18n="credits_ref_suffix">справочно</span>)</label>
               <input type="number" class="input input-mono" id="cardLimitInput" min="0" step="1" placeholder="Например, 2450">
             </div>
             <div class="card-limit-stats" id="cardLimitStats">
@@ -242,7 +263,7 @@
 
           <div class="card-limit-box">
             <div class="form-group">
-              <label class="form-label" for="monthlyIncomeInput">Доход / мес (<span class="js-currency-symbol">₼</span>, справочно)</label>
+              <label class="form-label" for="monthlyIncomeInput"><span data-i18n="credits_income_label">Доход / мес</span> (<span class="js-currency-symbol">₼</span>, <span data-i18n="credits_ref_suffix">справочно</span>)</label>
               <input type="number" class="input input-mono" id="monthlyIncomeInput" min="0" step="1" placeholder="Например, 820">
             </div>
             <div class="card-limit-stats" id="monthlyIncomeStats">
@@ -256,31 +277,31 @@
 
         <div class="credits-kpi-grid">
           <div class="summary-card summary-card--primary">
-            <div class="summary-label">ПЛАТЁЖ В МЕСЯЦ (ВСЕ ВКЛАДКИ)</div>
+            <div class="summary-label" data-i18n="credits_kpi_monthly">ПЛАТЁЖ В МЕСЯЦ (ВСЕ ВКЛАДКИ)</div>
             <div class="summary-value" id="globalCreditMonthly">0 ₼</div>
             <div class="summary-meta" id="globalCreditMonthlyMeta">Активных записей: 0</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">ЛЬГОТНЫЙ ДОЛГ</div>
+            <div class="summary-label" data-i18n="credits_kpi_grace">ЛЬГОТНЫЙ ДОЛГ</div>
             <div class="summary-value" id="globalCreditGrace">0 ₼</div>
             <div class="summary-meta" id="globalCreditGraceMeta">Без ближайших дедлайнов</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">ОСТАТОК ДОЛГА ВСЕГО</div>
+            <div class="summary-label" data-i18n="credits_kpi_remaining">ОСТАТОК ДОЛГА ВСЕГО</div>
             <div class="summary-value" id="globalCreditRemaining">0 ₼</div>
-            <div class="summary-meta">По всем активным долгам</div>
+            <div class="summary-meta" data-i18n="credits_kpi_remaining_sub">По всем активным долгам</div>
           </div>
         </div>
 
         <div class="credits-toolbar">
           <div class="credits-filter-pills" id="creditsTypeFilter">
-            <button type="button" class="tab-chip active" data-ctype="all">Все</button>
-            <button type="button" class="tab-chip" data-ctype="installment">Рассрочка</button>
-            <button type="button" class="tab-chip" data-ctype="ninja">Ninja</button>
-            <button type="button" class="tab-chip" data-ctype="grace">Льготный</button>
-            <button type="button" class="tab-chip" data-ctype="custom">Свой</button>
+            <button type="button" class="tab-chip active" data-ctype="all" data-i18n="credits_filter_all">Все</button>
+            <button type="button" class="tab-chip" data-ctype="installment" data-i18n="credit_type_installment">Рассрочка</button>
+            <button type="button" class="tab-chip" data-ctype="ninja" data-i18n="credit_type_ninja">Ninja</button>
+            <button type="button" class="tab-chip" data-ctype="grace" data-i18n="credit_type_grace_short">Льготный</button>
+            <button type="button" class="tab-chip" data-ctype="custom" data-i18n="credits_filter_custom">Свой</button>
           </div>
-          <button type="button" class="btn btn-accent btn-sm" id="addBundleFromCreditsBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Оформить в кредит</span></button>
+          <button type="button" class="btn btn-accent btn-sm" id="addBundleFromCreditsBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="btn_add_bundle">Оформить в кредит</span></button>
         </div>
 
         <div class="global-credits-list" id="globalCreditsList"></div>
@@ -299,96 +320,96 @@
         <input type="hidden" id="itemIdInput">
 
         <div class="form-group">
-          <label class="form-label" for="itemTitleInput">Название *</label>
-          <input type="text" class="input" id="itemTitleInput" placeholder="Например, Велосипед 26&quot; или Зарядка USB-C" required>
+          <label class="form-label" for="itemTitleInput" data-i18n="item_label_title">Название *</label>
+          <input type="text" class="input" id="itemTitleInput" data-i18n-placeholder="item_ph_title" placeholder="Например, Велосипед 26&quot; или Зарядка USB-C" required>
         </div>
 
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label" for="itemCategorySelect">Категория *</label>
+            <label class="form-label" for="itemCategorySelect" data-i18n="item_label_cat">Категория *</label>
             <select class="select" id="itemCategorySelect" required></select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="itemPriceInput">Цена (<span class="js-currency-symbol">₼</span>)</label>
+            <label class="form-label" for="itemPriceInput"><span data-i18n="item_label_price">Цена</span> (<span class="js-currency-symbol">₼</span>)</label>
             <input type="number" class="input input-mono" id="itemPriceInput" min="0" step="0.01" placeholder="0">
           </div>
         </div>
 
         <div class="form-group hidden" id="newCategoryGroup">
-          <label class="form-label" for="itemNewCategoryInput">Название новой категории *</label>
-          <input type="text" class="input" id="itemNewCategoryInput" placeholder="Например, Экипировка, Свет, Аксессуары">
+          <label class="form-label" for="itemNewCategoryInput" data-i18n="item_label_new_cat">Название новой категории *</label>
+          <input type="text" class="input" id="itemNewCategoryInput" data-i18n-placeholder="item_ph_new_cat" placeholder="Например, Экипировка, Свет, Аксессуары">
         </div>
 
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label" for="itemPrioritySelect">Приоритет</label>
+            <label class="form-label" for="itemPrioritySelect" data-i18n="item_label_prio">Приоритет</label>
             <select class="select" id="itemPrioritySelect"></select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="itemStoreSelect">Откуда товар</label>
+            <label class="form-label" for="itemStoreSelect" data-i18n="item_label_store">Откуда товар</label>
             <select class="select" id="itemStoreSelect"></select>
           </div>
         </div>
 
         <div class="form-group hidden" id="customStoreGroup">
-          <label class="form-label" for="itemCustomStoreInput">Свой магазин / источник</label>
-          <input type="text" class="input" id="itemCustomStoreInput" placeholder="Например, Tap.az, AliExpress, Kontakt Home">
+          <label class="form-label" for="itemCustomStoreInput" data-i18n="item_label_custom_store">Свой магазин / источник</label>
+          <input type="text" class="input" id="itemCustomStoreInput" data-i18n-placeholder="item_ph_custom_store" placeholder="Например, Tap.az, AliExpress, Kontakt Home">
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="itemLinkInput">Ссылка на товар</label>
+          <label class="form-label" for="itemLinkInput" data-i18n="item_label_link">Ссылка на товар</label>
           <input type="url" class="input" id="itemLinkInput" placeholder="https://...">
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="itemImageInput1">Фото товара (URL картинки, до 3 шт.)</label>
+          <label class="form-label" for="itemImageInput1" data-i18n="item_label_photos">Фото товара (URL картинки, до 3 шт.)</label>
           <div class="photo-inputs-stack" id="itemPhotoInputs">
-            <input type="url" class="input" id="itemImageInput1" placeholder="https://... (фото 1)">
-            <input type="url" class="input hidden" id="itemImageInput2" placeholder="https://... (фото 2)">
-            <input type="url" class="input hidden" id="itemImageInput3" placeholder="https://... (фото 3)">
+            <input type="url" class="input" id="itemImageInput1" data-i18n-placeholder="item_ph_photo1" placeholder="https://... (фото 1)">
+            <input type="url" class="input hidden" id="itemImageInput2" data-i18n-placeholder="item_ph_photo2" placeholder="https://... (фото 2)">
+            <input type="url" class="input hidden" id="itemImageInput3" data-i18n-placeholder="item_ph_photo3" placeholder="https://... (фото 3)">
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="itemNoteInput">Заметка / характеристики</label>
-          <textarea class="textarea" id="itemNoteInput" rows="4" placeholder="Размер, цвет, характеристики вида «Ключ: Значение»..."></textarea>
+          <label class="form-label" for="itemNoteInput" data-i18n="item_label_note">Заметка / характеристики</label>
+          <textarea class="textarea" id="itemNoteInput" rows="4" data-i18n-placeholder="item_ph_note" placeholder="Размер, цвет, характеристики вида «Ключ: Значение»..."></textarea>
         </div>
 
         <div class="form-check-row">
           <label class="checkbox-label">
             <input type="checkbox" id="itemCheckedInput">
-            <span>Уже куплено / выполнено</span>
+            <span data-i18n="item_label_checked">Уже куплено / выполнено</span>
           </label>
         </div>
 
         <!-- Перенести / скопировать карточку в другую вкладку -->
         <div class="transfer-box hidden" id="itemTransferBox">
-          <div class="section-kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
+          <div class="section-kicker" data-i18n="transfer_kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label" for="itemTransferTabSelect">Целевая вкладка</label>
+              <label class="form-label" for="itemTransferTabSelect" data-i18n="transfer_target_tab">Целевая вкладка</label>
               <select class="select" id="itemTransferTabSelect"></select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="itemTransferCatSelect">Категория в ней</label>
+              <label class="form-label" for="itemTransferCatSelect" data-i18n="transfer_target_cat">Категория в ней</label>
               <select class="select" id="itemTransferCatSelect"></select>
             </div>
           </div>
           <div class="transfer-actions">
-            <button type="button" class="btn btn-secondary btn-sm" id="moveItemTabBtn">Перенести →</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="copyItemTabBtn">Скопировать</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="moveItemTabBtn" data-i18n="btn_move">Перенести →</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="copyItemTabBtn" data-i18n="btn_copy">Скопировать</button>
           </div>
         </div>
 
         <div class="modal-actions modal-actions--split">
-          <button type="button" class="btn btn-danger hidden" id="deleteItemBtn">Удалить</button>
+          <button type="button" class="btn btn-danger hidden" id="deleteItemBtn" data-i18n="btn_delete">Удалить</button>
           <button type="button" class="btn btn-danger hidden" id="clearItemFormBtn" title="Очистить все поля формы">
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            <span>Очистить</span>
+            <span data-i18n="btn_clear">Очистить</span>
           </button>
           <div class="modal-actions-right">
-            <button type="button" class="btn btn-ghost" data-close-modal="itemModal">Отмена</button>
-            <button type="submit" class="btn btn-accent">Сохранить</button>
+            <button type="button" class="btn btn-ghost" data-close-modal="itemModal" data-i18n="btn_cancel">Отмена</button>
+            <button type="submit" class="btn btn-accent" data-i18n="btn_save">Сохранить</button>
           </div>
         </div>
       </form>
@@ -407,11 +428,11 @@
 
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label" for="bundleNameInput">Название (если 1 товар — можно оставить пустым)</label>
-            <input type="text" class="input" id="bundleNameInput" placeholder="Например, Ozon 18.11 или подставится само">
+            <label class="form-label" for="bundleNameInput" data-i18n="bundle_label_name">Название (если 1 товар — можно оставить пустым)</label>
+            <input type="text" class="input" id="bundleNameInput" data-i18n-placeholder="bundle_ph_name" placeholder="Например, Ozon 18.11 или подставится само">
           </div>
           <div class="form-group">
-            <label class="form-label" for="bundleTypeSelect">Тип оплаты</label>
+            <label class="form-label" for="bundleTypeSelect" data-i18n="bundle_label_type">Тип оплаты</label>
             <select class="select" id="bundleTypeSelect">
               <option value="installment">Рассрочка (таксит 0%)</option>
               <option value="ninja">Ninja (разделение с %)</option>
@@ -422,20 +443,20 @@
         </div>
 
         <div class="form-group hidden" id="bundleCustomTypeGroup">
-          <label class="form-label" for="bundleCustomTypeInput">Своё название типа</label>
-          <input type="text" class="input" id="bundleCustomTypeInput" placeholder="Например, Кредит Kontakt">
+          <label class="form-label" for="bundleCustomTypeInput" data-i18n="bundle_label_custom_type">Своё название типа</label>
+          <input type="text" class="input" id="bundleCustomTypeInput" data-i18n-placeholder="bundle_ph_custom_type" placeholder="Например, Кредит Kontakt">
         </div>
 
         <div class="form-group">
           <div class="form-label-row">
-            <label class="form-label">Выберите 1 или несколько товаров (можно из разных вкладок) *</label>
+            <label class="form-label" data-i18n="bundle_label_items">Выберите 1 или несколько товаров (можно из разных вкладок) *</label>
             <span class="mono-pill" id="bundleBaseSumLabel">База: 0 ₼</span>
           </div>
           <div class="bundle-picker-tools">
-            <input type="search" class="input bundle-picker-search" id="bundlePickerSearch" placeholder="Поиск товара, категории или вкладки..." aria-label="Поиск товаров">
+            <input type="search" class="input bundle-picker-search" id="bundlePickerSearch" data-i18n-placeholder="bundle_ph_search" placeholder="Поиск товара, категории или вкладки..." aria-label="Поиск товаров">
             <label class="checkbox-label bundle-show-all-label" title="Показать товары, которые уже входят в другие кредиты">
               <input type="checkbox" id="bundleShowUsedCheck">
-              <span>Уже в кредитах</span>
+              <span data-i18n="bundle_show_used">Уже в кредитах</span>
             </label>
           </div>
           <div class="bundle-picker-list" id="bundleItemsPicker"></div>
@@ -445,22 +466,22 @@
         <div id="bundleInstallmentRows">
           <div class="form-row-2" style="margin-bottom: 10px;">
             <div class="form-group">
-              <label class="form-label" for="bundleStartDateInput">Дата оформления</label>
+              <label class="form-label" for="bundleStartDateInput" data-i18n="bundle_label_start">Дата оформления</label>
               <input type="date" class="input input-mono" id="bundleStartDateInput">
             </div>
             <div class="form-group">
-              <label class="form-label" for="bundleMonthsInput">Срок (мес.)</label>
+              <label class="form-label" for="bundleMonthsInput" data-i18n="bundle_label_months">Срок (мес.)</label>
               <input type="number" class="input input-mono" id="bundleMonthsInput" min="1" step="1" placeholder="12">
             </div>
           </div>
 
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label" for="bundleMonthlyInput">Платёж / мес (<span class="js-currency-symbol">₼</span>) *</label>
+              <label class="form-label" for="bundleMonthlyInput"><span data-i18n="bundle_label_monthly">Платёж / мес</span> (<span class="js-currency-symbol">₼</span>) *</label>
               <input type="number" class="input input-mono" id="bundleMonthlyInput" min="0" step="0.01" placeholder="6.61">
             </div>
             <div class="form-group">
-              <label class="form-label" for="bundleTotalInput">Итоговая сумма (<span class="js-currency-symbol">₼</span>) *</label>
+              <label class="form-label" for="bundleTotalInput"><span data-i18n="bundle_label_total">Итоговая сумма</span> (<span class="js-currency-symbol">₼</span>) *</label>
               <input type="number" class="input input-mono" id="bundleTotalInput" min="0" step="0.01" placeholder="79.33">
             </div>
           </div>
@@ -470,11 +491,11 @@
         <div id="bundleGraceRows" class="hidden">
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label" for="bundleDueDateInput">Оплатить до (дата)</label>
+              <label class="form-label" for="bundleDueDateInput" data-i18n="bundle_label_due">Оплатить до (дата)</label>
               <input type="date" class="input input-mono" id="bundleDueDateInput">
             </div>
             <div class="form-group">
-              <label class="form-label" for="bundleGraceTotalInput">Сумма к возврату (<span class="js-currency-symbol">₼</span>) *</label>
+              <label class="form-label" for="bundleGraceTotalInput"><span data-i18n="bundle_label_grace_total">Сумма к возврату</span> (<span class="js-currency-symbol">₼</span>) *</label>
               <input type="number" class="input input-mono" id="bundleGraceTotalInput" min="0" step="0.01" placeholder="33.50">
             </div>
           </div>
@@ -487,15 +508,15 @@
         <div class="form-check-row">
           <label class="checkbox-label">
             <input type="checkbox" id="bundleCheckedInput" checked>
-            <span>Уже оформлено (отметить выбранные товары как купленные)</span>
+            <span data-i18n="bundle_label_checked">Уже оформлено (отметить выбранные товары как купленные)</span>
           </label>
         </div>
 
         <div class="modal-actions modal-actions--split">
-          <button type="button" class="btn btn-danger hidden" id="deleteBundleBtn">Удалить кредит</button>
+          <button type="button" class="btn btn-danger hidden" id="deleteBundleBtn" data-i18n="btn_delete_credit">Удалить кредит</button>
           <div class="modal-actions-right">
-            <button type="button" class="btn btn-ghost" data-close-modal="bundleModal">Отмена</button>
-            <button type="submit" class="btn btn-accent">Сохранить кредит</button>
+            <button type="button" class="btn btn-ghost" data-close-modal="bundleModal" data-i18n="btn_cancel">Отмена</button>
+            <button type="submit" class="btn btn-accent" data-i18n="btn_save_credit">Сохранить кредит</button>
           </div>
         </div>
       </form>
@@ -508,14 +529,14 @@
       <div class="modal-header">
         <div>
           <div class="section-kicker">TABS_MANAGER</div>
-          <h3 id="tabsManagerTitle">Управление вкладками</h3>
+          <h3 id="tabsManagerTitle" data-i18n="tabs_mgr_title">Управление вкладками</h3>
         </div>
         <button type="button" class="modal-close" data-close-modal="tabsManagerModal" aria-label="Закрыть">✕</button>
       </div>
       <div class="modal-form">
         <div class="manager-top-bar">
-          <span class="form-hint">Меняй порядок стрелками ↑↓ или перетаскиванием за ⋮⋮</span>
-          <button type="button" class="btn btn-accent btn-sm" id="addTabFromManagerBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Новая вкладка</span></button>
+          <span class="form-hint" data-i18n="mgr_drag_hint">Меняй порядок стрелками ↑↓ или перетаскиванием за ⋮⋮</span>
+          <button type="button" class="btn btn-accent btn-sm" id="addTabFromManagerBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="btn_new_tab">Новая вкладка</span></button>
         </div>
         <div class="manager-list" id="tabsManagerList"></div>
       </div>
@@ -528,14 +549,14 @@
       <div class="modal-header">
         <div>
           <div class="section-kicker" id="categoriesManagerKicker">CATEGORIES_MANAGER</div>
-          <h3 id="categoriesManagerTitle">Управление категориями</h3>
+          <h3 id="categoriesManagerTitle" data-i18n="cats_mgr_title">Управление категориями</h3>
         </div>
         <button type="button" class="modal-close" data-close-modal="categoriesManagerModal" aria-label="Закрыть">✕</button>
       </div>
       <div class="modal-form">
         <div class="manager-top-bar">
-          <span class="form-hint">Меняй порядок стрелками ↑↓ или перетаскиванием за ⋮⋮</span>
-          <button type="button" class="btn btn-accent btn-sm" id="addCategoryFromManagerBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Новая категория</span></button>
+          <span class="form-hint" data-i18n="mgr_drag_hint">Меняй порядок стрелками ↑↓ или перетаскиванием за ⋮⋮</span>
+          <button type="button" class="btn btn-accent btn-sm" id="addCategoryFromManagerBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="btn_new_cat">Новая категория</span></button>
         </div>
         <div class="manager-list" id="categoriesManagerList"></div>
       </div>
@@ -552,28 +573,28 @@
       <form id="categoryForm" class="modal-form">
         <input type="hidden" id="categoryIdInput">
         <div class="form-group">
-          <label class="form-label" for="categoryNameInput">Название категории *</label>
-          <input type="text" class="input" id="categoryNameInput" placeholder="Например, Экипировка, Свет, Инструменты" required>
+          <label class="form-label" for="categoryNameInput" data-i18n="cat_label_name">Название категории *</label>
+          <input type="text" class="input" id="categoryNameInput" data-i18n-placeholder="cat_ph_name" placeholder="Например, Экипировка, Свет, Инструменты" required>
         </div>
 
         <div class="transfer-box hidden" id="categoryTransferBox">
           <div class="section-kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
-          <p class="form-hint">Категория перенесётся или скопируется вместе со всеми товарами внутри неё.</p>
+          <p class="form-hint" data-i18n="transfer_cat_hint">Категория перенесётся или скопируется вместе со всеми товарами внутри неё.</p>
           <div class="form-group">
-            <label class="form-label" for="categoryTransferTabSelect">Целевая вкладка</label>
+            <label class="form-label" for="categoryTransferTabSelect" data-i18n="transfer_target_tab">Целевая вкладка</label>
             <select class="select" id="categoryTransferTabSelect"></select>
           </div>
           <div class="transfer-actions">
-            <button type="button" class="btn btn-secondary btn-sm" id="moveCategoryTabBtn">Перенести →</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="copyCategoryTabBtn">Скопировать</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="moveCategoryTabBtn" data-i18n="btn_move">Перенести →</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="copyCategoryTabBtn" data-i18n="btn_copy">Скопировать</button>
           </div>
         </div>
 
         <div class="modal-actions modal-actions--split">
-          <button type="button" class="btn btn-danger hidden" id="deleteCategoryBtn">Удалить категорию</button>
+          <button type="button" class="btn btn-danger hidden" id="deleteCategoryBtn" data-i18n="btn_delete_cat">Удалить категорию</button>
           <div class="modal-actions-right">
-            <button type="button" class="btn btn-ghost" data-close-modal="categoryModal">Отмена</button>
-            <button type="submit" class="btn btn-accent">Сохранить</button>
+            <button type="button" class="btn btn-ghost" data-close-modal="categoryModal" data-i18n="btn_cancel">Отмена</button>
+            <button type="submit" class="btn btn-accent" data-i18n="btn_save">Сохранить</button>
           </div>
         </div>
       </form>
@@ -590,14 +611,14 @@
       <form id="tabForm" class="modal-form">
         <input type="hidden" id="tabIdInput">
         <div class="form-group">
-          <label class="form-label" for="tabNameInput">Название вкладки *</label>
-          <input type="text" class="input" id="tabNameInput" placeholder="Например, Курьер, Дом, Ремонт" required>
+          <label class="form-label" for="tabNameInput" data-i18n="tab_label_name">Название вкладки *</label>
+          <input type="text" class="input" id="tabNameInput" data-i18n-placeholder="tab_ph_name" placeholder="Например, Курьер, Дом, Ремонт" required>
         </div>
         <div class="modal-actions modal-actions--split">
-          <button type="button" class="btn btn-danger hidden" id="deleteTabBtn">Удалить вкладку</button>
+          <button type="button" class="btn btn-danger hidden" id="deleteTabBtn" data-i18n="btn_delete_tab">Удалить вкладку</button>
           <div class="modal-actions-right">
-            <button type="button" class="btn btn-ghost" data-close-modal="tabModal">Отмена</button>
-            <button type="submit" class="btn btn-accent">Сохранить</button>
+            <button type="button" class="btn btn-ghost" data-close-modal="tabModal" data-i18n="btn_cancel">Отмена</button>
+            <button type="submit" class="btn btn-accent" data-i18n="btn_save">Сохранить</button>
           </div>
         </div>
       </form>
@@ -609,10 +630,11 @@
     <div class="modal-box modal-box--wide" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
       <div class="modal-header modal-header--tabs">
         <div class="settings-header-left">
-          <h3 id="syncModalTitle">Настройки</h3>
+          <h3 id="syncModalTitle" data-i18n="settings_title">Настройки</h3>
           <div class="settings-tabs" id="settingsModalTabs" role="tablist">
-            <button type="button" class="settings-tab-btn active" data-settings-tab="general" role="tab" aria-selected="true">Общие</button>
-            <button type="button" class="settings-tab-btn" data-settings-tab="sync" role="tab" aria-selected="false">Синхронизация</button>
+            <button type="button" class="settings-tab-btn active" data-settings-tab="general" role="tab" aria-selected="true" data-i18n="settings_tab_general">Общие</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="sync" role="tab" aria-selected="false" data-i18n="settings_tab_sync">Синхронизация</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="about" role="tab" aria-selected="false" data-i18n="settings_tab_about">О проекте</button>
           </div>
         </div>
         <button type="button" class="modal-close" data-close-modal="syncModal" aria-label="Закрыть">✕</button>
@@ -621,44 +643,65 @@
       <!-- ВКЛАДКА 1: ОБЩИЕ НАСТРОЙКИ (Валюта, Магазины, Типы кредитов) -->
       <div class="modal-form" id="settingsTabGeneral">
         <div class="sync-panel">
-          <div class="section-kicker">ВАЛЮТА ОТОБРАЖЕНИЯ</div>
+          <div class="section-kicker" data-i18n="gen_currency_kicker">ВАЛЮТА И ЯЗЫК</div>
           <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label" for="currencyPresetSelect">Валюта</label>
+              <label class="form-label" for="currencyPresetSelect" data-i18n="gen_currency_label">Валюта</label>
               <select class="select" id="currencyPresetSelect"></select>
             </div>
             <div class="form-group hidden" id="customCurrencyGroup">
-              <label class="form-label" for="customCurrencyInput">Свой символ (1–5 знаков)</label>
+              <label class="form-label" for="customCurrencyInput" data-i18n="gen_currency_custom_label">Свой символ (1–5 знаков)</label>
               <div class="input-with-btn">
                 <input type="text" class="input input-mono" id="customCurrencyInput" maxlength="5" placeholder="£, BYN, zł...">
-                <button type="button" class="btn btn-accent btn-sm" id="applyCustomCurrencyBtn">ОК</button>
+                <button type="button" class="btn btn-accent btn-sm" id="applyCustomCurrencyBtn" data-i18n="btn_ok">ОК</button>
               </div>
             </div>
           </div>
-          <p class="form-hint">Символ меняется сразу во всём приложении и синхронизируется между устройствами.</p>
+          <p class="form-hint" data-i18n="gen_currency_hint">Символ меняется сразу во всём приложении и синхронизируется между устройствами.</p>
+
+          <div class="form-row-2" style="margin-top: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="langSelect" data-i18n="gen_lang_label">Язык интерфейса</label>
+              <select class="select" id="langSelect">
+                <option value="ru">Русский (RU)</option>
+                <option value="en">English (EN)</option>
+                <option value="az">Azərbaycanca (AZ)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="backupReminderSelect" data-i18n="gen_backup_label">Напоминать сохранить .json</label>
+              <select class="select" id="backupReminderSelect">
+                <option value="0" data-i18n="gen_backup_off">Выключено</option>
+                <option value="7" data-i18n="gen_backup_7">Раз в 7 дней</option>
+                <option value="14" data-i18n="gen_backup_14">Раз в 14 дней</option>
+                <option value="30" data-i18n="gen_backup_30">Раз в 30 дней</option>
+              </select>
+            </div>
+          </div>
+          <p class="form-hint" data-i18n="gen_backup_hint">Когда подойдёт срок, сверху появится мягкое уведомление с кнопкой сохранения бэкапа в 1 клик.</p>
         </div>
 
         <div class="sync-divider"></div>
 
         <div class="sync-panel">
-          <div class="section-kicker">МАГАЗИНЫ И ИСТОЧНИКИ</div>
-          <p class="form-hint">Скрытые магазины не мешают в списке при создании новых позиций, но старые карточки сохраняют своё название. Свои варианты из карточек добавляются сюда автоматически.</p>
+          <div class="section-kicker" data-i18n="gen_stores_kicker">МАГАЗИНЫ И ИСТОЧНИКИ</div>
+          <p class="form-hint" data-i18n="gen_stores_hint">Скрытые магазины не мешают в списке при создании новых позиций, но старые карточки сохраняют своё название. Свои варианты из карточек добавляются сюда автоматически.</p>
           <div class="prefs-list" id="storesPrefsList"></div>
           <div class="input-with-btn">
-            <input type="text" class="input" id="newStorePrefInput" placeholder="Добавить свой магазин (напр. Wildberries, Tap.az)">
-            <button type="button" class="btn btn-secondary btn-sm" id="addStorePrefBtn">+ Добавить</button>
+            <input type="text" class="input" id="newStorePrefInput" data-i18n-placeholder="gen_stores_placeholder" placeholder="Добавить свой магазин (напр. Wildberries, Tap.az)">
+            <button type="button" class="btn btn-secondary btn-sm" id="addStorePrefBtn" data-i18n="btn_add">+ Добавить</button>
           </div>
         </div>
 
         <div class="sync-divider"></div>
 
         <div class="sync-panel">
-          <div class="section-kicker">ТИПЫ КРЕДИТОВ И РАССРОЧЕК</div>
-          <p class="form-hint">Ненужные встроенные типы (например, Ninja) можно скрыть глазиком. Свои типы работают по стандартной помесячной схеме.</p>
+          <div class="section-kicker" data-i18n="gen_credits_kicker">ТИПЫ КРЕДИТОВ И РАССРОЧЕК</div>
+          <p class="form-hint" data-i18n="gen_credits_hint">Ненужные встроенные типы (например, Ninja) можно скрыть глазиком. Свои типы работают по стандартной помесячной схеме.</p>
           <div class="prefs-list" id="creditTypesPrefsList"></div>
           <div class="input-with-btn">
-            <input type="text" class="input" id="newCreditTypePrefInput" placeholder="Добавить свой тип (напр. Сплит, Халва, Долями)">
-            <button type="button" class="btn btn-secondary btn-sm" id="addCreditTypePrefBtn">+ Добавить</button>
+            <input type="text" class="input" id="newCreditTypePrefInput" data-i18n-placeholder="gen_credits_placeholder" placeholder="Добавить свой тип (напр. Сплит, Халва, Долями)">
+            <button type="button" class="btn btn-secondary btn-sm" id="addCreditTypePrefBtn" data-i18n="btn_add">+ Добавить</button>
           </div>
         </div>
       </div>
@@ -666,35 +709,33 @@
       <!-- ВКЛАДКА 2: СИНХРОНИЗАЦИЯ И БЭКАП -->
       <div class="modal-form hidden" id="settingsTabSync">
         <div class="sync-panel">
-          <div class="section-kicker">GITHUB SECRET GIST SYNC</div>
-          <p class="form-hint">
-            Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется. Фоновая проверка обновлений использует <code>ETag</code> (пустые проверки не тратят лимит GitHub API).
-          </p>
+          <div class="section-kicker" data-i18n="sync_kicker">GITHUB SECRET GIST SYNC</div>
+          <p class="form-hint" data-i18n="sync_hint">Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется. Фоновая проверка обновлений использует ETag (пустые проверки не тратят лимит GitHub API).</p>
 
           <div class="form-group">
-            <label class="form-label" for="ghTokenInput">GitHub Personal Access Token (право: gist)</label>
+            <label class="form-label" for="ghTokenInput" data-i18n="sync_label_token">GitHub Personal Access Token (право: gist)</label>
             <div class="input-with-btn">
               <input type="password" class="input input-mono" id="ghTokenInput" placeholder="ghp_... или github_pat_..." autocomplete="off">
-              <button type="button" class="btn btn-secondary" id="findGistBtn">Найти мой Gist</button>
+              <button type="button" class="btn btn-secondary" id="findGistBtn" data-i18n="sync_btn_find">Найти мой Gist</button>
             </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="ghGistIdInput">Gist ID (заполнится сам при первом сохранении или поиске)</label>
-            <input type="text" class="input input-mono" id="ghGistIdInput" placeholder="Оставь пустым для автопоиска / создания">
+            <label class="form-label" for="ghGistIdInput" data-i18n="sync_label_gist">Gist ID (заполнится сам при первом сохранении или поиске)</label>
+            <input type="text" class="input input-mono" id="ghGistIdInput" data-i18n-placeholder="sync_ph_gist" placeholder="Оставь пустым для автопоиска / создания">
           </div>
 
           <div class="form-check-row">
             <label class="checkbox-label">
               <input type="checkbox" id="ghAutoSyncCheck">
-              <span>Автосинхронизация (отправка после изменений + авто-проверка с другого устройства)</span>
+              <span data-i18n="sync_label_auto">Автосинхронизация (отправка после изменений + авто-проверка с другого устройства)</span>
             </label>
           </div>
 
           <div class="sync-buttons-row">
-            <button type="button" class="btn btn-accent" id="saveSyncSettingsBtn">Сохранить настройки</button>
-            <button type="button" class="btn btn-secondary" id="pushGistBtn">Отправить в GitHub ↑</button>
-            <button type="button" class="btn btn-secondary" id="pullGistBtn">Загрузить с GitHub ↓</button>
+            <button type="button" class="btn btn-accent" id="saveSyncSettingsBtn" data-i18n="sync_btn_save">Сохранить настройки</button>
+            <button type="button" class="btn btn-secondary" id="pushGistBtn" data-i18n="sync_btn_push">Отправить в GitHub ↑</button>
+            <button type="button" class="btn btn-secondary" id="pullGistBtn" data-i18n="sync_btn_pull">Загрузить с GitHub ↓</button>
           </div>
           <div class="sync-log" id="syncModalStatus"></div>
         </div>
@@ -702,15 +743,84 @@
         <div class="sync-divider"></div>
 
         <div class="sync-panel">
-          <div class="section-kicker">ЛОКАЛЬНЫЙ БЭКАП (JSON)</div>
+          <div class="section-kicker" data-i18n="sync_backup_kicker">ЛОКАЛЬНЫЙ БЭКАП (JSON)</div>
           <div class="sync-buttons-row">
-            <button type="button" class="btn btn-secondary" id="exportFileBtn">Скачать .json</button>
+            <button type="button" class="btn btn-secondary" id="exportFileBtn" data-i18n="sync_btn_export">Скачать .json</button>
             <label class="btn btn-secondary file-upload-btn">
-              Загрузить .json
+              <span data-i18n="sync_btn_import">Загрузить .json</span>
               <input type="file" id="importFileInput" accept=".json,application/json" hidden>
             </label>
-            <button type="button" class="btn btn-ghost" id="copyJsonBtn">Скопировать JSON</button>
-            <button type="button" class="btn btn-danger" id="clearAllDataBtn">Очистить всё</button>
+            <button type="button" class="btn btn-ghost" id="copyJsonBtn" data-i18n="sync_btn_copy">Скопировать JSON</button>
+            <button type="button" class="btn btn-danger" id="clearAllDataBtn" data-i18n="sync_btn_clear">Очистить всё</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВКЛАДКА 3: О ПРОЕКТЕ -->
+      <div class="modal-form hidden" id="settingsTabAbout">
+        <div class="sync-panel">
+          <div class="section-kicker" data-i18n="about_kicker">О ПРОЕКТЕ WM_CHECKLIST</div>
+          <p class="about-story" data-i18n="about_story_1">WM_CHECKLIST родился из простой личной потребности. Я пользуюсь Capacities для общих заметок, но для повседневного учёта покупок, планов, рассрочек и кредитной нагрузки хотелось отдельный, быстрый и предельно чистый инструмент.</p>
+          <p class="about-story" data-i18n="about_story_2">Большинство готовых приложений либо просят подписку, либо перегружены рекламой. Поэтому я собрал этот трекер в первую очередь для себя — без серверов, трекеров и подписок — и открыл его бесплатно для всех на GitHub. Если захочется что-то поменять под себя, код открыт для форков, а любые идеи и отзывы всегда приветствуются.</p>
+        </div>
+
+        <div class="sync-divider"></div>
+
+        <div class="sync-panel">
+          <div class="section-kicker" data-i18n="about_links_kicker">СООБЩЕСТВО И ДОКУМЕНТЫ</div>
+          <div class="sync-buttons-row">
+            <a class="btn btn-secondary btn-sm" href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_github">Исходный код на GitHub ↗</a>
+            <a class="btn btn-secondary btn-sm" href="https://github.com/whtmst/checklist/discussions" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_ideas">Предложить идею (Discussions) ↗</a>
+            <a class="btn btn-secondary btn-sm" href="https://github.com/whtmst/checklist/issues" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_bugs">Сообщить о баге (Issues) ↗</a>
+            <button type="button" class="btn btn-ghost btn-sm" id="replayTourBtn" data-i18n="about_btn_tour">Показать тур заново</button>
+          </div>
+          <div class="sync-buttons-row" style="margin-top: 8px;">
+            <a class="btn btn-ghost btn-sm" href="privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_privacy">Политика конфиденциальности ↗</a>
+            <a class="btn btn-ghost btn-sm" href="terms.html" target="_blank" rel="noopener noreferrer" data-i18n="about_btn_terms">Условия использования ↗</a>
+          </div>
+        </div>
+
+        <div class="sync-divider"></div>
+
+        <div class="sync-panel">
+          <div class="section-kicker" data-i18n="about_donate_kicker">ПОДДЕРЖАТЬ ПРОЕКТ</div>
+          <p class="form-hint" data-i18n="about_donate_desc">Приложение полностью бесплатно, без рекламы и подписок. Если WM_CHECKLIST экономит тебе время и деньги — можно сказать спасибо автору любым удобным способом:</p>
+          <div class="donate-links-grid" id="aboutDonateLinks"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Поддержать проект (открывается из футера) -->
+  <div class="modal-backdrop" id="donateModal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="donateModalTitle">
+      <div class="modal-header">
+        <h3 id="donateModalTitle" data-i18n="donate_modal_title">Поддержать WM_CHECKLIST</h3>
+        <button type="button" class="modal-close" data-close-modal="donateModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form">
+        <p class="about-story" data-i18n="about_donate_desc">Приложение полностью бесплатно, без рекламы и подписок. Если WM_CHECKLIST экономит тебе время и деньги — можно сказать спасибо автору любым удобным способом:</p>
+        <div class="donate-links-grid" id="modalDonateLinks"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: Онбординг-тур (показывается 1 раз на пустой базе) -->
+  <div class="modal-backdrop" id="onboardingModal" aria-hidden="true">
+    <div class="modal-box tour-box" role="dialog" aria-modal="true" aria-labelledby="tourSlideTitle">
+      <div class="modal-header">
+        <div class="section-kicker" id="tourSlideKicker">ШАГ 1 ИЗ 4</div>
+        <button type="button" class="modal-close" id="tourCloseBtn" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form tour-body">
+        <h3 class="tour-title" id="tourSlideTitle"></h3>
+        <p class="tour-text" id="tourSlideText"></p>
+        <div class="tour-dots" id="tourDots"></div>
+        <div class="modal-actions modal-actions--split">
+          <button type="button" class="btn btn-ghost btn-sm" id="tourSkipBtn" data-i18n="tour_skip">Пропустить</button>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-secondary btn-sm hidden" id="tourPrevBtn" data-i18n="tour_prev">Назад</button>
+            <button type="button" class="btn btn-accent btn-sm" id="tourNextBtn" data-i18n="tour_next">Далее</button>
           </div>
         </div>
       </div>
@@ -730,6 +840,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- Модули приложения -->
+  <script src="js/i18n.js"></script>
   <script src="js/config.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/sync.js"></script>

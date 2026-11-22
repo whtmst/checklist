@@ -2534,3 +2534,168 @@ a.badge-store-link:hover {
     gap: 8px;
   }
 }
+
+
+/* ==========================================================================
+   V23: ФУТЕР (3-Я СТРОКА ССЫЛОК), БАННЕР БЭКАПА СВЕРХУ, О ПРОЕКТЕ И ТУР
+   ========================================================================== */
+.footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer-sep {
+  opacity: 0.45;
+}
+
+.footer-action-link {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.footer-action-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* Выезжающее сверху по центру уведомление о резервной копии */
+.backup-banner {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translate(-50%, -140%);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(560px, calc(100vw - 24px));
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+}
+
+.backup-banner.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.backup-banner-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.backup-banner-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.backup-banner-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.backup-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.backup-banner-close {
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+
+/* Вкладка «О проекте» и донаты */
+.about-story {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.about-story:last-child {
+  margin-bottom: 0;
+}
+
+.donate-links-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Онбординг-тур */
+.tour-box {
+  max-width: 480px;
+}
+
+.tour-title {
+  margin: 0 0 8px;
+  font-size: 19px;
+  color: var(--text-primary);
+}
+
+.tour-text {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.tour-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.tour-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transition: width 0.2s, background 0.2s;
+}
+
+.tour-dot.active {
+  width: 22px;
+  background: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .backup-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    top: 10px;
+  }
+  .backup-banner-actions {
+    justify-content: flex-end;
+  }
+}

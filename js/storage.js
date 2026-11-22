@@ -32,6 +32,8 @@
   function createDefaultPrefs() {
     return {
       currency: WM.CONFIG.CURRENCY || '₼',
+      lang: (WM.i18n && WM.i18n.getLang) ? WM.i18n.getLang() : 'ru',
+      backupReminderDays: 14,
       stores: createDefaultStores(),
       hiddenCreditTypes: [],
       customCreditTypes: []
@@ -134,8 +136,15 @@
       });
     }
 
+    var allowedLangs = ['ru', 'en', 'az'];
+    var lang = allowedLangs.indexOf(p.lang) !== -1 ? p.lang : def.lang;
+    var allowedDays = [0, 7, 14, 30];
+    var remDays = allowedDays.indexOf(Number(p.backupReminderDays)) !== -1 ? Number(p.backupReminderDays) : 14;
+
     return {
       currency: currency,
+      lang: lang,
+      backupReminderDays: remDays,
       stores: stores,
       hiddenCreditTypes: hiddenCreditTypes,
       customCreditTypes: customCreditTypes
@@ -179,7 +188,7 @@
     if (!Array.isArray(arr)) return [];
     var out = [];
     for (var i = 0; i < arr.length && out.length < 3; i++) {
-      var u = String(arr[i] || '').trim();
+      var u = WM.utils.sanitizeUrl(arr[i]);
       if (u) out.push(u);
     }
     return out;
@@ -294,7 +303,7 @@
                 checked: !!it.checked,
                 priority: String(it.priority || 'medium'),
                 store: String(it.store || WM.CONFIG.STORES[0]),
-                link: String(it.link || '').trim(),
+                link: WM.utils.sanitizeUrl(it.link),
                 note: String(it.note || '').trim(),
                 images: sanitizeImages(it.images),
                 bundleId: null,
@@ -923,6 +932,35 @@
       return true;
     },
 
+    getLang: function () {
+      var p = state.prefs || createDefaultPrefs();
+      return p.lang || 'ru';
+    },
+
+    setLang: function (lang) {
+      if (['ru', 'en', 'az'].indexOf(lang) === -1) return false;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      state.prefs.lang = lang;
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
+    getBackupReminderDays: function () {
+      var p = state.prefs || createDefaultPrefs();
+      return Number(p.backupReminderDays) || 0;
+    },
+
+    setBackupReminderDays: function (days) {
+      var n = Number(days);
+      if ([0, 7, 14, 30].indexOf(n) === -1) n = 0;
+      if (!state.prefs) state.prefs = createDefaultPrefs();
+      state.prefs.backupReminderDays = n;
+      state.metaUpdatedAt = nowIso();
+      persist(false, false);
+      return true;
+    },
+
     getStores: function (includeHidden) {
       var p = state.prefs || createDefaultPrefs();
       var list = Array.isArray(p.stores) ? p.stores : createDefaultStores();
@@ -1387,7 +1425,7 @@
         existing.checked = !!payload.checked;
         existing.priority = payload.priority || 'medium';
         existing.store = payload.store || WM.CONFIG.STORES[0];
-        existing.link = (payload.link || '').trim();
+        existing.link = WM.utils.sanitizeUrl(payload.link);
         existing.note = (payload.note || '').trim();
         existing.images = sanitizeImages(payload.images);
         existing.updatedAt = ts;
@@ -1403,7 +1441,7 @@
         checked: !!payload.checked,
         priority: payload.priority || 'medium',
         store: payload.store || WM.CONFIG.STORES[0],
-        link: (payload.link || '').trim(),
+        link: WM.utils.sanitizeUrl(payload.link),
         note: (payload.note || '').trim(),
         images: sanitizeImages(payload.images),
         bundleId: null,

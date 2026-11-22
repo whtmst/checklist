@@ -96,10 +96,11 @@
   }
 
   function createStoreBadge(storeName, link) {
-    if (link) {
+    var safeLink = WM.utils.sanitizeUrl(link);
+    if (safeLink) {
       var a = document.createElement('a');
       a.className = 'badge badge-store-link';
-      a.href = link;
+      a.href = safeLink;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.textContent = (storeName || 'Ссылка') + ' ↗';
@@ -205,34 +206,40 @@
     }
 
     document.getElementById('statSpent').textContent = fmt(totals.spentTotal);
-    var spentParts = ['Отмечено: ' + totals.checkedItemsCount + ' из ' + totals.totalItemsCount];
+    var spentParts = [WM.i18n.t('sum_checked_of', { a: totals.checkedItemsCount, b: totals.totalItemsCount })];
     if (totals.spentCash > 0 || totals.spentCredit > 0) {
-      spentParts.push('Нал: ' + fmt(totals.spentCash) + ' · Кредит: ' + fmt(totals.spentCredit));
+      spentParts.push(WM.i18n.t('sum_cash_credit', { cash: fmt(totals.spentCash), credit: fmt(totals.spentCredit) }));
     }
     document.getElementById('statSpentMeta').textContent = spentParts.join(' · ');
 
     document.getElementById('statMonthly').textContent = fmt(totals.monthlyCreditTotal);
-    document.getElementById('statMonthlyMeta').textContent = (isAllMode ? 'Активных кредитов всего: ' : 'Активных кредитов во вкладке: ') + totals.activeCreditsCount;
+    document.getElementById('statMonthlyMeta').textContent = WM.i18n.t(
+      isAllMode ? 'sum_active_credits_all' : 'sum_active_credits_tab',
+      { n: totals.activeCreditsCount }
+    );
 
     document.getElementById('statPlanned').textContent = fmt(totals.plannedTotal);
     document.getElementById('statPlannedMeta').textContent =
-      'Нал: ' + fmt(totals.plannedCash) + ' · Кредит: ' + fmt(totals.plannedCredit);
+      WM.i18n.t('sum_cash_credit', { cash: fmt(totals.plannedCash), credit: fmt(totals.plannedCredit) });
 
     document.getElementById('footerStats').textContent = isAllMode
-      ? ('ВСЕ ВКЛАДКИ // ВКЛАДОК: ' + state.tabs.length + ' · ПОЗИЦИЙ: ' + totals.totalItemsCount)
-      : (tab.name.toUpperCase() + ' // КАТЕГОРИЙ: ' + tab.categories.length + ' · ПОЗИЦИЙ: ' + tab.items.length);
+      ? WM.i18n.t('footer_all_tabs', { t: state.tabs.length, i: totals.totalItemsCount })
+      : WM.i18n.t('footer_tab_stats', { name: tab.name.toUpperCase(), c: tab.categories.length, i: tab.items.length });
   }
 
   function renderFilterOptions(tab, filters, isAllMode, state) {
     var prioSelect = document.getElementById('priorityFilter');
-    if (prioSelect.options.length <= 1) {
-      WM.CONFIG.PRIORITIES.forEach(function (p) {
-        var opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.label;
-        prioSelect.appendChild(opt);
-      });
-    }
+    prioSelect.innerHTML = '';
+    var allPrioOpt = document.createElement('option');
+    allPrioOpt.value = 'all';
+    allPrioOpt.textContent = WM.i18n.t('filter_prio_all');
+    prioSelect.appendChild(allPrioOpt);
+    WM.CONFIG.PRIORITIES.forEach(function (p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = WM.i18n.t('prio_' + p.id);
+      prioSelect.appendChild(opt);
+    });
     prioSelect.value = filters.priority;
 
     var storeSelect = document.getElementById('storeFilter');
@@ -252,7 +259,11 @@
       });
     });
 
-    storeSelect.innerHTML = '<option value="all">Все магазины</option>';
+    storeSelect.innerHTML = '';
+    var allStoreOpt = document.createElement('option');
+    allStoreOpt.value = 'all';
+    allStoreOpt.textContent = WM.i18n.t('filter_store_all');
+    storeSelect.appendChild(allStoreOpt);
     stores.forEach(function (s) {
       var opt = document.createElement('option');
       opt.value = s;
@@ -279,10 +290,10 @@
 
     if (tab.categories.length === 0) {
       var empty = el('div', 'empty-state');
-      empty.appendChild(el('h2', '', 'Вкладка «' + tab.name + '» пока пуста'));
-      empty.appendChild(el('p', '', 'Создай первую категорию (например, «Экипировка», «Техника» или «Дом») и добавь в неё нужные позиции.'));
+      empty.appendChild(el('h2', '', WM.i18n.t('tab_empty_title', { name: tab.name })));
+      empty.appendChild(el('p', '', WM.i18n.t('tab_empty_desc')));
       var actions = el('div', 'empty-actions');
-      var addCat = el('button', 'btn btn-accent', '+ Создать категорию');
+      var addCat = el('button', 'btn btn-accent', WM.i18n.t('tab_empty_btn'));
       addCat.type = 'button';
       addCat.addEventListener('click', handlers.onAddCategory);
       actions.appendChild(addCat);
@@ -356,8 +367,8 @@
       var itemsWrap = el('div', 'category-items');
       if (catItems.length === 0) {
         var emptyRow = el('div', 'category-empty');
-        emptyRow.appendChild(el('span', '', 'В этой категории пока нет позиций'));
-        var addOne = el('button', 'btn btn-ghost btn-sm', '+ Добавить позицию');
+        emptyRow.appendChild(el('span', '', WM.i18n.t('cat_empty_text')));
+        var addOne = el('button', 'btn btn-ghost btn-sm', WM.i18n.t('cat_empty_btn'));
         addOne.type = 'button';
         addOne.addEventListener('click', function () {
           handlers.onAddItemInCategory(cat.id);
@@ -376,9 +387,9 @@
 
     if (!renderedAnyCategory) {
       var noMatch = el('div', 'empty-state');
-      noMatch.appendChild(el('h2', '', 'Ничего не найдено'));
-      noMatch.appendChild(el('p', '', 'По выбранным фильтрам позиций нет. Попробуй сбросить поиск или фильтры.'));
-      var resetBtn = el('button', 'btn btn-secondary', 'Сбросить фильтры');
+      noMatch.appendChild(el('h2', '', WM.i18n.t('no_match_title')));
+      noMatch.appendChild(el('p', '', WM.i18n.t('no_match_desc')));
+      var resetBtn = el('button', 'btn btn-secondary', WM.i18n.t('btn_reset_filters'));
       resetBtn.type = 'button';
       resetBtn.addEventListener('click', handlers.onResetFilters);
       noMatch.appendChild(resetBtn);
@@ -436,17 +447,17 @@
     var totalAll = WM.storage.getTotalItemsCount();
     if (totalAll === 0) {
       var empty = el('div', 'empty-state');
-      empty.appendChild(el('h2', '', 'Список пока пуст'));
-      empty.appendChild(el('p', '', 'Перейди в нужную вкладку, создай категорию и добавь первую позицию.'));
+      empty.appendChild(el('h2', '', WM.i18n.t('all_items_empty_title')));
+      empty.appendChild(el('p', '', WM.i18n.t('all_items_empty_desc')));
       root.appendChild(empty);
       return;
     }
 
     if (entries.length === 0) {
       var noMatch = el('div', 'empty-state');
-      noMatch.appendChild(el('h2', '', 'Ничего не найдено'));
-      noMatch.appendChild(el('p', '', 'По выбранным фильтрам позиций нет во всех вкладках.'));
-      var resetBtn = el('button', 'btn btn-secondary', 'Сбросить фильтры');
+      noMatch.appendChild(el('h2', '', WM.i18n.t('no_match_title')));
+      noMatch.appendChild(el('p', '', WM.i18n.t('no_match_desc')));
+      var resetBtn = el('button', 'btn btn-secondary', WM.i18n.t('btn_reset_filters'));
       resetBtn.type = 'button';
       resetBtn.addEventListener('click', handlers.onResetFilters);
       noMatch.appendChild(resetBtn);
@@ -460,7 +471,7 @@
 
     var block = el('section', 'all-items-flat-block');
     var head = el('div', 'all-items-flat-head');
-    head.appendChild(el('span', '', 'Все позиции · ' + sorted.length + ' из ' + totalAll));
+    head.appendChild(el('span', '', WM.i18n.t('all_items_head', { a: sorted.length, b: totalAll })));
     head.appendChild(el('span', 'category-sum', WM.utils.formatMoney(sum)));
     block.appendChild(head);
 
@@ -508,7 +519,7 @@
       badges.appendChild(createStoreBadge(item.store, item.link));
     }
     if (item.note) {
-      badges.appendChild(el('span', 'badge badge-note-hint', '≡ Заметка'));
+      badges.appendChild(el('span', 'badge badge-note-hint', WM.i18n.t('badge_note')));
     }
     content.appendChild(badges);
 
@@ -519,10 +530,10 @@
     var priceWrap = el('div', 'item-price-block');
     if (isSingleCredit && bundle.totalAmount > 0 && bundle.totalAmount !== item.price) {
       priceWrap.appendChild(el('div', 'item-price', fmt(bundle.totalAmount)));
-      priceWrap.appendChild(el('div', 'item-price-sub', 'Цена: ' + fmt(item.price)));
+      priceWrap.appendChild(el('div', 'item-price-sub', WM.i18n.t('price_base', { v: fmt(item.price) })));
     } else if (bundle && !isSingleCredit) {
       priceWrap.appendChild(el('div', 'item-price', fmt(item.price)));
-      priceWrap.appendChild(el('div', 'item-price-sub', 'В общем кредите'));
+      priceWrap.appendChild(el('div', 'item-price-sub', WM.i18n.t('price_in_bundle')));
     } else {
       priceWrap.appendChild(el('div', 'item-price', fmt(item.price)));
     }
@@ -574,12 +585,12 @@
       priceSub.textContent = 'Входит в общий кредит «' + bundle.name + '»';
     } else {
       priceMain.textContent = fmt(item.price);
-      priceSub.textContent = 'Оплата наличными / картой';
+      priceSub.textContent = WM.i18n.t('drawer_cash_label');
     }
 
     var toggle = document.getElementById('drawerCheckedToggle');
     toggle.checked = !!item.checked;
-    document.getElementById('drawerCheckedText').textContent = item.checked ? 'Куплено' : 'Не куплено';
+    document.getElementById('drawerCheckedText').textContent = WM.i18n.t(item.checked ? 'drawer_checked' : 'drawer_unchecked');
 
     var creditBlock = document.getElementById('drawerCreditBlock');
     creditBlock.innerHTML = '';
@@ -631,10 +642,11 @@
 
     var linkWrap = document.getElementById('drawerLinkWrap');
     var linkAnchor = document.getElementById('drawerLinkAnchor');
-    if (item.link) {
+    var safeItemLink = WM.utils.sanitizeUrl(item.link);
+    if (safeItemLink) {
       linkWrap.classList.remove('hidden');
-      linkAnchor.href = item.link;
-      linkAnchor.textContent = 'Открыть в ' + (item.store || 'магазине') + ' ↗';
+      linkAnchor.href = safeItemLink;
+      linkAnchor.textContent = WM.i18n.t('drawer_open_in', { store: item.store || 'Web' });
     } else {
       linkWrap.classList.add('hidden');
     }
@@ -902,12 +914,12 @@
       return {
         id: t.id,
         name: t.name,
-        countText: t.items.length + ' поз.',
+        countText: WM.i18n.t('mgr_count_items', { n: t.items.length }),
         isActive: t.id === state.activeTabId
       };
     });
     renderSortableManagerList(list, entries, {
-      emptyText: 'Вкладок пока нет.',
+      emptyText: WM.i18n.t('mgr_empty_tabs'),
       onMove: handlers.onMoveTab,
       onReorder: handlers.onReorderTab,
       onEdit: handlers.onEditTab
@@ -923,12 +935,12 @@
       return {
         id: c.id,
         name: c.name,
-        countText: count + ' поз.',
+        countText: WM.i18n.t('mgr_count_items', { n: count }),
         isActive: false
       };
     });
     renderSortableManagerList(list, entries, {
-      emptyText: 'В этой вкладке пока нет категорий.',
+      emptyText: WM.i18n.t('mgr_empty_cats'),
       onMove: handlers.onMoveCategory,
       onReorder: handlers.onReorderCategory,
       onEdit: handlers.onEditCategory
@@ -1008,7 +1020,7 @@
       matches = allEntries.slice().sort(function (a, b) {
         return (Date.parse(b.item.createdAt || '') || 0) - (Date.parse(a.item.createdAt || '') || 0);
       }).slice(0, 8);
-      metaEl.textContent = 'ВСЕГО ПОЗИЦИЙ ВО ВСЕХ ВКЛАДКАХ: ' + allEntries.length + (matches.length ? ' · НЕДАВНИЕ:' : '');
+      metaEl.textContent = WM.i18n.t('spotlight_total', { n: allEntries.length }) + (matches.length ? WM.i18n.t('spotlight_recent') : '');
     } else {
       matches = allEntries.filter(function (entry) {
         if (cf.status === 'unchecked' && entry.item.checked) return false;
@@ -1017,11 +1029,11 @@
         if (cf.pay === 'cash' && entry.bundle) return false;
         return tokens.every(function (tok) { return entry.haystack.indexOf(tok) !== -1; });
       });
-      metaEl.textContent = 'НАЙДЕНО: ' + matches.length + ' ИЗ ' + allEntries.length;
+      metaEl.textContent = WM.i18n.t('spotlight_found', { a: matches.length, b: allEntries.length });
     }
 
     if (matches.length === 0) {
-      listEl.appendChild(el('div', 'spotlight-empty', (tokens.length || hasChip) ? 'Ничего не найдено по всем вкладкам.' : 'Позиций пока нет.'));
+      listEl.appendChild(el('div', 'spotlight-empty', WM.i18n.t((tokens.length || hasChip) ? 'spotlight_empty_query' : 'spotlight_empty_all')));
       return [];
     }
 
@@ -1065,7 +1077,39 @@
     return matches;
   }
 
+  function renderDonateLinks(containerId) {
+    var box = document.getElementById(containerId);
+    if (!box) return;
+    box.innerHTML = '';
+    var activeLinks = (WM.CONFIG.DONATE_LINKS || []).filter(function (d) {
+      return !!WM.utils.sanitizeUrl(d.url);
+    });
+    if (activeLinks.length === 0) {
+      var fallback = el('a', 'btn btn-accent btn-sm', WM.i18n.t('donate_coming_soon'));
+      fallback.href = WM.CONFIG.REPO_URL;
+      fallback.target = '_blank';
+      fallback.rel = 'noopener noreferrer';
+      box.appendChild(fallback);
+      return;
+    }
+    activeLinks.forEach(function (d) {
+      var lbl = d.labelKey ? WM.i18n.t(d.labelKey) : d.label;
+      var a = el('a', 'btn btn-accent btn-sm', lbl + ' ↗');
+      a.href = WM.utils.sanitizeUrl(d.url);
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      box.appendChild(a);
+    });
+  }
+
   function renderGeneralSettings(handlers) {
+    var langSel = document.getElementById('langSelect');
+    if (langSel) langSel.value = WM.i18n.getLang();
+    var remSel = document.getElementById('backupReminderSelect');
+    if (remSel) remSel.value = String(WM.storage.getBackupReminderDays());
+    renderDonateLinks('aboutDonateLinks');
+    renderDonateLinks('modalDonateLinks');
+
     var cur = WM.storage.getCurrency();
     var curSel = document.getElementById('currencyPresetSelect');
     var curCustomGroup = document.getElementById('customCurrencyGroup');
@@ -1083,7 +1127,7 @@
       });
       var customOpt = document.createElement('option');
       customOpt.value = '__custom__';
-      customOpt.textContent = 'Свой символ...';
+      customOpt.textContent = WM.i18n.t('gen_currency_custom_opt');
       curSel.appendChild(customOpt);
 
       if (isPreset) {
@@ -1106,7 +1150,7 @@
         var row = el('div', 'pref-row' + (st.hidden ? ' is-hidden-pref' : ''));
         var left = el('div', 'pref-row-left');
         left.appendChild(el('span', 'pref-row-name', st.name));
-        if (st.builtin) left.appendChild(el('span', 'pref-row-tag', 'Базовый'));
+        if (st.builtin) left.appendChild(el('span', 'pref-row-tag', WM.i18n.t('tag_builtin')));
         row.appendChild(left);
 
         var actions = el('div', 'pref-row-actions');
@@ -1148,7 +1192,7 @@
         var row = el('div', 'pref-row' + (bt.hidden ? ' is-hidden-pref' : ''));
         var left = el('div', 'pref-row-left');
         left.appendChild(el('span', 'pref-row-name', bt.label));
-        left.appendChild(el('span', 'pref-row-tag', 'Базовый'));
+        left.appendChild(el('span', 'pref-row-tag', WM.i18n.t('tag_builtin')));
         row.appendChild(left);
 
         var actions = el('div', 'pref-row-actions');
@@ -1167,7 +1211,7 @@
         var row = el('div', 'pref-row' + (ct.hidden ? ' is-hidden-pref' : ''));
         var left = el('div', 'pref-row-left');
         left.appendChild(el('span', 'pref-row-name', ct.name));
-        left.appendChild(el('span', 'pref-row-tag', 'Свой'));
+        left.appendChild(el('span', 'pref-row-tag', WM.i18n.t('tag_custom')));
         row.appendChild(left);
 
         var actions = el('div', 'pref-row-actions');
@@ -1228,7 +1272,7 @@
             toggleAllBtn.classList.remove('hidden');
             var allCollapsed = tab.categories.every(function (c) { return !!c.collapsed; });
             toggleAllBtn.dataset.allCollapsed = allCollapsed ? '1' : '0';
-            toggleAllBtn.title = allCollapsed ? 'Развернуть все категории' : 'Свернуть все категории';
+            toggleAllBtn.title = WM.i18n.t(allCollapsed ? 'expand_all' : 'collapse_all');
             toggleAllBtn.innerHTML = allCollapsed
               ? '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
               : '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
@@ -1241,6 +1285,7 @@
     renderTabsManager: renderTabsManager,
     renderCategoriesManager: renderCategoriesManager,
     renderGlobalSearch: renderGlobalSearch,
-    renderGeneralSettings: renderGeneralSettings
+    renderGeneralSettings: renderGeneralSettings,
+    renderDonateLinks: renderDonateLinks
   };
 })(window);

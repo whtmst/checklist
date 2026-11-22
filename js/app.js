@@ -16,6 +16,10 @@
   var spotlightIdx = 0;
   var spotlightChipFilters = { status: '', pay: '' };
   var settingsActiveTab = 'general';
+  var tourStep = 0;
+  var TOUR_DONE_KEY = 'wm_checklist_tour_done_v1';
+  var LAST_BACKUP_KEY = 'wm_checklist_last_backup_v1';
+  var BACKUP_SNOOZE_KEY = 'wm_checklist_backup_snooze_v1';
 
   var creditsTypeFilter = 'all';
   var viewingItemId = null;
@@ -214,7 +218,7 @@
       if (id === 'itemModal' && !document.getElementById('itemIdInput').value) {
         saveNewItemDraft();
       }
-      if (!confirm('Есть несохранённые данные. Закрыть окно?')) {
+      if (!confirm(WM.i18n.t('confirm_unsaved'))) {
         return false;
       }
     }
@@ -646,19 +650,20 @@
     });
     var newCatOpt = document.createElement('option');
     newCatOpt.value = '__new_category__';
-    newCatOpt.textContent = '+ Новая категория...';
+    newCatOpt.textContent = WM.i18n.t('item_opt_new_cat');
     catSelect.appendChild(newCatOpt);
     if (selectedCatId) catSelect.value = selectedCatId;
 
     var prioSelect = document.getElementById('itemPrioritySelect');
-    if (prioSelect.options.length === 0) {
-      WM.CONFIG.PRIORITIES.forEach(function (p) {
-        var opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.label;
-        prioSelect.appendChild(opt);
-      });
-    }
+    var prevPrio = prioSelect.value;
+    prioSelect.innerHTML = '';
+    WM.CONFIG.PRIORITIES.forEach(function (p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = WM.i18n.t('prio_' + p.id);
+      prioSelect.appendChild(opt);
+    });
+    if (prevPrio) prioSelect.value = prevPrio;
 
     var storeSelect = document.getElementById('itemStoreSelect');
     storeSelect.innerHTML = '';
@@ -675,7 +680,7 @@
     });
     var customOpt = document.createElement('option');
     customOpt.value = WM.CONFIG.CUSTOM_STORE_VALUE;
-    customOpt.textContent = 'Свой вариант...';
+    customOpt.textContent = WM.i18n.t('item_opt_custom_store');
     storeSelect.appendChild(customOpt);
   }
 
@@ -686,7 +691,7 @@
     var defaultCatId = tab.categories.length > 0 ? tab.categories[0].id : '__new_category__';
     populateItemModalSelects(item ? item.categoryId : (presetCategoryId || defaultCatId), tab, item ? item.store : '');
 
-    document.getElementById('itemModalTitle').textContent = item ? 'Редактировать позицию' : 'Новая позиция';
+    document.getElementById('itemModalTitle').textContent = WM.i18n.t(item ? 'item_modal_edit' : 'item_modal_new');
     document.getElementById('itemIdInput').value = item ? item.id : '';
     document.getElementById('itemTitleInput').value = item ? item.title : '';
     document.getElementById('itemPriceInput').value = item ? item.price : '';
@@ -871,12 +876,12 @@
     var state = WM.storage.getState();
     var totalItemsAllTabs = state.tabs.reduce(function (acc, t) { return acc + t.items.length; }, 0);
     if (totalItemsAllTabs === 0) {
-      showToast('Сначала добавь товары, чтобы оформить их в кредит');
+      showToast(WM.i18n.t('toast_need_items_credit'));
       return;
     }
 
     var bundle = bundleId ? state.creditBundles.find(function (b) { return b.id === bundleId; }) : null;
-    document.getElementById('bundleModalTitle').textContent = bundle ? 'Редактировать кредит / рассрочку' : 'Оформить в кредит / рассрочку';
+    document.getElementById('bundleModalTitle').textContent = WM.i18n.t(bundle ? 'bundle_modal_edit' : 'bundle_modal_new');
     document.getElementById('bundleIdInput').value = bundle ? bundle.id : '';
     document.getElementById('bundleNameInput').value = bundle ? bundle.name : '';
 
@@ -901,7 +906,7 @@
     });
     var customTypeOpt = document.createElement('option');
     customTypeOpt.value = 'custom';
-    customTypeOpt.textContent = 'Свой вариант...';
+    customTypeOpt.textContent = WM.i18n.t('credit_type_custom_opt');
     typeSelect.appendChild(customTypeOpt);
 
     var initialTypeVal = typeSelect.options[0] ? typeSelect.options[0].value : 'custom';
@@ -951,7 +956,7 @@
   function openCategoryModal(catId) {
     var tab = WM.storage.getActiveTab();
     var cat = catId ? tab.categories.find(function (c) { return c.id === catId; }) : null;
-    document.getElementById('categoryModalTitle').textContent = cat ? 'Редактировать категорию' : 'Новая категория';
+    document.getElementById('categoryModalTitle').textContent = WM.i18n.t(cat ? 'cat_modal_edit' : 'cat_modal_new');
     document.getElementById('categoryIdInput').value = cat ? cat.id : '';
     document.getElementById('categoryNameInput').value = cat ? cat.name : '';
     document.getElementById('deleteCategoryBtn').classList.toggle('hidden', !cat);
@@ -966,7 +971,7 @@
   function openTabModal(tabId) {
     var state = WM.storage.getState();
     var tab = tabId ? state.tabs.find(function (t) { return t.id === tabId; }) : null;
-    document.getElementById('tabModalTitle').textContent = tab ? 'Настройки вкладки' : 'Новая вкладка';
+    document.getElementById('tabModalTitle').textContent = WM.i18n.t(tab ? 'tab_modal_edit' : 'tab_modal_new');
     document.getElementById('tabIdInput').value = tab ? tab.id : '';
     document.getElementById('tabNameInput').value = tab ? tab.name : '';
     document.getElementById('deleteTabBtn').classList.toggle('hidden', !tab || state.tabs.length <= 1);
@@ -978,7 +983,7 @@
   }
 
   function switchSettingsTab(tabKey) {
-    settingsActiveTab = tabKey === 'sync' ? 'sync' : 'general';
+    settingsActiveTab = (tabKey === 'sync' || tabKey === 'about') ? tabKey : 'general';
     document.querySelectorAll('#settingsModalTabs [data-settings-tab]').forEach(function (btn) {
       var active = btn.getAttribute('data-settings-tab') === settingsActiveTab;
       btn.classList.toggle('active', active);
@@ -986,6 +991,75 @@
     });
     document.getElementById('settingsTabGeneral').classList.toggle('hidden', settingsActiveTab !== 'general');
     document.getElementById('settingsTabSync').classList.toggle('hidden', settingsActiveTab !== 'sync');
+    document.getElementById('settingsTabAbout').classList.toggle('hidden', settingsActiveTab !== 'about');
+  }
+
+  // --- Онбординг-тур (4 шага) ---
+  function renderTourSlide() {
+    var stepNum = tourStep + 1;
+    document.getElementById('tourSlideKicker').textContent = WM.i18n.t('tour_s' + stepNum + '_kicker');
+    document.getElementById('tourSlideTitle').textContent = WM.i18n.t('tour_s' + stepNum + '_title');
+    document.getElementById('tourSlideText').textContent = WM.i18n.t('tour_s' + stepNum + '_text');
+
+    var dots = document.getElementById('tourDots');
+    dots.innerHTML = '';
+    for (var i = 0; i < 4; i++) {
+      var dot = document.createElement('span');
+      dot.className = 'tour-dot' + (i === tourStep ? ' active' : '');
+      dots.appendChild(dot);
+    }
+
+    document.getElementById('tourPrevBtn').classList.toggle('hidden', tourStep === 0);
+    document.getElementById('tourNextBtn').textContent = tourStep === 3 ? WM.i18n.t('tour_done') : WM.i18n.t('tour_next');
+  }
+
+  function openOnboardingTour() {
+    tourStep = 0;
+    renderTourSlide();
+    openModal('onboardingModal');
+  }
+
+  function finishOnboardingTour() {
+    try { localStorage.setItem(TOUR_DONE_KEY, '1'); } catch (e) {}
+    closeModal('onboardingModal');
+  }
+
+  // --- Умное напоминание о локальном бэкапе (выезжает сверху по центру) ---
+  function hideBackupBanner() {
+    var el = document.getElementById('backupReminderBanner');
+    if (!el) return;
+    el.classList.remove('show');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
+  function checkBackupReminder() {
+    var days = WM.storage.getBackupReminderDays();
+    if (!days || days <= 0) {
+      hideBackupBanner();
+      return;
+    }
+    if (WM.storage.getTotalItemsCount() === 0) return;
+
+    var now = Date.now();
+    try {
+      var snoozeUntil = Number(localStorage.getItem(BACKUP_SNOOZE_KEY) || 0);
+      if (snoozeUntil > now) return;
+
+      var lastBackup = Number(localStorage.getItem(LAST_BACKUP_KEY) || 0);
+      if (!lastBackup) {
+        // Первый запуск с настройкой — фиксируем точку отсчёта, чтобы не беспокоить в первый же день
+        localStorage.setItem(LAST_BACKUP_KEY, String(now));
+        return;
+      }
+      var elapsedDays = (now - lastBackup) / (24 * 60 * 60 * 1000);
+      if (elapsedDays >= days) {
+        var el = document.getElementById('backupReminderBanner');
+        if (el) {
+          el.classList.add('show');
+          el.setAttribute('aria-hidden', 'false');
+        }
+      }
+    } catch (e) {}
   }
 
   function getGeneralSettingsHandlers() {
@@ -997,9 +1071,9 @@
         if (!next || next === currentName) return;
         if (WM.storage.renameStore(storeId, next)) {
           refreshUI();
-          showToast('Магазин переименован');
+          showToast(WM.i18n.t('toast_store_renamed'));
         } else {
-          showToast('Такой магазин уже есть в списке');
+          showToast(WM.i18n.t('toast_store_dup'));
         }
       },
       onToggleStorePref: function (storeId) {
@@ -1011,7 +1085,7 @@
         if (confirm('Удалить магазин «' + name + '» из списка? На уже созданных карточках название останется.')) {
           WM.storage.deleteStore(storeId);
           refreshUI();
-          showToast('Магазин удалён из списка');
+          showToast(WM.i18n.t('toast_store_deleted'));
         }
       },
       onToggleBuiltinCreditPref: function (typeId) {
@@ -1026,9 +1100,9 @@
         if (!next || next === currentName) return;
         if (WM.storage.renameCustomCreditType(ctId, next)) {
           refreshUI();
-          showToast('Тип кредита переименован');
+          showToast(WM.i18n.t('toast_ct_renamed'));
         } else {
-          showToast('Такой тип кредита уже есть');
+          showToast(WM.i18n.t('toast_ct_dup'));
         }
       },
       onToggleCustomCreditPref: function (ctId) {
@@ -1040,7 +1114,7 @@
         if (confirm('Удалить тип «' + name + '» из списка? Оформленные кредиты сохранятся.')) {
           WM.storage.deleteCustomCreditType(ctId);
           refreshUI();
-          showToast('Тип кредита удалён из списка');
+          showToast(WM.i18n.t('toast_ct_deleted'));
         }
       }
     };
@@ -1073,7 +1147,7 @@
       refreshUI();
       var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
       setSyncStatus('ok', 'GIST // ' + t);
-      showToast('Обновлено с GitHub');
+      showToast(WM.i18n.t('toast_synced_gh'));
     }
   }
 
@@ -1304,19 +1378,19 @@
         customGroup.classList.add('hidden');
         WM.storage.setCurrency(val);
         refreshUI();
-        showToast('Валюта изменена на ' + val);
+        showToast(WM.i18n.t('toast_currency_changed', { v: val }));
       }
     });
 
     document.getElementById('applyCustomCurrencyBtn').addEventListener('click', function () {
       var val = document.getElementById('customCurrencyInput').value.trim();
       if (!val) {
-        showToast('Введи символ валюты');
+        showToast(WM.i18n.t('toast_enter_currency'));
         return;
       }
       WM.storage.setCurrency(val);
       refreshUI();
-      showToast('Валюта изменена на ' + val);
+      showToast(WM.i18n.t('toast_currency_changed', { v: val }));
     });
 
     document.getElementById('addStorePrefBtn').addEventListener('click', function () {
@@ -1326,9 +1400,9 @@
       if (WM.storage.addCustomStore(name)) {
         inp.value = '';
         refreshUI();
-        showToast('Магазин добавлен');
+        showToast(WM.i18n.t('toast_store_added'));
       } else {
-        showToast('Такой магазин уже есть в списке');
+        showToast(WM.i18n.t('toast_store_dup'));
       }
     });
 
@@ -1339,10 +1413,61 @@
       if (WM.storage.addCustomCreditType(name)) {
         inp.value = '';
         refreshUI();
-        showToast('Тип кредита добавлен');
+        showToast(WM.i18n.t('toast_ct_added'));
       } else {
-        showToast('Такой тип кредита уже есть');
+        showToast(WM.i18n.t('toast_ct_dup'));
       }
+    });
+
+    document.getElementById('langSelect').addEventListener('change', async function (e) {
+      var nextLang = e.target.value;
+      await WM.i18n.setLang(nextLang, true);
+      WM.storage.setLang(nextLang);
+      refreshUI();
+      showToast(WM.i18n.t('toast_lang_changed'));
+    });
+
+    document.getElementById('backupReminderSelect').addEventListener('change', function (e) {
+      WM.storage.setBackupReminderDays(e.target.value);
+      if (Number(e.target.value) === 0) hideBackupBanner();
+      else checkBackupReminder();
+    });
+
+    document.getElementById('backupBannerSaveBtn').addEventListener('click', function () {
+      WM.sync.downloadJsonFile();
+      hideBackupBanner();
+      showToast(WM.i18n.t('toast_backup_saved'));
+    });
+
+    document.getElementById('backupBannerLaterBtn').addEventListener('click', function () {
+      try { localStorage.setItem(BACKUP_SNOOZE_KEY, String(Date.now() + 24 * 60 * 60 * 1000)); } catch (e) {}
+      hideBackupBanner();
+      showToast(WM.i18n.t('toast_backup_snoozed'));
+    });
+
+    document.getElementById('backupBannerCloseBtn').addEventListener('click', function () {
+      try { localStorage.setItem(BACKUP_SNOOZE_KEY, String(Date.now() + 24 * 60 * 60 * 1000)); } catch (e) {}
+      hideBackupBanner();
+    });
+
+    document.getElementById('openDonateModalBtn').addEventListener('click', function () {
+      WM.render.renderDonateLinks('modalDonateLinks');
+      openModal('donateModal');
+    });
+
+    document.getElementById('replayTourBtn').addEventListener('click', function () {
+      closeModal('syncModal');
+      openOnboardingTour();
+    });
+
+    document.getElementById('tourCloseBtn').addEventListener('click', finishOnboardingTour);
+    document.getElementById('tourSkipBtn').addEventListener('click', finishOnboardingTour);
+    document.getElementById('tourPrevBtn').addEventListener('click', function () {
+      if (tourStep > 0) { tourStep--; renderTourSlide(); }
+    });
+    document.getElementById('tourNextBtn').addEventListener('click', function () {
+      if (tourStep < 3) { tourStep++; renderTourSlide(); }
+      else finishOnboardingTour();
     });
 
     document.getElementById('openSyncModalBtn').addEventListener('click', function () {
@@ -1359,7 +1484,7 @@
         await WM.sync.pullFromGist();
         refreshUI();
         setSyncStatus('ok', 'GIST // ' + WM.utils.formatTime(WM.sync.getSettings().lastSyncAt));
-        showToast('Данные обновлены из GitHub Gist');
+        showToast(WM.i18n.t('toast_pulled_gh'));
       } catch (err) {
         setSyncStatus('error', 'SYNC // ERROR');
         showToast(err.message);
@@ -1440,7 +1565,7 @@
       document.getElementById('newCategoryGroup').classList.toggle('hidden', defCat !== '__new_category__');
       captureFormSnapshot('itemModal');
       document.getElementById('itemTitleInput').focus();
-      showToast('Поля очищены');
+      showToast(WM.i18n.t('toast_fields_cleared'));
     });
 
     document.getElementById('itemStoreSelect').addEventListener('change', function (e) {
@@ -1514,7 +1639,7 @@
       if (selectedCatId === '__new_category__') {
         var newCatName = document.getElementById('itemNewCategoryInput').value.trim();
         if (!newCatName) {
-          showToast('Введи название новой категории');
+          showToast(WM.i18n.t('toast_enter_new_cat'));
           document.getElementById('itemNewCategoryInput').focus();
           return;
         }
@@ -1543,18 +1668,18 @@
       clearNewItemDraft();
       closeModal('itemModal');
       refreshUI();
-      showToast('Позиция сохранена');
+      showToast(WM.i18n.t('toast_item_saved'));
     });
 
     document.getElementById('deleteItemBtn').addEventListener('click', function () {
       var id = document.getElementById('itemIdInput').value;
       if (!id) return;
-      if (confirm('Удалить эту позицию?')) {
+      if (confirm(WM.i18n.t('confirm_delete_item'))) {
         WM.storage.deleteItem(id);
         closeModal('itemModal');
         if (viewingItemId === id) closeItemDrawer();
         refreshUI();
-        showToast('Позиция удалена');
+        showToast(WM.i18n.t('toast_item_deleted'));
       }
     });
 
@@ -1566,7 +1691,7 @@
       });
 
       if (itemIds.length === 0) {
-        showToast('Выбери хотя бы один товар');
+        showToast(WM.i18n.t('toast_pick_one_item'));
         return;
       }
 
@@ -1585,7 +1710,7 @@
         : document.getElementById('bundleTotalInput').value;
 
       if (!totalVal && totalVal !== '0') {
-        showToast('Укажи итоговую сумму');
+        showToast(WM.i18n.t('toast_enter_total'));
         return;
       }
 
@@ -1605,17 +1730,17 @@
 
       closeModal('bundleModal');
       refreshUI();
-      showToast('Кредит сохранён');
+      showToast(WM.i18n.t('toast_credit_saved'));
     });
 
     document.getElementById('deleteBundleBtn').addEventListener('click', function () {
       var id = document.getElementById('bundleIdInput').value;
       if (!id) return;
-      if (confirm('Удалить этот кредит? Сами товары останутся в списке.')) {
+      if (confirm(WM.i18n.t('confirm_delete_bundle'))) {
         WM.storage.deleteCreditBundle(id);
         closeModal('bundleModal');
         refreshUI();
-        showToast('Кредит удалён');
+        showToast(WM.i18n.t('toast_credit_deleted'));
       }
     });
 
@@ -1632,10 +1757,10 @@
       }
       if (id) {
         WM.storage.renameCategory(id, name);
-        showToast('Категория переименована');
+        showToast(WM.i18n.t('toast_cat_renamed'));
       } else {
         WM.storage.addCategory(name);
-        showToast('Категория создана');
+        showToast(WM.i18n.t('toast_cat_created'));
       }
       closeModal('categoryModal');
       refreshUI();
@@ -1644,11 +1769,11 @@
     document.getElementById('deleteCategoryBtn').addEventListener('click', function () {
       var id = document.getElementById('categoryIdInput').value;
       if (!id) return;
-      if (confirm('Удалить категорию вместе со всеми её позициями?')) {
+      if (confirm(WM.i18n.t('confirm_delete_cat'))) {
         WM.storage.deleteCategory(id);
         closeModal('categoryModal');
         refreshUI();
-        showToast('Категория удалена');
+        showToast(WM.i18n.t('toast_cat_deleted'));
       }
     });
 
@@ -1665,11 +1790,11 @@
       }
       if (id) {
         WM.storage.renameTab(id, name);
-        showToast('Вкладка переименована');
+        showToast(WM.i18n.t('toast_tab_renamed'));
       } else {
         WM.storage.addTab(name);
         resetFilters(false);
-        showToast('Новая вкладка создана');
+        showToast(WM.i18n.t('toast_tab_created'));
       }
       closeModal('tabModal');
       refreshUI();
@@ -1678,12 +1803,12 @@
     document.getElementById('deleteTabBtn').addEventListener('click', function () {
       var id = document.getElementById('tabIdInput').value;
       if (!id) return;
-      if (confirm('Удалить эту вкладку со всеми категориями и товарами?')) {
+      if (confirm(WM.i18n.t('confirm_delete_tab'))) {
         WM.storage.deleteTab(id);
         closeModal('tabModal');
         resetFilters(false);
         refreshUI();
-        showToast('Вкладка удалена');
+        showToast(WM.i18n.t('toast_tab_deleted'));
       }
     });
 
@@ -1693,7 +1818,7 @@
       var hasTok = WM.sync.hasToken();
       setSyncStatus(hasTok ? 'ok' : '', hasTok ? 'GIST // READY' : 'LOCAL // OFFLINE');
       document.getElementById('syncModalStatus').textContent = 'Настройки сохранены в этом браузере.';
-      showToast('Настройки синхронизации сохранены');
+      showToast(WM.i18n.t('toast_settings_saved'));
     });
 
     document.getElementById('findGistBtn').addEventListener('click', async function () {
@@ -1725,7 +1850,7 @@
         var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
         log.textContent = 'Успешно сохранено в Gist (' + data.id + ') в ' + t;
         setSyncStatus('ok', 'GIST // ' + t);
-        showToast('Сохранено в GitHub Gist');
+        showToast(WM.i18n.t('toast_pushed_gh'));
       } catch (err) {
         log.textContent = err.message;
         setSyncStatus('error', 'SYNC // ERROR');
@@ -1753,7 +1878,7 @@
 
     document.getElementById('exportFileBtn').addEventListener('click', function () {
       WM.sync.downloadJsonFile();
-      showToast('Файл .json скачан');
+      showToast(WM.i18n.t('toast_json_downloaded'));
     });
 
     document.getElementById('importFileInput').addEventListener('change', function (e) {
@@ -1765,7 +1890,7 @@
           WM.sync.importJsonText(String(reader.result || ''));
           refreshUI();
           closeModal('syncModal');
-          showToast('Резервная копия загружена');
+          showToast(WM.i18n.t('toast_json_imported'));
         } catch (err) {
           showToast('Ошибка: ' + err.message);
         }
@@ -1778,28 +1903,31 @@
       var text = JSON.stringify(WM.storage.getState(), null, 2);
       try {
         await navigator.clipboard.writeText(text);
-        showToast('JSON скопирован в буфер обмена');
+        showToast(WM.i18n.t('toast_json_copied'));
       } catch (err) {
-        showToast('Не удалось скопировать — используй «Скачать .json»');
+        showToast(WM.i18n.t('toast_json_copy_fail'));
       }
     });
 
     document.getElementById('clearAllDataBtn').addEventListener('click', function () {
-      if (confirm('Очистить абсолютно все вкладки, категории и позиции? Это действие нельзя отменить.')) {
+      if (confirm(WM.i18n.t('confirm_clear_all'))) {
         WM.storage.resetAll();
         closeItemDrawer();
         resetFilters(false);
         refreshUI();
         closeModal('syncModal');
-        showToast('Все данные очищены');
+        showToast(WM.i18n.t('toast_all_cleared'));
       }
     });
   }
 
-  function init() {
+  async function init() {
     initTheme();
     WM.storage.load();
     WM.sync.loadSettings();
+
+    var stateLang = WM.storage.getLang();
+    await WM.i18n.init(stateLang);
 
     WM.storage.onChange(function () {
       WM.sync.scheduleAutoPush(setSyncStatus);
@@ -1808,6 +1936,16 @@
     bindEvents();
     initTabsHorizontalScroll();
     refreshUI();
+
+    // Показываем онбординг-тур 1 раз новым пользователям на пустой базе
+    try {
+      if (WM.storage.getTotalItemsCount() === 0 && !localStorage.getItem(TOUR_DONE_KEY)) {
+        setTimeout(openOnboardingTour, 350);
+      }
+    } catch (e) {}
+
+    // Проверяем, не пора ли напомнить о локальном бэкапе
+    setTimeout(checkBackupReminder, 1200);
 
     window.addEventListener('offline', function () {
       setSyncStatus('pending', 'OFFLINE // LOCAL');

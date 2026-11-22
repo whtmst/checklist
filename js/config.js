@@ -50,10 +50,30 @@
       { id: 'ninja', label: 'Ninja', badge: 'Ninja' },
       { id: 'grace', label: 'Льготный период', badge: 'Льготный' },
       { id: 'custom', label: 'Свой вариант', badge: 'Кредит' }
+    ],
+
+    REPO_URL: 'https://github.com/whtmst/checklist',
+    DISCUSSIONS_URL: 'https://github.com/whtmst/checklist/discussions',
+    ISSUES_URL: 'https://github.com/whtmst/checklist/issues',
+
+    /* Реальные ссылки поддержки из .github/FUNDING.yml и DONATE.md */
+    DONATE_LINKS: [
+      { id: 'patreon', label: 'Patreon', url: 'https://patreon.com/whtmst' },
+      { id: 'dalink', label: 'DaLink', url: 'https://dalink.to/whtmst' },
+      { id: 'donationalerts', label: 'DonationAlerts', url: 'https://www.donationalerts.com/r/whtmst' },
+      { id: 'card', labelKey: 'donate_card_label', label: 'Перевод на карту (Leobank AZN)', url: 'https://github.com/whtmst/checklist/blob/main/DONATE.md' }
     ]
   };
 
   WM.utils = {
+    /* Защита от XSS: разрешаем только безопасные http:// и https:// ссылки */
+    sanitizeUrl: function (rawUrl) {
+      var s = String(rawUrl || '').trim();
+      if (!s) return '';
+      if (/^https?:\/\//i.test(s)) return s;
+      return '';
+    },
+
     uid: function (prefix) {
       return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
     },
@@ -81,23 +101,31 @@
 
     getPriority: function (id) {
       var list = WM.CONFIG.PRIORITIES;
+      var found = list[2];
       for (var i = 0; i < list.length; i++) {
-        if (list[i].id === id) return list[i];
+        if (list[i].id === id) { found = list[i]; break; }
       }
-      return list[2];
+      var label = (WM.i18n && WM.i18n.t) ? WM.i18n.t('prio_' + found.id) : found.label;
+      return { id: found.id, label: label, rank: found.rank };
     },
 
     getCreditTypeLabel: function (type, customType, shortBadge) {
       if (type === 'custom' && customType && String(customType).trim()) {
         return String(customType).trim();
       }
+      var tr = (WM.i18n && WM.i18n.t) ? WM.i18n.t : null;
+      if (tr) {
+        if (type === 'installment') return tr('credit_type_installment');
+        if (type === 'ninja') return tr('credit_type_ninja');
+        if (type === 'grace') return tr(shortBadge ? 'credit_type_grace_short' : 'credit_type_grace');
+        if (type === 'custom') return tr(shortBadge ? 'credit_type_custom_badge' : 'credit_type_custom');
+        return tr('credit_type_installment');
+      }
       var list = WM.CONFIG.CREDIT_TYPES;
       for (var i = 0; i < list.length; i++) {
-        if (list[i].id === type) {
-          return shortBadge ? list[i].badge : list[i].label;
-        }
+        if (list[i].id === type) return shortBadge ? list[i].badge : list[i].label;
       }
-      return shortBadge ? 'Рассрочка' : 'Рассрочка';
+      return 'Рассрочка';
     },
 
     formatTime: function (isoString) {
@@ -183,9 +211,10 @@
       var diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
 
       var statusText = '';
-      if (diffDays > 0) statusText = 'осталось ' + diffDays + ' дн.';
-      else if (diffDays === 0) statusText = 'срок сегодня!';
-      else statusText = 'просрочено на ' + Math.abs(diffDays) + ' дн.';
+      var tr = (WM.i18n && WM.i18n.t) ? WM.i18n.t : null;
+      if (diffDays > 0) statusText = tr ? tr('grace_days_left', { d: diffDays }) : ('осталось ' + diffDays + ' дн.');
+      else if (diffDays === 0) statusText = tr ? tr('grace_today') : 'срок сегодня!';
+      else statusText = tr ? tr('grace_overdue', { d: Math.abs(diffDays) }) : ('просрочено на ' + Math.abs(diffDays) + ' дн.');
 
       return {
         dueDate: dueDateStr,

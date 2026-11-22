@@ -301,6 +301,7 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    try { localStorage.setItem('wm_checklist_last_backup_v1', String(Date.now())); } catch (e) {}
   }
 
   function importJsonText(text) {
