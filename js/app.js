@@ -96,7 +96,7 @@
         var dot = document.createElement('button');
         dot.type = 'button';
         dot.className = 'gallery-dot' + (idx === drawerGalleryIdx ? ' active' : '');
-        dot.setAttribute('aria-label', 'Фото ' + (idx + 1));
+        dot.setAttribute('aria-label', '#' + (idx + 1));
         dot.addEventListener('click', function () {
           drawerGalleryIdx = idx;
           updateGalleryView();
@@ -521,8 +521,8 @@
   function buildScheduleHint(startDate, months, monthly) {
     var sched = WM.utils.calcCreditSchedule(startDate, months, monthly);
     if (!sched) return '';
-    if (sched.isFinished) return 'Окончание: ' + sched.endFormatted + ' (срок завершён).';
-    return 'До ' + sched.endFormatted + ' · осталось ' + sched.remainingMonths + ' из ' + sched.totalMonths + ' мес.';
+    if (sched.isFinished) return WM.i18n.t('bundle_hint_finished', { end: sched.endFormatted });
+    return WM.i18n.t('bundle_hint_sched', { end: sched.endFormatted, rem: sched.remainingMonths, tot: sched.totalMonths });
   }
 
   function updateBundleCalcHints() {
@@ -533,7 +533,7 @@
       if (found) baseSum += found.item.price;
     });
     baseSum = WM.utils.toNumber(baseSum);
-    document.getElementById('bundleBaseSumLabel').textContent = 'База: ' + WM.utils.formatMoney(baseSum);
+    document.getElementById('bundleBaseSumLabel').textContent = WM.i18n.t('bundle_base_label', { v: WM.utils.formatMoney(baseSum) });
 
     var type = document.getElementById('bundleTypeSelect').value;
     var note = document.getElementById('bundleOverpayNote');
@@ -542,8 +542,8 @@
       var due = document.getElementById('bundleDueDateInput').value;
       var grace = WM.utils.calcGraceStatus(due);
       note.textContent = grace
-        ? 'Льготный долг по выбранным товарам: вернуть до ' + grace.dueFormatted + ' (' + grace.statusText + ').'
-        : 'Укажите общую сумму к возврату и дату окончания льготного периода.';
+        ? WM.i18n.t('bundle_hint_grace', { date: grace.dueFormatted, status: grace.statusText })
+        : WM.i18n.t('bundle_hint_grace_empty');
       return;
     }
 
@@ -555,16 +555,16 @@
     var lines = [];
     if (total > 0) {
       var diff = Math.round((total - baseSum) * 100) / 100;
-      if (diff > 0) lines.push('Переплата: +' + WM.utils.formatMoney(diff) + ' к базе ' + WM.utils.formatMoney(baseSum) + '.');
-      else if (diff === 0) lines.push('Рассрочка без переплаты.');
-      else lines.push('Итоговая сумма ниже базы на ' + WM.utils.formatMoney(Math.abs(diff)) + '.');
+      if (diff > 0) lines.push(WM.i18n.t('bundle_hint_overpay', { diff: WM.utils.formatMoney(diff), base: WM.utils.formatMoney(baseSum) }));
+      else if (diff === 0) lines.push(WM.i18n.t('bundle_hint_no_overpay'));
+      else lines.push(WM.i18n.t('bundle_hint_below', { diff: WM.utils.formatMoney(Math.abs(diff)) }));
     }
     var schedLine = buildScheduleHint(startDate, months, monthly);
     if (schedLine) lines.push(schedLine);
 
     note.textContent = lines.length > 0
       ? lines.join(' ')
-      : 'Укажите итоговую сумму, ежемесячный платёж и (по желанию) дату оформления.';
+      : WM.i18n.t('bundle_hint_default');
   }
 
   // --- Перенос между вкладками ---
@@ -576,7 +576,7 @@
 
     var autoOpt = document.createElement('option');
     autoOpt.value = '__create_same__';
-    autoOpt.textContent = 'Как сейчас («' + (currentCatName || 'Общее') + '»)';
+    autoOpt.textContent = WM.i18n.t('transfer_same_cat', { name: currentCatName || WM.i18n.t('common_general') });
     catSelect.appendChild(autoOpt);
 
     if (dstTab && dstTab.categories.length > 0) {
@@ -789,7 +789,7 @@
       chev.className = 'picker-chevron';
       chev.textContent = '▾';
       var nameSpan = document.createElement('span');
-      nameSpan.textContent = 'Вкладка: ' + tab.name;
+      nameSpan.textContent = WM.i18n.t('bundle_picker_tab', { name: tab.name });
       headLeft.appendChild(chev);
       headLeft.appendChild(nameSpan);
 
@@ -833,7 +833,7 @@
         if (inOtherBundle) {
           var usedTag = document.createElement('span');
           usedTag.className = 'bundle-picker-used-tag';
-          usedTag.textContent = '(в «' + existingBundle.name + '»)';
+          usedTag.textContent = WM.i18n.t('bundle_picker_used', { name: existingBundle.name });
           titleDiv.appendChild(usedTag);
         }
         var catDiv = document.createElement('div');
@@ -865,8 +865,8 @@
       emptyMsg.style.fontSize = '13px';
       emptyMsg.style.color = 'var(--text-muted)';
       emptyMsg.textContent = q
-        ? 'По запросу ничего не найдено.'
-        : 'Все товары уже оформлены в кредиты (включи «Уже в кредитах», чтобы увидеть их).';
+        ? WM.i18n.t('bundle_picker_empty_q')
+        : WM.i18n.t('bundle_picker_empty_all');
       picker.appendChild(emptyMsg);
     }
   }
@@ -1065,7 +1065,7 @@
   function getGeneralSettingsHandlers() {
     return {
       onRenameStorePref: function (storeId, currentName) {
-        var next = prompt('Новое название магазина:', currentName);
+        var next = prompt(WM.i18n.t('prompt_rename_store'), currentName);
         if (next === null) return;
         next = next.trim();
         if (!next || next === currentName) return;
@@ -1082,7 +1082,7 @@
         }
       },
       onDeleteStorePref: function (storeId, name) {
-        if (confirm('Удалить магазин «' + name + '» из списка? На уже созданных карточках название останется.')) {
+        if (confirm(WM.i18n.t('confirm_delete_store', { name: name }))) {
           WM.storage.deleteStore(storeId);
           refreshUI();
           showToast(WM.i18n.t('toast_store_deleted'));
@@ -1094,7 +1094,7 @@
         }
       },
       onRenameCustomCreditPref: function (ctId, currentName) {
-        var next = prompt('Новое название типа кредита:', currentName);
+        var next = prompt(WM.i18n.t('prompt_rename_ct'), currentName);
         if (next === null) return;
         next = next.trim();
         if (!next || next === currentName) return;
@@ -1111,7 +1111,7 @@
         }
       },
       onDeleteCustomCreditPref: function (ctId, name) {
-        if (confirm('Удалить тип «' + name + '» из списка? Оформленные кредиты сохранятся.')) {
+        if (confirm(WM.i18n.t('confirm_delete_ct', { name: name }))) {
           WM.storage.deleteCustomCreditType(ctId);
           refreshUI();
           showToast(WM.i18n.t('toast_ct_deleted'));
@@ -1126,8 +1126,8 @@
     document.getElementById('ghGistIdInput').value = s.gistId;
     document.getElementById('ghAutoSyncCheck').checked = !!s.autoSync;
     document.getElementById('syncModalStatus').textContent = s.lastSyncAt
-      ? 'Последняя синхронизация: ' + WM.utils.formatTime(s.lastSyncAt)
-      : 'Синхронизация с GitHub ещё не выполнялась.';
+      ? WM.i18n.t('sync_last_at', { t: WM.utils.formatTime(s.lastSyncAt) })
+      : WM.i18n.t('sync_never');
     WM.render.renderGeneralSettings(getGeneralSettingsHandlers());
     switchSettingsTab(defaultTab || 'general');
     openModal('syncModal');
@@ -1155,7 +1155,7 @@
     document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var modalId = btn.getAttribute('data-close-modal');
-        if (modalId === 'itemModal' && btn.textContent.trim() === 'Отмена') {
+        if (modalId === 'itemModal' && btn.classList.contains('btn-ghost')) {
           clearNewItemDraft();
           closeModal(modalId);
           return;
@@ -1423,6 +1423,10 @@
       var nextLang = e.target.value;
       await WM.i18n.setLang(nextLang, true);
       WM.storage.setLang(nextLang);
+      var s = WM.sync.getSettings();
+      document.getElementById('syncModalStatus').textContent = s.lastSyncAt
+        ? WM.i18n.t('sync_last_at', { t: WM.utils.formatTime(s.lastSyncAt) })
+        : WM.i18n.t('sync_never');
       refreshUI();
       showToast(WM.i18n.t('toast_lang_changed'));
     });
@@ -1597,7 +1601,7 @@
         closeModal('itemModal');
         if (mode === 'move' && viewingItemId === itemId) closeItemDrawer();
         refreshUI();
-        showToast((mode === 'move' ? 'Перенесено во вкладку «' : 'Скопировано во вкладку «') + (dstTab ? dstTab.name : '') + '»');
+        showToast(WM.i18n.t(mode === 'move' ? 'toast_moved_tab' : 'toast_copied_tab', { name: dstTab ? dstTab.name : '' }));
       }
     }
 
@@ -1614,7 +1618,7 @@
         closeModal('categoryModal');
         if (mode === 'move') closeItemDrawer();
         refreshUI();
-        showToast((mode === 'move' ? 'Категория перенесена во вкладку «' : 'Категория скопирована во вкладку «') + (dstTab ? dstTab.name : '') + '»');
+        showToast(WM.i18n.t(mode === 'move' ? 'toast_cat_moved' : 'toast_cat_copied', { name: dstTab ? dstTab.name : '' }));
       }
     }
 
@@ -1629,8 +1633,8 @@
 
       var storeVal = document.getElementById('itemStoreSelect').value;
       if (storeVal === WM.CONFIG.CUSTOM_STORE_VALUE) {
-        storeVal = document.getElementById('itemCustomStoreInput').value.trim() || 'Свой вариант';
-        if (storeVal !== 'Свой вариант') {
+        storeVal = document.getElementById('itemCustomStoreInput').value.trim() || WM.i18n.t('credit_type_custom');
+        if (storeVal !== WM.i18n.t('credit_type_custom')) {
           WM.storage.ensureStoreInPrefs(storeVal);
         }
       }
@@ -1644,7 +1648,7 @@
           return;
         }
         if (WM.storage.hasCategoryName(newCatName, null)) {
-          showToast('Категория «' + newCatName + '» уже есть в этой вкладке — выбери её в списке');
+          showToast(WM.i18n.t('toast_cat_dup_select', { name: newCatName }));
           document.getElementById('itemNewCategoryInput').focus();
           return;
         }
@@ -1751,7 +1755,7 @@
       var name = document.getElementById('categoryNameInput').value.trim();
       if (!name) return;
       if (WM.storage.hasCategoryName(name, id || null)) {
-        showToast('Категория «' + name + '» уже есть в этой вкладке');
+        showToast(WM.i18n.t('toast_cat_dup', { name: name }));
         document.getElementById('categoryNameInput').focus();
         return;
       }
@@ -1784,7 +1788,7 @@
       var name = document.getElementById('tabNameInput').value.trim();
       if (!name) return;
       if (WM.storage.hasTabName(name, id || null)) {
-        showToast('Вкладка «' + name + '» уже существует');
+        showToast(WM.i18n.t('toast_tab_dup', { name: name }));
         document.getElementById('tabNameInput').focus();
         return;
       }
@@ -1817,22 +1821,22 @@
       saveSyncFieldsFromModal();
       var hasTok = WM.sync.hasToken();
       setSyncStatus(hasTok ? 'ok' : '', hasTok ? 'GIST // READY' : 'LOCAL // OFFLINE');
-      document.getElementById('syncModalStatus').textContent = 'Настройки сохранены в этом браузере.';
+      document.getElementById('syncModalStatus').textContent = WM.i18n.t('sync_log_saved_local');
       showToast(WM.i18n.t('toast_settings_saved'));
     });
 
     document.getElementById('findGistBtn').addEventListener('click', async function () {
       saveSyncFieldsFromModal();
       var log = document.getElementById('syncModalStatus');
-      log.textContent = 'Ищу существующий Gist...';
+      log.textContent = WM.i18n.t('sync_log_searching');
       try {
         var found = await WM.sync.findExistingGist();
         if (found) {
           document.getElementById('ghGistIdInput').value = found;
-          log.textContent = 'Найден Gist: ' + found + '. Теперь можно нажать «Загрузить с GitHub ↓».';
-          showToast('Gist найден!');
+          log.textContent = WM.i18n.t('sync_log_found', { id: found });
+          showToast(WM.i18n.t('toast_gist_found'));
         } else {
-          log.textContent = 'Gist с файлом ' + WM.CONFIG.GIST_FILENAME + ' не найден. Нажми «Отправить в GitHub ↑», чтобы создать его.';
+          log.textContent = WM.i18n.t('sync_log_not_found', { file: WM.CONFIG.GIST_FILENAME });
         }
       } catch (err) {
         log.textContent = err.message;
@@ -1842,13 +1846,13 @@
     document.getElementById('pushGistBtn').addEventListener('click', async function () {
       saveSyncFieldsFromModal();
       var log = document.getElementById('syncModalStatus');
-      log.textContent = 'Отправляю данные в Secret Gist...';
+      log.textContent = WM.i18n.t('sync_log_pushing');
       setSyncStatus('pending', 'SYNC // PUSH...');
       try {
         var data = await WM.sync.pushToGist(true);
         document.getElementById('ghGistIdInput').value = data.id;
         var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
-        log.textContent = 'Успешно сохранено в Gist (' + data.id + ') в ' + t;
+        log.textContent = WM.i18n.t('sync_log_pushed', { id: data.id, t: t });
         setSyncStatus('ok', 'GIST // ' + t);
         showToast(WM.i18n.t('toast_pushed_gh'));
       } catch (err) {
@@ -1860,16 +1864,16 @@
     document.getElementById('pullGistBtn').addEventListener('click', async function () {
       saveSyncFieldsFromModal();
       var log = document.getElementById('syncModalStatus');
-      log.textContent = 'Загружаю данные из Secret Gist...';
+      log.textContent = WM.i18n.t('sync_log_pulling');
       setSyncStatus('pending', 'SYNC // PULL...');
       try {
         await WM.sync.pullFromGist();
         document.getElementById('ghGistIdInput').value = WM.sync.getSettings().gistId;
         var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
-        log.textContent = 'Данные загружены из GitHub в ' + t;
+        log.textContent = WM.i18n.t('sync_log_pulled', { t: t });
         setSyncStatus('ok', 'GIST // ' + t);
         refreshUI();
-        showToast('Список загружен с GitHub');
+        showToast(WM.i18n.t('toast_list_pulled'));
       } catch (err) {
         log.textContent = err.message;
         setSyncStatus('error', 'SYNC // ERROR');
@@ -1892,7 +1896,7 @@
           closeModal('syncModal');
           showToast(WM.i18n.t('toast_json_imported'));
         } catch (err) {
-          showToast('Ошибка: ' + err.message);
+          showToast(WM.i18n.t('toast_error_prefix', { msg: err.message }));
         }
       };
       reader.readAsText(file);

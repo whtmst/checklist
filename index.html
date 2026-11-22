@@ -148,15 +148,17 @@
         <span class="footer-left">WM_CHECKLIST // LOCAL + GITHUB GIST</span>
         <span class="footer-right" id="footerStats">READY</span>
       </div>
-      <div class="footer-bottom">
-        © 2026 <a class="footer-copy-link" href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a>
-      </div>
-      <div class="footer-links">
-        <button type="button" class="footer-action-link" id="openDonateModalBtn" data-i18n="footer_support">Поддержать ♥</button>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a class="footer-copy-link" href="privacy.html" data-i18n="footer_privacy">Privacy</a>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a class="footer-copy-link" href="terms.html" data-i18n="footer_terms">Terms</a>
+      <div class="footer-lower">
+        <div class="footer-copy">
+          © 2026 <a class="footer-copy-link" href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a>
+        </div>
+        <div class="footer-links">
+          <button type="button" class="footer-action-link" id="openDonateModalBtn" data-i18n="footer_support">ПОДДЕРЖАТЬ ПРОЕКТ</button>
+          <span class="footer-sep" aria-hidden="true">·</span>
+          <a class="footer-legal-link" href="privacy.html" data-i18n="footer_privacy">КОНФИДЕНЦИАЛЬНОСТЬ</a>
+          <span class="footer-sep" aria-hidden="true">·</span>
+          <a class="footer-legal-link" href="terms.html" data-i18n="footer_terms">УСЛОВИЯ</a>
+        </div>
       </div>
     </footer>
   </div>
@@ -167,7 +169,7 @@
       <div class="drawer-header">
         <div class="drawer-kicker" id="drawerCategoryLabel">КАРТОЧКА ПОЗИЦИИ</div>
         <div class="drawer-header-actions">
-          <button type="button" class="btn btn-secondary btn-sm" id="drawerEditBtn" title="Редактировать позицию">
+          <button type="button" class="btn btn-secondary btn-sm" id="drawerEditBtn" data-i18n-title="tip_edit_item" title="Редактировать позицию">
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             <span data-i18n="btn_edit">Редактировать</span>
           </button>
@@ -251,7 +253,7 @@
           <div class="card-limit-box">
             <div class="form-group">
               <label class="form-label" for="cardLimitInput"><span data-i18n="credits_card_limit_label">Лимит карты</span> (<span class="js-currency-symbol">₼</span>, <span data-i18n="credits_ref_suffix">справочно</span>)</label>
-              <input type="number" class="input input-mono" id="cardLimitInput" min="0" step="1" placeholder="Например, 2450">
+              <input type="number" class="input input-mono" id="cardLimitInput" min="0" step="1" data-i18n-placeholder="credits_ph_limit" placeholder="Например, 2450">
             </div>
             <div class="card-limit-stats" id="cardLimitStats">
               <span class="form-hint">Укажи лимит карты, чтобы видеть свободный остаток.</span>
@@ -264,7 +266,7 @@
           <div class="card-limit-box">
             <div class="form-group">
               <label class="form-label" for="monthlyIncomeInput"><span data-i18n="credits_income_label">Доход / мес</span> (<span class="js-currency-symbol">₼</span>, <span data-i18n="credits_ref_suffix">справочно</span>)</label>
-              <input type="number" class="input input-mono" id="monthlyIncomeInput" min="0" step="1" placeholder="Например, 820">
+              <input type="number" class="input input-mono" id="monthlyIncomeInput" min="0" step="1" data-i18n-placeholder="credits_ph_income" placeholder="Например, 820">
             </div>
             <div class="card-limit-stats" id="monthlyIncomeStats">
               <span class="form-hint">Укажи ориентир дохода, чтобы видеть нагрузку кредитов.</span>
@@ -403,7 +405,7 @@
 
         <div class="modal-actions modal-actions--split">
           <button type="button" class="btn btn-danger hidden" id="deleteItemBtn" data-i18n="btn_delete">Удалить</button>
-          <button type="button" class="btn btn-danger hidden" id="clearItemFormBtn" title="Очистить все поля формы">
+          <button type="button" class="btn btn-danger hidden" id="clearItemFormBtn" data-i18n-title="tip_clear_form" title="Очистить все поля формы">
             <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             <span data-i18n="btn_clear">Очистить</span>
           </button>
@@ -454,7 +456,7 @@
           </div>
           <div class="bundle-picker-tools">
             <input type="search" class="input bundle-picker-search" id="bundlePickerSearch" data-i18n-placeholder="bundle_ph_search" placeholder="Поиск товара, категории или вкладки..." aria-label="Поиск товаров">
-            <label class="checkbox-label bundle-show-all-label" title="Показать товары, которые уже входят в другие кредиты">
+            <label class="checkbox-label bundle-show-all-label" data-i18n-title="tip_show_used" title="Показать товары, которые уже входят в другие кредиты">
               <input type="checkbox" id="bundleShowUsedCheck">
               <span data-i18n="bundle_show_used">Уже в кредитах</span>
             </label>
@@ -578,7 +580,7 @@
         </div>
 
         <div class="transfer-box hidden" id="categoryTransferBox">
-          <div class="section-kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
+          <div class="section-kicker" data-i18n="transfer_kicker">ПЕРЕНОС / КОПИРОВАНИЕ В ДРУГУЮ ВКЛАДКУ</div>
           <p class="form-hint" data-i18n="transfer_cat_hint">Категория перенесётся или скопируется вместе со всеми товарами внутри неё.</p>
           <div class="form-group">
             <label class="form-label" for="categoryTransferTabSelect" data-i18n="transfer_target_tab">Целевая вкладка</label>
@@ -715,7 +717,7 @@
           <div class="form-group">
             <label class="form-label" for="ghTokenInput" data-i18n="sync_label_token">GitHub Personal Access Token (право: gist)</label>
             <div class="input-with-btn">
-              <input type="password" class="input input-mono" id="ghTokenInput" placeholder="ghp_... или github_pat_..." autocomplete="off">
+              <input type="password" class="input input-mono" id="ghTokenInput" data-i18n-placeholder="sync_ph_token" placeholder="ghp_... или github_pat_..." autocomplete="off">
               <button type="button" class="btn btn-secondary" id="findGistBtn" data-i18n="sync_btn_find">Найти мой Gist</button>
             </div>
           </div>

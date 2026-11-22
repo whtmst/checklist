@@ -74,14 +74,14 @@
   }
 
   function parseGitHubError(status, bodyText) {
-    if (status === 401) return 'Токен недействителен или истёк (401). Проверь токен в настройках.';
-    if (status === 403) return 'Нет прав на Gist или превышен лимит (403).';
-    if (status === 404) return 'Gist с таким ID не найден (404). Попробуй «Найти мой Gist».';
-    return 'Ошибка GitHub API (' + status + '): ' + (bodyText || 'неизвестно').slice(0, 120);
+    if (status === 401) return WM.i18n.t('err_401');
+    if (status === 403) return WM.i18n.t('err_403');
+    if (status === 404) return WM.i18n.t('err_404');
+    return WM.i18n.t('err_gh_api', { status: status, body: (bodyText || 'unknown').slice(0, 120) });
   }
 
   async function findExistingGist() {
-    if (!settings.token) throw new Error('Сначала вставь GitHub Token.');
+    if (!settings.token) throw new Error(WM.i18n.t('err_no_token'));
     var res = await fetch('https://api.github.com/gists?per_page=100', {
       method: 'GET',
       headers: buildHeaders()
@@ -112,27 +112,27 @@
     var data = await res.json();
     var file = data.files && data.files[WM.CONFIG.GIST_FILENAME];
     if (!file) {
-      throw new Error('В выбранном Gist нет файла ' + WM.CONFIG.GIST_FILENAME);
+      throw new Error(WM.i18n.t('err_no_gist_file', { file: WM.CONFIG.GIST_FILENAME }));
     }
     var rawText = file.content || '';
     if (file.truncated && file.raw_url) {
       var rawRes = await fetch(file.raw_url);
       if (!rawRes.ok) {
-        throw new Error('Не удалось загрузить полный файл из Gist (' + rawRes.status + ').');
+        throw new Error(WM.i18n.t('err_raw_fetch', { status: rawRes.status }));
       }
       rawText = await rawRes.text();
     }
     if (!rawText) {
-      throw new Error('В выбранном Gist пустой файл ' + WM.CONFIG.GIST_FILENAME);
+      throw new Error(WM.i18n.t('err_empty_gist', { file: WM.CONFIG.GIST_FILENAME }));
     }
     return { notModified: false, state: JSON.parse(rawText) };
   }
 
   async function pushToGist(mergeBeforePush) {
-    if (!settings.token) throw new Error('Не указан GitHub Token.');
+    if (!settings.token) throw new Error(WM.i18n.t('err_no_token'));
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       setPendingChanges(true);
-      throw new Error('Нет интернета — изменения сохранены локально.');
+      throw new Error(WM.i18n.t('err_offline_saved'));
     }
 
     isSyncBusy = true;
@@ -194,10 +194,10 @@
   }
 
   async function pullFromGist() {
-    if (!settings.token) throw new Error('Не указан GitHub Token.');
+    if (!settings.token) throw new Error(WM.i18n.t('err_no_token'));
     if (!settings.gistId) {
       var foundId = await findExistingGist();
-      if (!foundId) throw new Error('Gist с чек-листом ещё не создан. Сначала нажми «Отправить в GitHub».');
+      if (!foundId) throw new Error(WM.i18n.t('err_no_gist_created'));
     }
 
     isSyncBusy = true;
@@ -307,7 +307,7 @@
   function importJsonText(text) {
     var parsed = JSON.parse(text);
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.tabs)) {
-      throw new Error('Файл не похож на резервную копию WM_CHECKLIST.');
+      throw new Error(WM.i18n.t('err_bad_json'));
     }
     WM.storage.replaceState(parsed, false);
     return parsed;

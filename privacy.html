@@ -50,29 +50,6 @@
       background: var(--bg-surface);
     }
     .legal-back:hover { border-color: var(--accent); color: var(--accent); }
-    .lang-pills {
-      display: inline-flex;
-      gap: 4px;
-      padding: 3px;
-      border-radius: 8px;
-      background: var(--bg-page);
-      border: 1px solid var(--border-subtle);
-    }
-    .lang-pill {
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 5px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .lang-pill.active {
-      background: var(--accent);
-      color: #fff;
-    }
     .legal-body { padding: 26px 24px 30px; }
     .legal-kicker {
       font-size: 11px;
@@ -107,12 +84,7 @@
   <main class="legal-shell">
     <div class="legal-top">
       <a class="legal-back" href="./index.html" id="backLink">← WM_CHECKLIST</a>
-      <div class="lang-pills" role="tablist" aria-label="Language">
-        <button type="button" class="lang-pill" data-set-lang="ru">RU</button>
-        <button type="button" class="lang-pill" data-set-lang="en">EN</button>
-        <button type="button" class="lang-pill" data-set-lang="az">AZ</button>
       </div>
-    </div>
 
     <div class="legal-body">
       
@@ -177,7 +149,7 @@
 
     <div class="legal-foot">
       <span>© 2026 <a href="https://whtmst.github.io/" target="_blank" rel="noopener noreferrer">Mikhail Palagin (Wht Mst)</a></span>
-      <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+      <span><a href="privacy.html" id="footPrivacy">Privacy</a> · <a href="terms.html" id="footTerms">Terms</a> · <a href="https://github.com/whtmst/checklist" target="_blank" rel="noopener noreferrer">GitHub</a></span>
     </div>
   </main>
 
@@ -192,6 +164,13 @@
       var lang = 'ru';
       try {
         var savedLang = localStorage.getItem('wm_checklist_lang_v1');
+        if (!savedLang) {
+          var rawState = localStorage.getItem('wm_checklist_state_v1');
+          if (rawState) {
+            var parsed = JSON.parse(rawState);
+            if (parsed && parsed.prefs && parsed.prefs.lang) savedLang = parsed.prefs.lang;
+          }
+        }
         if (savedLang && supported.indexOf(savedLang) !== -1) lang = savedLang;
         else {
           var nav = String(navigator.language || '').toLowerCase();
@@ -200,29 +179,22 @@
         }
       } catch (e) {}
 
-      function apply(next) {
-        lang = supported.indexOf(next) !== -1 ? next : 'ru';
-        document.documentElement.lang = lang;
-        document.querySelectorAll('[data-lang-block]').forEach(function (el) {
-          el.classList.toggle('active', el.getAttribute('data-lang-block') === lang);
-        });
-        document.querySelectorAll('[data-set-lang]').forEach(function (btn) {
-          btn.classList.toggle('active', btn.getAttribute('data-set-lang') === lang);
-        });
-        var back = document.getElementById('backLink');
-        if (back) {
-          back.textContent = lang === 'en' ? '← Back to WM_CHECKLIST' : (lang === 'az' ? '← WM_CHECKLIST-ə qayıt' : '← Вернуться в WM_CHECKLIST');
-        }
-      }
+      var TITLES = {"ru": "Политика конфиденциальности · WM_CHECKLIST", "en": "Privacy Policy · WM_CHECKLIST", "az": "Məxfilik Siyasəti · WM_CHECKLIST"};
+      var BACK = { ru: '← Вернуться в WM_CHECKLIST', en: '← Back to WM_CHECKLIST', az: '← WM_CHECKLIST-ə qayıt' };
+      var FOOT_P = { ru: 'Конфиденциальность', en: 'Privacy', az: 'Məxfilik' };
+      var FOOT_T = { ru: 'Условия', en: 'Terms', az: 'Şərtlər' };
 
-      document.querySelectorAll('[data-set-lang]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var next = btn.getAttribute('data-set-lang');
-          try { localStorage.setItem('wm_checklist_lang_v1', next); } catch (e) {}
-          apply(next);
-        });
+      document.documentElement.lang = lang;
+      document.title = TITLES[lang] || TITLES.ru;
+      document.querySelectorAll('[data-lang-block]').forEach(function (el) {
+        el.classList.toggle('active', el.getAttribute('data-lang-block') === lang);
       });
-      apply(lang);
+      var back = document.getElementById('backLink');
+      if (back) back.textContent = BACK[lang] || BACK.ru;
+      var fp = document.getElementById('footPrivacy');
+      if (fp) fp.textContent = FOOT_P[lang] || FOOT_P.ru;
+      var ft = document.getElementById('footTerms');
+      if (ft) ft.textContent = FOOT_T[lang] || FOOT_T.ru;
     })();
   </script>
 </body>

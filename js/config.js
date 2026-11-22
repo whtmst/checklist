@@ -15,14 +15,14 @@
     CURRENCY: '₼',
     ALL_TAB_ID: '__all__',
     CURRENCY_PRESETS: [
-      { symbol: '₼', label: '₼ — Манат (AZN)' },
-      { symbol: '$', label: '$ — Доллар (USD)' },
-      { symbol: '€', label: '€ — Евро (EUR)' },
-      { symbol: '₽', label: '₽ — Рубль (RUB)' },
-      { symbol: '₺', label: '₺ — Лира (TRY)' },
-      { symbol: '₸', label: '₸ — Тенге (KZT)' },
-      { symbol: '₴', label: '₴ — Гривна (UAH)' },
-      { symbol: '₾', label: '₾ — Лари (GEL)' }
+      { symbol: '₼', labelKey: 'cur_AZN' },
+      { symbol: '$', labelKey: 'cur_USD' },
+      { symbol: '€', labelKey: 'cur_EUR' },
+      { symbol: '₽', labelKey: 'cur_RUB' },
+      { symbol: '₺', labelKey: 'cur_TRY' },
+      { symbol: '₸', labelKey: 'cur_KZT' },
+      { symbol: '₴', labelKey: 'cur_UAH' },
+      { symbol: '₾', labelKey: 'cur_GEL' }
     ],
     AUTO_SYNC_DELAY_MS: 1500,
     AUTO_PULL_INTERVAL_MS: 60000,

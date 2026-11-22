@@ -1052,10 +1052,11 @@
       var p = state.prefs || createDefaultPrefs();
       var hiddenMap = {};
       (p.hiddenCreditTypes || []).forEach(function (id) { hiddenMap[id] = true; });
+      var tr = (WM.i18n && WM.i18n.t) ? WM.i18n.t : function (k) { return k; };
       var builtins = [
-        { id: 'installment', label: 'Рассрочка (таксит 0%)', shortLabel: 'Рассрочка', hidden: !!hiddenMap['installment'] },
-        { id: 'ninja', label: 'Ninja (разделение с %)', shortLabel: 'Ninja', hidden: !!hiddenMap['ninja'] },
-        { id: 'grace', label: 'Льготный период', shortLabel: 'Льготный', hidden: !!hiddenMap['grace'] }
+        { id: 'installment', label: tr('credit_type_installment_full'), shortLabel: tr('credit_type_installment'), hidden: !!hiddenMap['installment'] },
+        { id: 'ninja', label: tr('credit_type_ninja_full'), shortLabel: tr('credit_type_ninja'), hidden: !!hiddenMap['ninja'] },
+        { id: 'grace', label: tr('credit_type_grace'), shortLabel: tr('credit_type_grace_short'), hidden: !!hiddenMap['grace'] }
       ];
       return {
         builtins: builtins,
