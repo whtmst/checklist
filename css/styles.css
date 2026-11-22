@@ -2741,6 +2741,18 @@ a.badge-store-link:hover {
   gap: 6px;
 }
 
+.legal-inline-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.legal-inline-link:hover {
+  opacity: 0.82;
+  text-decoration: none;
+}
+
 /* Онбординг-тур */
 .tour-box {
   max-width: 480px;

@@ -426,5 +426,6 @@
   "terms_h3": "3. Informational calculations only",
   "terms_p3": "All installment schedules, overpayments, and card limit numbers are estimates for personal planning only and do not constitute financial or banking advice.",
   "terms_h4": "4. Open source and voluntary donations",
-  "terms_p4": "The source code is available on GitHub (whtmst/checklist). You are free to use or fork it. Any donations to the author are completely voluntary."
+  "terms_p4_before": "The source code is available on",
+  "terms_p4_after": ". You are free to use or fork it. Any donations to the author are completely voluntary."
 }
