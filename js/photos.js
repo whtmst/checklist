@@ -193,24 +193,70 @@
     return inflightLoads[s];
   }
 
-  function deletePhoto(ref) {
-    if (!isDropboxPhoto(ref)) return Promise.resolve();
+  function getPhotoFolderPath(ref) {
+    var p = refToDropboxPath(ref);
+    if (!p) return '';
+    var idx = p.lastIndexOf('/');
+    if (idx <= 0) return '';
+    var folder = p.slice(0, idx);
+    var rootDir = WM.CONFIG.DROPBOX_PHOTOS_DIR || '/photos';
+    return folder === rootDir ? '' : folder;
+  }
+
+  function revokeCachedBlob(ref) {
     if (blobUrlCache[ref]) {
       try { URL.revokeObjectURL(blobUrlCache[ref]); } catch (e) {}
       delete blobUrlCache[ref];
     }
+  }
+
+  function deletePhoto(ref) {
+    if (!isDropboxPhoto(ref)) return Promise.resolve();
+    revokeCachedBlob(ref);
     if (!WM.sync || !WM.sync.canUploadPhotos()) return Promise.resolve();
     var dbxPath = refToDropboxPath(ref);
     return WM.sync.deleteDropboxPath(dbxPath).catch(function () {});
   }
 
-  function deleteItemPhotos(item) {
-    if (!item || !Array.isArray(item.images)) return Promise.resolve();
+  /* Умное удаление: если в папке /photos/<id> больше не остаётся фото — удаляем всю папку целиком */
+  function deletePhotosAndEmptyFolders(removedRefs, remainingRefs) {
+    var removed = (Array.isArray(removedRefs) ? removedRefs : []).filter(isDropboxPhoto);
+    if (removed.length === 0) return Promise.resolve();
+
+    removed.forEach(revokeCachedBlob);
+    if (!WM.sync || !WM.sync.canUploadPhotos()) return Promise.resolve();
+
+    var stillUsedFolders = {};
+    (Array.isArray(remainingRefs) ? remainingRefs : []).filter(isDropboxPhoto).forEach(function (ref) {
+      var folder = getPhotoFolderPath(ref);
+      if (folder) stillUsedFolders[folder] = true;
+    });
+
+    var foldersToDelete = {};
+    var filesToDelete = [];
+
+    removed.forEach(function (ref) {
+      var folder = getPhotoFolderPath(ref);
+      if (folder && !stillUsedFolders[folder]) {
+        foldersToDelete[folder] = true;
+      } else {
+        filesToDelete.push(refToDropboxPath(ref));
+      }
+    });
+
     var tasks = [];
-    item.images.forEach(function (ref) {
-      if (isDropboxPhoto(ref)) tasks.push(deletePhoto(ref));
+    Object.keys(foldersToDelete).forEach(function (folderPath) {
+      tasks.push(WM.sync.deleteDropboxPath(folderPath).catch(function () {}));
+    });
+    filesToDelete.forEach(function (filePath) {
+      tasks.push(WM.sync.deleteDropboxPath(filePath).catch(function () {}));
     });
     return Promise.all(tasks);
+  }
+
+  function deleteItemPhotos(item) {
+    if (!item || !Array.isArray(item.images)) return Promise.resolve();
+    return deletePhotosAndEmptyFolders(item.images, []);
   }
 
   WM.photos = {
@@ -219,6 +265,7 @@
     uploadItemPhoto: uploadItemPhoto,
     resolvePhotoUrl: resolvePhotoUrl,
     deletePhoto: deletePhoto,
+    deletePhotosAndEmptyFolders: deletePhotosAndEmptyFolders,
     deleteItemPhotos: deleteItemPhotos
   };
 })(window);

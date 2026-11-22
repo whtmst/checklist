@@ -82,7 +82,7 @@
         var removed = nextVals.splice(idx, 1)[0];
         setPhotoInputValues(nextVals);
         if (WM.photos && WM.photos.isDropboxPhoto(removed)) {
-          WM.photos.deletePhoto(removed);
+          WM.photos.deletePhotosAndEmptyFolders([removed], nextVals);
         }
         saveNewItemDraft();
       });
@@ -278,8 +278,11 @@
     };
   }
 
+  var pendingDraftPhotoFolderId = '';
+
   function clearNewItemDraft() {
     newItemDraft = null;
+    pendingDraftPhotoFolderId = '';
   }
 
   function tryCloseModal(id, force) {
@@ -1337,6 +1340,10 @@
       btn.addEventListener('click', function () {
         var modalId = btn.getAttribute('data-close-modal');
         if (modalId === 'itemModal' && btn.classList.contains('btn-ghost')) {
+          var isNewItem = !document.getElementById('itemIdInput').value;
+          if (isNewItem && WM.photos) {
+            WM.photos.deletePhotosAndEmptyFolders(readPhotoInputValues(), []);
+          }
           clearNewItemDraft();
           closeModal(modalId);
           return;
@@ -1748,6 +1755,10 @@
 
     document.getElementById('clearItemFormBtn').addEventListener('click', function () {
       var tab = WM.storage.getActiveTab();
+      var prevPhotos = readPhotoInputValues();
+      if (WM.photos && prevPhotos.length > 0) {
+        WM.photos.deletePhotosAndEmptyFolders(prevPhotos, []);
+      }
       clearNewItemDraft();
       document.getElementById('itemTitleInput').value = '';
       document.getElementById('itemPriceInput').value = '';
@@ -2036,7 +2047,11 @@
         var origHint = hintEl ? hintEl.textContent : '';
         if (hintEl) hintEl.textContent = WM.i18n.t('photo_uploading');
 
-        var itemId = document.getElementById('itemIdInput').value || WM.utils.uid('itm');
+        var existingId = document.getElementById('itemIdInput').value;
+        if (!existingId && !pendingDraftPhotoFolderId) {
+          pendingDraftPhotoFolderId = WM.utils.uid('itm');
+        }
+        var itemId = existingId || pendingDraftPhotoFolderId;
         try {
           for (var i = 0; i < files.length; i++) {
             currentVals = readPhotoInputValues();
