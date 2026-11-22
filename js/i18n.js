@@ -19,12 +19,13 @@
       var nav = String((navigator.language || navigator.userLanguage || '')).toLowerCase();
       if (nav.indexOf('az') === 0) return 'az';
       if (nav.indexOf('en') === 0) return 'en';
+      if (nav.indexOf('ru') === 0) return 'ru';
     } catch (e) {}
-    return 'ru';
+    return 'en';
   }
 
   async function loadLocale(lang) {
-    if (SUPPORTED.indexOf(lang) === -1) lang = 'ru';
+    if (SUPPORTED.indexOf(lang) === -1) lang = 'en';
     if (cache[lang]) return cache[lang];
     try {
       var res = await fetch('./locales/' + lang + '.json');
@@ -40,9 +41,9 @@
     var target = (preferredLang && SUPPORTED.indexOf(preferredLang) !== -1)
       ? preferredLang
       : currentLang;
-    // Загружаем базовый словарь (ru) как страховку и целевой язык
-    await loadLocale('ru');
-    if (target !== 'ru') {
+    // Загружаем базовый словарь (en) как страховку и целевой язык
+    await loadLocale('en');
+    if (target !== 'en') {
       await loadLocale(target);
     }
     currentLang = target;
@@ -54,7 +55,7 @@
   }
 
   async function setLang(lang, persistStorage) {
-    if (SUPPORTED.indexOf(lang) === -1) lang = 'ru';
+    if (SUPPORTED.indexOf(lang) === -1) lang = 'en';
     await loadLocale(lang);
     currentLang = lang;
     if (typeof document !== 'undefined' && document.documentElement) {
@@ -68,8 +69,8 @@
   }
 
   function t(key, params) {
-    var table = cache[currentLang] || cache.ru || {};
-    var fallback = cache.ru || {};
+    var table = cache[currentLang] || cache.en || {};
+    var fallback = cache.en || {};
     var str = (table[key] !== undefined) ? table[key] : (fallback[key] !== undefined ? fallback[key] : key);
     if (params && typeof params === 'object') {
       Object.keys(params).forEach(function (k) {
