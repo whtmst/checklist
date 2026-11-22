@@ -3018,3 +3018,19 @@ a.badge-store-link:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.dbx-advanced-details {
+  margin-top: 2px;
+}
+
+.dbx-advanced-summary {
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.dbx-advanced-summary:hover {
+  color: var(--text-secondary);
+}

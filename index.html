@@ -800,17 +800,20 @@
           <div class="provider-panel hidden" id="syncPanelDropbox">
             <div class="section-kicker" data-i18n="sync_dbx_kicker">DROPBOX APP FOLDER (2 ГБ + ФОТО WEBP)</div>
             <p class="form-hint" data-i18n="sync_dbx_hint">Изолированная папка /Apps/WM_CHECKLIST. Вход через OAuth 2.0 PKCE с постоянным refresh-токеном.</p>
-            <div class="form-group" id="dbxAppKeyGroup">
-              <label class="form-label" for="dbxAppKeyInput" data-i18n="sync_dbx_label_appkey">Dropbox App Key (Client ID)</label>
-              <input type="text" class="input input-mono" id="dbxAppKeyInput" data-i18n-placeholder="sync_dbx_ph_appkey" placeholder="App Key">
-            </div>
             <div class="dropbox-account-row">
               <span class="dropbox-account-status" id="dbxAccountStatus"></span>
               <div class="dropbox-account-actions">
-                <button type="button" class="btn btn-accent btn-sm" id="connectDropboxBtn" data-i18n="sync_dbx_btn_connect">Подключить Dropbox</button>
+                <button type="button" class="btn btn-accent" id="connectDropboxBtn" data-i18n="sync_dbx_btn_connect">Войти через Dropbox</button>
                 <button type="button" class="btn btn-ghost btn-sm hidden" id="disconnectDropboxBtn" data-i18n="sync_dbx_btn_disconnect">Отключить</button>
               </div>
             </div>
+            <details class="dbx-advanced-details" id="dbxAdvancedDetails">
+              <summary class="dbx-advanced-summary" data-i18n="sync_dbx_advanced_toggle">Свой App Key (для разработчиков и форков)</summary>
+              <div class="form-group" id="dbxAppKeyGroup" style="margin-top: 8px;">
+                <label class="form-label" for="dbxAppKeyInput" data-i18n="sync_dbx_label_appkey">Свой Dropbox App Key (оставь пустым для входа в 1 клик)</label>
+                <input type="text" class="input input-mono" id="dbxAppKeyInput" data-i18n-placeholder="sync_dbx_ph_appkey" placeholder="Оставь пустым для встроенного ключа WM_CHECKLIST">
+              </div>
+            </details>
           </div>
 
           <!-- ОБЩИЕ КОНТРОЛЫ ОБЛАКА -->

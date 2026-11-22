@@ -13,7 +13,7 @@
     GIST_FILENAME: 'wm-checklist-data.json',
     GIST_DESCRIPTION: 'WM_CHECKLIST — личный чек-лист (автосинхронизация)',
     GITLAB_SNIPPET_TITLE: 'WM_CHECKLIST Data',
-    DROPBOX_APP_KEY: '',
+    DROPBOX_APP_KEY: '5vk7g16mrabeyu7',
     DROPBOX_DATA_PATH: '/wm-checklist-data.json',
     DROPBOX_PHOTOS_DIR: '/photos',
     PHOTO_MAX_SIDE: 1280,

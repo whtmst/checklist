@@ -1244,9 +1244,9 @@
     if (dbxConnectBtn) dbxConnectBtn.classList.toggle('hidden', dbxConnected);
     if (dbxDisconnectBtn) dbxDisconnectBtn.classList.toggle('hidden', !dbxConnected);
 
-    var appKeyGroup = document.getElementById('dbxAppKeyGroup');
-    if (appKeyGroup) {
-      appKeyGroup.classList.toggle('hidden', !!(WM.CONFIG.DROPBOX_APP_KEY && !s.dropboxAppKey));
+    var advDetails = document.getElementById('dbxAdvancedDetails');
+    if (advDetails && s.dropboxAppKey) {
+      advDetails.open = true;
     }
   }
 
@@ -1304,7 +1304,7 @@
     document.getElementById('ghGistIdInput').value = s.gistId;
     document.getElementById('glTokenInput').value = s.gitlabToken;
     document.getElementById('glSnippetIdInput').value = s.gitlabSnippetId;
-    document.getElementById('dbxAppKeyInput').value = s.dropboxAppKey || WM.CONFIG.DROPBOX_APP_KEY || '';
+    document.getElementById('dbxAppKeyInput').value = s.dropboxAppKey || '';
     document.getElementById('ghAutoSyncCheck').checked = !!s.autoSync;
     document.getElementById('syncModalStatus').textContent = s.lastSyncAt
       ? WM.i18n.t('sync_last_at', { t: WM.utils.formatTime(s.lastSyncAt) })
