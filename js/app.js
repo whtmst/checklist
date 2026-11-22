@@ -50,6 +50,57 @@
     inputs[2].classList.toggle('hidden', !v2 && !v3);
   }
 
+  var itemThumbsRenderSeq = 0;
+
+  function renderItemPhotoThumbs() {
+    var bar = document.getElementById('itemPhotoUploadBar');
+    var notice = document.getElementById('itemPhotoUploadNotice');
+    var thumbs = document.getElementById('itemPhotoThumbs');
+    var canUpload = WM.sync && WM.sync.canUploadPhotos();
+    if (bar) bar.classList.toggle('hidden', !canUpload);
+    if (notice) notice.classList.toggle('hidden', canUpload);
+
+    if (!thumbs) return;
+    var vals = readPhotoInputValues();
+    thumbs.innerHTML = '';
+    thumbs.classList.toggle('hidden', vals.length === 0);
+    if (vals.length === 0) return;
+
+    var seq = ++itemThumbsRenderSeq;
+    vals.forEach(function (ref, idx) {
+      var box = document.createElement('div');
+      box.className = 'photo-thumb-item';
+      var img = document.createElement('img');
+      img.alt = '';
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'photo-thumb-remove';
+      rm.textContent = '×';
+      rm.title = WM.i18n.t('photo_remove_tip');
+      rm.addEventListener('click', function () {
+        var nextVals = readPhotoInputValues();
+        var removed = nextVals.splice(idx, 1)[0];
+        setPhotoInputValues(nextVals);
+        if (WM.photos && WM.photos.isDropboxPhoto(removed)) {
+          WM.photos.deletePhoto(removed);
+        }
+        saveNewItemDraft();
+      });
+      box.appendChild(img);
+      box.appendChild(rm);
+      thumbs.appendChild(box);
+
+      if (WM.photos && typeof WM.photos.resolvePhotoUrl === 'function') {
+        WM.photos.resolvePhotoUrl(ref).then(function (resolved) {
+          if (seq !== itemThumbsRenderSeq) return;
+          if (resolved) img.src = resolved;
+        });
+      } else {
+        img.src = ref;
+      }
+    });
+  }
+
   function setPhotoInputValues(urls) {
     var arr = Array.isArray(urls) ? urls : [];
     var inputs = getPhotoInputs();
@@ -57,6 +108,7 @@
       if (inputs[i]) inputs[i].value = arr[i] || '';
     }
     updatePhotoInputsVisibility();
+    renderItemPhotoThumbs();
   }
 
   function readPhotoInputValues() {
@@ -106,10 +158,28 @@
     }
   }
 
+  var drawerGallerySeq = 0;
+
   function setupDrawerGallery(urls) {
-    drawerGalleryUrls = (urls || []).filter(function (u) { return !!String(u || '').trim(); });
+    var rawList = (urls || []).filter(function (u) { return !!String(u || '').trim(); });
+    var seq = ++drawerGallerySeq;
+    drawerGalleryUrls = [];
     drawerGalleryIdx = 0;
-    updateGalleryView();
+    if (rawList.length === 0) {
+      updateGalleryView();
+      return;
+    }
+
+    var resolver = (WM.photos && typeof WM.photos.resolvePhotoUrl === 'function')
+      ? WM.photos.resolvePhotoUrl
+      : function (u) { return Promise.resolve(u); };
+
+    Promise.all(rawList.map(function (u) { return resolver(u); })).then(function (resolved) {
+      if (seq !== drawerGallerySeq) return;
+      drawerGalleryUrls = resolved.filter(function (u) { return !!u; });
+      drawerGalleryIdx = 0;
+      updateGalleryView();
+    });
   }
 
   function openPhotoLightbox() {
@@ -1120,14 +1190,122 @@
     };
   }
 
-  function openSyncModal(defaultTab) {
+  var selectedProviderInModal = 'local';
+
+  function updateSyncTopbarBadge() {
+    var p = WM.sync.getProvider();
+    var s = WM.sync.getSettings();
+    if (p === 'local' || !WM.sync.isConnected()) {
+      setSyncStatus('', 'LOCAL // OFFLINE');
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setSyncStatus('pending', WM.sync.hasPendingChanges() ? 'OFFLINE // SAVED' : 'OFFLINE // LOCAL');
+      return;
+    }
+    var badge = WM.sync.getProviderBadge();
+    setSyncStatus('ok', s.lastSyncAt ? (badge + ' // ' + WM.utils.formatTime(s.lastSyncAt)) : (badge + ' // READY'));
+  }
+
+  function renderSyncProviderUI(provider, showSwitchBanner) {
+    selectedProviderInModal = provider || 'local';
+    var s = WM.sync.getSettings();
+
+    document.querySelectorAll('#syncProviderGrid .provider-card').forEach(function (card) {
+      card.classList.toggle('active', card.getAttribute('data-provider') === selectedProviderInModal);
+    });
+
+    document.getElementById('syncPanelLocal').classList.toggle('hidden', selectedProviderInModal !== 'local');
+    document.getElementById('syncPanelGithub').classList.toggle('hidden', selectedProviderInModal !== 'github');
+    document.getElementById('syncPanelGitlab').classList.toggle('hidden', selectedProviderInModal !== 'gitlab');
+    document.getElementById('syncPanelDropbox').classList.toggle('hidden', selectedProviderInModal !== 'dropbox');
+    document.getElementById('cloudCommonControls').classList.toggle('hidden', selectedProviderInModal === 'local');
+
+    var banner = document.getElementById('providerSwitchBanner');
+    if (banner) {
+      var hasLocalItems = WM.storage.getTotalItemsCount() > 0;
+      banner.classList.toggle('hidden', !(showSwitchBanner && selectedProviderInModal !== 'local' && hasLocalItems));
+    }
+
+    var dbxConnected = !!(s.dropboxRefreshToken || s.dropboxAccessToken);
+    var dbxStatusEl = document.getElementById('dbxAccountStatus');
+    var dbxConnectBtn = document.getElementById('connectDropboxBtn');
+    var dbxDisconnectBtn = document.getElementById('disconnectDropboxBtn');
+    if (dbxStatusEl) {
+      dbxStatusEl.textContent = dbxConnected
+        ? WM.i18n.t('sync_dbx_status_connected', { name: s.dropboxAccountName || 'Dropbox' })
+        : WM.i18n.t('sync_dbx_status_disconnected');
+      dbxStatusEl.classList.toggle('connected', dbxConnected);
+    }
+    if (dbxConnectBtn) dbxConnectBtn.classList.toggle('hidden', dbxConnected);
+    if (dbxDisconnectBtn) dbxDisconnectBtn.classList.toggle('hidden', !dbxConnected);
+
+    var appKeyGroup = document.getElementById('dbxAppKeyGroup');
+    if (appKeyGroup) {
+      appKeyGroup.classList.toggle('hidden', !!(WM.CONFIG.DROPBOX_APP_KEY && !s.dropboxAppKey));
+    }
+  }
+
+  function openProviderHelpModal(provider) {
+    var titleEl = document.getElementById('providerHelpTitle');
+    var stepsEl = document.getElementById('providerHelpSteps');
+    var noteEl = document.getElementById('providerHelpNote');
+    var linkEl = document.getElementById('providerHelpExtLink');
+    if (!titleEl || !stepsEl) return;
+
+    var map = {
+      github: {
+        title: 'guide_modal_title_github',
+        steps: ['guide_gh_s1', 'guide_gh_s2', 'guide_gh_s3'],
+        note: 'guide_gh_note',
+        linkText: 'guide_gh_link',
+        url: 'https://github.com/settings/tokens'
+      },
+      gitlab: {
+        title: 'guide_modal_title_gitlab',
+        steps: ['guide_gl_s1', 'guide_gl_s2', 'guide_gl_s3'],
+        note: 'guide_gl_note',
+        linkText: 'guide_gl_link',
+        url: 'https://gitlab.com/-/user_settings/personal_access_tokens'
+      },
+      dropbox: {
+        title: 'guide_modal_title_dropbox',
+        steps: ['guide_dbx_s1', 'guide_dbx_s2', 'guide_dbx_s3'],
+        note: 'guide_dbx_note',
+        linkText: 'guide_dbx_link',
+        url: 'https://www.dropbox.com/developers/apps'
+      }
+    };
+    var info = map[provider];
+    if (!info) return;
+
+    titleEl.textContent = WM.i18n.t(info.title);
+    stepsEl.innerHTML = '';
+    info.steps.forEach(function (k) {
+      var li = document.createElement('li');
+      li.textContent = WM.i18n.t(k);
+      stepsEl.appendChild(li);
+    });
+    if (noteEl) noteEl.textContent = WM.i18n.t(info.note);
+    if (linkEl) {
+      linkEl.textContent = WM.i18n.t(info.linkText);
+      linkEl.href = info.url;
+    }
+    openModal('providerHelpModal');
+  }
+
+  function openSyncModal(defaultTab, showSwitchBanner) {
     var s = WM.sync.getSettings();
     document.getElementById('ghTokenInput').value = s.token;
     document.getElementById('ghGistIdInput').value = s.gistId;
+    document.getElementById('glTokenInput').value = s.gitlabToken;
+    document.getElementById('glSnippetIdInput').value = s.gitlabSnippetId;
+    document.getElementById('dbxAppKeyInput').value = s.dropboxAppKey || WM.CONFIG.DROPBOX_APP_KEY || '';
     document.getElementById('ghAutoSyncCheck').checked = !!s.autoSync;
     document.getElementById('syncModalStatus').textContent = s.lastSyncAt
       ? WM.i18n.t('sync_last_at', { t: WM.utils.formatTime(s.lastSyncAt) })
       : WM.i18n.t('sync_never');
+    renderSyncProviderUI(s.provider || 'local', !!showSwitchBanner);
     WM.render.renderGeneralSettings(getGeneralSettingsHandlers());
     switchSettingsTab(defaultTab || 'general');
     openModal('syncModal');
@@ -1135,8 +1313,12 @@
 
   function saveSyncFieldsFromModal() {
     WM.sync.saveSettings({
+      provider: selectedProviderInModal,
       token: document.getElementById('ghTokenInput').value,
       gistId: document.getElementById('ghGistIdInput').value,
+      gitlabToken: document.getElementById('glTokenInput').value,
+      gitlabSnippetId: document.getElementById('glSnippetIdInput').value,
+      dropboxAppKey: document.getElementById('dbxAppKeyInput').value,
       autoSync: document.getElementById('ghAutoSyncCheck').checked
     });
   }
@@ -1145,9 +1327,8 @@
     var updated = await WM.sync.checkForRemoteUpdates(force);
     if (updated) {
       refreshUI();
-      var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
-      setSyncStatus('ok', 'GIST // ' + t);
-      showToast(WM.i18n.t('toast_synced_gh'));
+      updateSyncTopbarBadge();
+      showToast(WM.i18n.t('toast_pulled_cloud'));
     }
   }
 
@@ -1422,7 +1603,6 @@
     document.getElementById('langSelect').addEventListener('change', async function (e) {
       var nextLang = e.target.value;
       await WM.i18n.setLang(nextLang, true);
-      WM.storage.setLang(nextLang);
       var s = WM.sync.getSettings();
       document.getElementById('syncModalStatus').textContent = s.lastSyncAt
         ? WM.i18n.t('sync_last_at', { t: WM.utils.formatTime(s.lastSyncAt) })
@@ -1497,16 +1677,16 @@
     });
 
     document.getElementById('quickSyncBtn').addEventListener('click', async function () {
-      if (!WM.sync.hasToken()) {
+      if (!WM.sync.isConnected()) {
         openSyncModal('sync');
         return;
       }
       setSyncStatus('pending', 'SYNC // PULL...');
       try {
-        await WM.sync.pullFromGist();
+        await WM.sync.pullFromCloud(false);
         refreshUI();
-        setSyncStatus('ok', 'GIST // ' + WM.utils.formatTime(WM.sync.getSettings().lastSyncAt));
-        showToast(WM.i18n.t('toast_pulled_gh'));
+        updateSyncTopbarBadge();
+        showToast(WM.i18n.t('toast_pulled_cloud'));
       } catch (err) {
         setSyncStatus('error', 'SYNC // ERROR');
         showToast(err.message);
@@ -1697,6 +1877,10 @@
       var id = document.getElementById('itemIdInput').value;
       if (!id) return;
       if (confirm(WM.i18n.t('confirm_delete_item'))) {
+        var found = WM.storage.findItemAcrossTabs(id);
+        if (found && found.item && WM.photos) {
+          WM.photos.deleteItemPhotos(found.item);
+        }
         WM.storage.deleteItem(id);
         closeModal('itemModal');
         if (viewingItemId === id) closeItemDrawer();
@@ -1834,11 +2018,87 @@
       }
     });
 
+    // Загрузка WebP-фото в Dropbox внутри модалки позиции
+    var photoFileInput = document.getElementById('itemPhotoFileInput');
+    if (photoFileInput) {
+      photoFileInput.addEventListener('change', async function (e) {
+        var files = Array.prototype.slice.call(e.target.files || []);
+        e.target.value = '';
+        if (files.length === 0) return;
+
+        var currentVals = readPhotoInputValues();
+        if (currentVals.length >= 3) {
+          showToast(WM.i18n.t('photo_limit_reached'));
+          return;
+        }
+
+        var hintEl = document.getElementById('itemPhotoUploadHint');
+        var origHint = hintEl ? hintEl.textContent : '';
+        if (hintEl) hintEl.textContent = WM.i18n.t('photo_uploading');
+
+        var itemId = document.getElementById('itemIdInput').value || WM.utils.uid('itm');
+        try {
+          for (var i = 0; i < files.length; i++) {
+            currentVals = readPhotoInputValues();
+            if (currentVals.length >= 3) {
+              showToast(WM.i18n.t('photo_limit_reached'));
+              break;
+            }
+            var res = await WM.photos.uploadItemPhoto(itemId, files[i]);
+            currentVals.push(res.ref);
+            setPhotoInputValues(currentVals);
+            saveNewItemDraft();
+            showToast(WM.i18n.t('photo_uploaded_toast', { kb: Math.max(1, Math.round(res.sizeBytes / 1024)) }));
+          }
+        } catch (err) {
+          showToast(err.message);
+        } finally {
+          if (hintEl) hintEl.textContent = origHint || WM.i18n.t('photo_upload_hint');
+        }
+      });
+    }
+
+    getPhotoInputs().forEach(function (inp) {
+      if (inp) {
+        inp.addEventListener('change', renderItemPhotoThumbs);
+      }
+    });
+
+    // Выбор провайдера облака и ?-инструкции
+    document.querySelectorAll('#syncProviderGrid .provider-card').forEach(function (card) {
+      var selectProvider = function () {
+        var nextProv = card.getAttribute('data-provider');
+        var prevProv = WM.sync.getProvider();
+        var switched = nextProv !== prevProv;
+        WM.sync.saveSettings({ provider: nextProv });
+        renderSyncProviderUI(nextProv, switched);
+        updateSyncTopbarBadge();
+        refreshUI();
+      };
+      card.addEventListener('click', function (e) {
+        if (e.target.closest('.provider-help-btn')) return;
+        selectProvider();
+      });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectProvider();
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-provider-help]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openProviderHelpModal(btn.getAttribute('data-provider-help'));
+      });
+    });
+
     // Настройки синхронизации
     document.getElementById('saveSyncSettingsBtn').addEventListener('click', function () {
       saveSyncFieldsFromModal();
-      var hasTok = WM.sync.hasToken();
-      setSyncStatus(hasTok ? 'ok' : '', hasTok ? 'GIST // READY' : 'LOCAL // OFFLINE');
+      updateSyncTopbarBadge();
+      refreshUI();
       document.getElementById('syncModalStatus').textContent = WM.i18n.t('sync_log_saved_local');
       showToast(WM.i18n.t('toast_settings_saved'));
     });
@@ -1861,18 +2121,57 @@
       }
     });
 
+    document.getElementById('findGitlabSnippetBtn').addEventListener('click', async function () {
+      saveSyncFieldsFromModal();
+      var log = document.getElementById('syncModalStatus');
+      log.textContent = WM.i18n.t('sync_log_gl_searching');
+      try {
+        var found = await WM.sync.findExistingGitLabSnippet();
+        if (found) {
+          document.getElementById('glSnippetIdInput').value = found;
+          log.textContent = WM.i18n.t('sync_log_gl_found', { id: found });
+          showToast(WM.i18n.t('toast_gl_found'));
+        } else {
+          log.textContent = WM.i18n.t('sync_log_gl_not_found', { file: WM.CONFIG.GIST_FILENAME });
+        }
+      } catch (err) {
+        log.textContent = err.message;
+      }
+    });
+
+    document.getElementById('connectDropboxBtn').addEventListener('click', async function () {
+      saveSyncFieldsFromModal();
+      var log = document.getElementById('syncModalStatus');
+      try {
+        await WM.sync.startDropboxOAuth(document.getElementById('dbxAppKeyInput').value);
+      } catch (err) {
+        log.textContent = err.message;
+        showToast(err.message);
+      }
+    });
+
+    document.getElementById('disconnectDropboxBtn').addEventListener('click', async function () {
+      await WM.sync.disconnectDropbox();
+      renderSyncProviderUI('dropbox', false);
+      updateSyncTopbarBadge();
+      showToast(WM.i18n.t('toast_dbx_disconnected'));
+    });
+
     document.getElementById('pushGistBtn').addEventListener('click', async function () {
       saveSyncFieldsFromModal();
       var log = document.getElementById('syncModalStatus');
       log.textContent = WM.i18n.t('sync_log_pushing');
       setSyncStatus('pending', 'SYNC // PUSH...');
       try {
-        var data = await WM.sync.pushToGist(true);
-        document.getElementById('ghGistIdInput').value = data.id;
-        var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
-        log.textContent = WM.i18n.t('sync_log_pushed', { id: data.id, t: t });
-        setSyncStatus('ok', 'GIST // ' + t);
-        showToast(WM.i18n.t('toast_pushed_gh'));
+        await WM.sync.pushToCloud(true);
+        var s = WM.sync.getSettings();
+        document.getElementById('ghGistIdInput').value = s.gistId;
+        document.getElementById('glSnippetIdInput').value = s.gitlabSnippetId;
+        var t = WM.utils.formatTime(s.lastSyncAt);
+        log.textContent = WM.i18n.t('sync_log_pushed_cloud', { provider: WM.sync.getProviderBadge(), t: t });
+        updateSyncTopbarBadge();
+        document.getElementById('providerSwitchBanner').classList.add('hidden');
+        showToast(WM.i18n.t('toast_pushed_cloud'));
       } catch (err) {
         log.textContent = err.message;
         setSyncStatus('error', 'SYNC // ERROR');
@@ -1885,13 +2184,38 @@
       log.textContent = WM.i18n.t('sync_log_pulling');
       setSyncStatus('pending', 'SYNC // PULL...');
       try {
-        await WM.sync.pullFromGist();
-        document.getElementById('ghGistIdInput').value = WM.sync.getSettings().gistId;
-        var t = WM.utils.formatTime(WM.sync.getSettings().lastSyncAt);
-        log.textContent = WM.i18n.t('sync_log_pulled', { t: t });
-        setSyncStatus('ok', 'GIST // ' + t);
+        await WM.sync.pullFromCloud(false);
+        var s = WM.sync.getSettings();
+        document.getElementById('ghGistIdInput').value = s.gistId;
+        document.getElementById('glSnippetIdInput').value = s.gitlabSnippetId;
+        var t = WM.utils.formatTime(s.lastSyncAt);
+        log.textContent = WM.i18n.t('sync_log_pulled_cloud', { provider: WM.sync.getProviderBadge(), t: t });
+        updateSyncTopbarBadge();
+        document.getElementById('providerSwitchBanner').classList.add('hidden');
         refreshUI();
-        showToast(WM.i18n.t('toast_list_pulled'));
+        showToast(WM.i18n.t('toast_pulled_cloud'));
+      } catch (err) {
+        log.textContent = err.message;
+        setSyncStatus('error', 'SYNC // ERROR');
+      }
+    });
+
+    document.getElementById('mergeCloudBtn').addEventListener('click', async function () {
+      saveSyncFieldsFromModal();
+      var log = document.getElementById('syncModalStatus');
+      log.textContent = WM.i18n.t('sync_log_pulling');
+      setSyncStatus('pending', 'SYNC // MERGE...');
+      try {
+        await WM.sync.pullFromCloud(true);
+        var s = WM.sync.getSettings();
+        document.getElementById('ghGistIdInput').value = s.gistId;
+        document.getElementById('glSnippetIdInput').value = s.gitlabSnippetId;
+        var t = WM.utils.formatTime(s.lastSyncAt);
+        log.textContent = WM.i18n.t('sync_log_pulled_cloud', { provider: WM.sync.getProviderBadge(), t: t });
+        updateSyncTopbarBadge();
+        document.getElementById('providerSwitchBanner').classList.add('hidden');
+        refreshUI();
+        showToast(WM.i18n.t('toast_merged_cloud'));
       } catch (err) {
         log.textContent = err.message;
         setSyncStatus('error', 'SYNC // ERROR');
@@ -1948,8 +2272,10 @@
     WM.storage.load();
     WM.sync.loadSettings();
 
-    var stateLang = WM.storage.getLang();
-    await WM.i18n.init(stateLang);
+    /* Язык интерфейса строго локальный на устройстве (wm_checklist_lang_v1), как и тема */
+    await WM.i18n.init();
+
+    var oauthRes = await WM.sync.handleOAuthCallbackIfPresent();
 
     WM.storage.onChange(function () {
       WM.sync.scheduleAutoPush(setSyncStatus);
@@ -1958,6 +2284,15 @@
     bindEvents();
     initTabsHorizontalScroll();
     refreshUI();
+
+    if (oauthRes && oauthRes.handled) {
+      if (oauthRes.connected) {
+        showToast(WM.i18n.t('toast_dbx_connected'));
+        openSyncModal('sync', true);
+      } else if (oauthRes.error) {
+        showToast(oauthRes.error);
+      }
+    }
 
     // Показываем онбординг-тур 1 раз новым пользователям на пустой базе
     try {
@@ -1974,21 +2309,16 @@
     });
 
     window.addEventListener('online', function () {
-      if (!WM.sync.hasToken()) return;
+      if (!WM.sync.isConnected()) return;
       setSyncStatus('pending', 'SYNC // MERGE...');
       runAutoPull(true);
     });
 
-    if (WM.sync.hasToken()) {
-      var s = WM.sync.getSettings();
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        setSyncStatus('pending', WM.sync.hasPendingChanges() ? 'OFFLINE // SAVED' : 'OFFLINE // LOCAL');
-      } else {
-        setSyncStatus('ok', s.lastSyncAt ? 'GIST // ' + WM.utils.formatTime(s.lastSyncAt) : 'GIST // READY');
+    updateSyncTopbarBadge();
+    if (WM.sync.isConnected() && !(typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      if (!(oauthRes && oauthRes.connected)) {
         runAutoPull(true);
       }
-    } else {
-      setSyncStatus('', 'LOCAL // OFFLINE');
     }
 
     setInterval(function () {

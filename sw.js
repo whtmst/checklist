@@ -1,7 +1,7 @@
 /* ==========================================================================
    WM_CHECKLIST — SERVICE WORKER (PWA ОФЛАЙН-РЕЖИМ)
    ========================================================================== */
-const CACHE_NAME = 'wm-checklist-v23-4';
+const CACHE_NAME = 'wm-checklist-v24-0';
 const APP_SHELL = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const APP_SHELL = [
   './js/config.js',
   './js/storage.js',
   './js/sync.js',
+  './js/photos.js',
   './js/render.js',
   './js/app.js',
   './assets/fonts/Finlandica-VariableFont_wght.ttf',

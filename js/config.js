@@ -12,6 +12,13 @@
     THEME_KEY: 'wm_checklist_theme_v1',
     GIST_FILENAME: 'wm-checklist-data.json',
     GIST_DESCRIPTION: 'WM_CHECKLIST — личный чек-лист (автосинхронизация)',
+    GITLAB_SNIPPET_TITLE: 'WM_CHECKLIST Data',
+    DROPBOX_APP_KEY: '',
+    DROPBOX_DATA_PATH: '/wm-checklist-data.json',
+    DROPBOX_PHOTOS_DIR: '/photos',
+    PHOTO_MAX_SIDE: 1280,
+    PHOTO_MAX_INPUT_BYTES: 20 * 1024 * 1024,
+    PHOTO_WEBP_QUALITY: 0.82,
     CURRENCY: '₼',
     ALL_TAB_ID: '__all__',
     CURRENCY_PRESETS: [
@@ -71,6 +78,15 @@
       var s = String(rawUrl || '').trim();
       if (!s) return '';
       if (/^https?:\/\//i.test(s)) return s;
+      return '';
+    },
+
+    /* Разрешаем безопасные внешние URL и внутренние ссылки на фото в Dropbox (dbx://photos/...) */
+    sanitizeImageUrl: function (rawUrl) {
+      var s = String(rawUrl || '').trim();
+      if (!s) return '';
+      if (/^https?:\/\//i.test(s)) return s;
+      if (s.indexOf('..') === -1 && /^dbx:\/\/photos\/[a-zA-Z0-9._\/-]+$/.test(s)) return s;
       return '';
     },
 
@@ -146,7 +162,7 @@
     },
 
     /* График обычного кредита / рассрочки / Ninja */
-    calcCreditSchedule: function (startDateStr, months, monthlyPayment) {
+    calcCreditSchedule: function (startDateStr, months, monthlyPayment, totalAmount) {
       var m = parseInt(months, 10) || 0;
       if (!startDateStr || m <= 0) return null;
 
@@ -178,7 +194,12 @@
       var paidPct = Math.round((elapsed / m) * 100);
       var pad = function (n) { return n < 10 ? '0' + n : String(n); };
       var endStr = end.getFullYear() + '-' + pad(end.getMonth() + 1) + '-' + pad(end.getDate());
-      var remainingAmount = WM.utils.toNumber(remaining * WM.utils.toNumber(monthlyPayment));
+      var totNum = WM.utils.toNumber(totalAmount);
+      var remainingAmount = remaining === 0
+        ? 0
+        : (totNum > 0
+            ? WM.utils.toNumber(Math.max(0, totNum - elapsed * WM.utils.toNumber(monthlyPayment)))
+            : WM.utils.toNumber(remaining * WM.utils.toNumber(monthlyPayment)));
 
       return {
         startDate: startDateStr,

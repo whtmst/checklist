@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: blob:; font-src 'self'; connect-src 'self' https://api.github.com https://gist.githubusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: blob:; font-src 'self'; connect-src 'self' https://api.github.com https://gist.githubusercontent.com https://gitlab.com https://api.dropboxapi.com https://content.dropboxapi.com; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="theme-color" content="#141414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -145,7 +145,7 @@
     <!-- Двухэтажный футер -->
     <footer class="app-footer">
       <div class="footer-top">
-        <span class="footer-left">WM_CHECKLIST // LOCAL + GITHUB GIST</span>
+        <span class="footer-left" id="footerProviderLabel">WM_CHECKLIST // LOCAL</span>
         <span class="footer-right" id="footerStats">READY</span>
       </div>
       <div class="footer-lower">
@@ -366,6 +366,15 @@
         <div class="form-group">
           <label class="form-label" for="itemImageInput1" data-i18n="item_label_photos">Фото товара (URL картинки, до 3 шт.)</label>
           <div class="photo-inputs-stack" id="itemPhotoInputs">
+            <div class="photo-upload-bar hidden" id="itemPhotoUploadBar">
+              <label class="btn btn-secondary btn-sm file-upload-btn" id="itemPhotoUploadLabel">
+                <span data-i18n="photo_upload_btn">Загрузить фото (WebP)</span>
+                <input type="file" id="itemPhotoFileInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/gif" multiple hidden>
+              </label>
+              <span class="photo-upload-hint" id="itemPhotoUploadHint" data-i18n="photo_upload_hint">До 3 шт. · авто-сжатие до 1280px WebP, EXIF/GPS удаляются</span>
+            </div>
+            <div class="photo-upload-notice hidden" id="itemPhotoUploadNotice" data-i18n="photo_upload_need_dbx">Загрузка фото с устройства доступна при подключении Dropbox в Настройках → Синхронизация.</div>
+            <div class="photo-thumbs-row hidden" id="itemPhotoThumbs"></div>
             <input type="url" class="input" id="itemImageInput1" data-i18n-placeholder="item_ph_photo1" placeholder="https://... (фото 1)">
             <input type="url" class="input hidden" id="itemImageInput2" data-i18n-placeholder="item_ph_photo2" placeholder="https://... (фото 2)">
             <input type="url" class="input hidden" id="itemImageInput3" data-i18n-placeholder="item_ph_photo3" placeholder="https://... (фото 3)">
@@ -711,33 +720,114 @@
       <!-- ВКЛАДКА 2: СИНХРОНИЗАЦИЯ И БЭКАП -->
       <div class="modal-form hidden" id="settingsTabSync">
         <div class="sync-panel">
-          <div class="section-kicker" data-i18n="sync_kicker">GITHUB SECRET GIST SYNC</div>
-          <p class="form-hint" data-i18n="sync_hint">Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется. Фоновая проверка обновлений использует ETag (пустые проверки не тратят лимит GitHub API).</p>
+          <div class="section-kicker" data-i18n="sync_provider_kicker">ОБЛАЧНОЕ ХРАНИЛИЩЕ</div>
+          <p class="form-hint" data-i18n="sync_provider_hint">Выберите один активный способ хранения. Локальная база в браузере сохраняется при переключении провайдера.</p>
 
-          <div class="form-group">
-            <label class="form-label" for="ghTokenInput" data-i18n="sync_label_token">GitHub Personal Access Token (право: gist)</label>
-            <div class="input-with-btn">
-              <input type="password" class="input input-mono" id="ghTokenInput" data-i18n-placeholder="sync_ph_token" placeholder="ghp_... или github_pat_..." autocomplete="off">
-              <button type="button" class="btn btn-secondary" id="findGistBtn" data-i18n="sync_btn_find">Найти мой Gist</button>
+          <div class="provider-grid" id="syncProviderGrid">
+            <div class="provider-card" data-provider="local" role="button" tabindex="0">
+              <div class="provider-card-head">
+                <span class="provider-name" data-i18n="prov_local_name">Локально</span>
+              </div>
+              <span class="provider-meta" data-i18n="prov_local_meta">Только этот браузер · JSON-бэкап</span>
+            </div>
+            <div class="provider-card" data-provider="github" role="button" tabindex="0">
+              <div class="provider-card-head">
+                <span class="provider-name" data-i18n="prov_github_name">GitHub Gist</span>
+                <button type="button" class="provider-help-btn" data-provider-help="github" data-i18n-title="prov_help_tip" title="Пошаговая инструкция">?</button>
+              </div>
+              <span class="provider-meta" data-i18n="prov_github_meta">До 10 МБ · фото по URL</span>
+            </div>
+            <div class="provider-card" data-provider="gitlab" role="button" tabindex="0">
+              <div class="provider-card-head">
+                <span class="provider-name" data-i18n="prov_gitlab_name">GitLab Snippets</span>
+                <button type="button" class="provider-help-btn" data-provider-help="gitlab" data-i18n-title="prov_help_tip" title="Пошаговая инструкция">?</button>
+              </div>
+              <span class="provider-meta" data-i18n="prov_gitlab_meta">До 50 МБ · фото по URL</span>
+            </div>
+            <div class="provider-card" data-provider="dropbox" role="button" tabindex="0">
+              <div class="provider-card-head">
+                <span class="provider-name" data-i18n="prov_dropbox_name">Dropbox</span>
+                <button type="button" class="provider-help-btn" data-provider-help="dropbox" data-i18n-title="prov_help_tip" title="Пошаговая инструкция">?</button>
+              </div>
+              <span class="provider-meta provider-meta--accent" data-i18n="prov_dropbox_meta">2 ГБ · загрузка фото (WebP)</span>
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="ghGistIdInput" data-i18n="sync_label_gist">Gist ID (заполнится сам при первом сохранении или поиске)</label>
-            <input type="text" class="input input-mono" id="ghGistIdInput" data-i18n-placeholder="sync_ph_gist" placeholder="Оставь пустым для автопоиска / создания">
+          <div class="provider-switch-banner hidden" id="providerSwitchBanner">
+            <span data-i18n="sync_switch_notice">Вы переключили облако. Все локальные записи на месте — отправьте их в новое облако или объедините с уже сохранённой копией.</span>
           </div>
 
-          <div class="form-check-row">
-            <label class="checkbox-label">
-              <input type="checkbox" id="ghAutoSyncCheck">
-              <span data-i18n="sync_label_auto">Автосинхронизация (отправка после изменений + авто-проверка с другого устройства)</span>
-            </label>
+          <!-- ПАНЕЛЬ: ЛОКАЛЬНО -->
+          <div class="provider-panel hidden" id="syncPanelLocal">
+            <p class="form-hint" data-i18n="sync_local_desc">Все данные хранятся только в localStorage этого браузера. Облачная синхронизация выключена.</p>
           </div>
 
-          <div class="sync-buttons-row">
-            <button type="button" class="btn btn-accent" id="saveSyncSettingsBtn" data-i18n="sync_btn_save">Сохранить настройки</button>
-            <button type="button" class="btn btn-secondary" id="pushGistBtn" data-i18n="sync_btn_push">Отправить в GitHub ↑</button>
-            <button type="button" class="btn btn-secondary" id="pullGistBtn" data-i18n="sync_btn_pull">Загрузить с GitHub ↓</button>
+          <!-- ПАНЕЛЬ: GITHUB GIST -->
+          <div class="provider-panel hidden" id="syncPanelGithub">
+            <div class="section-kicker" data-i18n="sync_kicker">GITHUB SECRET GIST SYNC</div>
+            <p class="form-hint" data-i18n="sync_hint">Токен хранится только в памяти твоего браузера (localStorage) и никуда не публикуется.</p>
+            <div class="form-group">
+              <label class="form-label" for="ghTokenInput" data-i18n="sync_label_token">GitHub Personal Access Token (право: gist)</label>
+              <div class="input-with-btn">
+                <input type="password" class="input input-mono" id="ghTokenInput" data-i18n-placeholder="sync_ph_token" placeholder="ghp_... или github_pat_..." autocomplete="off">
+                <button type="button" class="btn btn-secondary" id="findGistBtn" data-i18n="sync_btn_find">Найти мой Gist</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ghGistIdInput" data-i18n="sync_label_gist">Gist ID (заполнится сам при первом сохранении или поиске)</label>
+              <input type="text" class="input input-mono" id="ghGistIdInput" data-i18n-placeholder="sync_ph_gist" placeholder="Оставь пустым для автопоиска / создания">
+            </div>
+          </div>
+
+          <!-- ПАНЕЛЬ: GITLAB SNIPPETS -->
+          <div class="provider-panel hidden" id="syncPanelGitlab">
+            <div class="section-kicker" data-i18n="sync_gl_kicker">GITLAB PRIVATE SNIPPETS (ДО 50 МБ)</div>
+            <p class="form-hint" data-i18n="sync_gl_hint">Токен с правом api хранится только в вашем браузере.</p>
+            <div class="form-group">
+              <label class="form-label" for="glTokenInput" data-i18n="sync_gl_label_token">GitLab Personal Access Token (право: api)</label>
+              <div class="input-with-btn">
+                <input type="password" class="input input-mono" id="glTokenInput" data-i18n-placeholder="sync_gl_ph_token" placeholder="glpat-..." autocomplete="off">
+                <button type="button" class="btn btn-secondary" id="findGitlabSnippetBtn" data-i18n="sync_gl_btn_find">Найти Snippet</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="glSnippetIdInput" data-i18n="sync_gl_label_id">Snippet ID</label>
+              <input type="text" class="input input-mono" id="glSnippetIdInput" data-i18n-placeholder="sync_gl_ph_id" placeholder="Оставь пустым для автопоиска / создания">
+            </div>
+          </div>
+
+          <!-- ПАНЕЛЬ: DROPBOX APP FOLDER -->
+          <div class="provider-panel hidden" id="syncPanelDropbox">
+            <div class="section-kicker" data-i18n="sync_dbx_kicker">DROPBOX APP FOLDER (2 ГБ + ФОТО WEBP)</div>
+            <p class="form-hint" data-i18n="sync_dbx_hint">Изолированная папка /Apps/WM_CHECKLIST. Вход через OAuth 2.0 PKCE с постоянным refresh-токеном.</p>
+            <div class="form-group" id="dbxAppKeyGroup">
+              <label class="form-label" for="dbxAppKeyInput" data-i18n="sync_dbx_label_appkey">Dropbox App Key (Client ID)</label>
+              <input type="text" class="input input-mono" id="dbxAppKeyInput" data-i18n-placeholder="sync_dbx_ph_appkey" placeholder="App Key">
+            </div>
+            <div class="dropbox-account-row">
+              <span class="dropbox-account-status" id="dbxAccountStatus"></span>
+              <div class="dropbox-account-actions">
+                <button type="button" class="btn btn-accent btn-sm" id="connectDropboxBtn" data-i18n="sync_dbx_btn_connect">Подключить Dropbox</button>
+                <button type="button" class="btn btn-ghost btn-sm hidden" id="disconnectDropboxBtn" data-i18n="sync_dbx_btn_disconnect">Отключить</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ОБЩИЕ КОНТРОЛЫ ОБЛАКА -->
+          <div class="cloud-common-controls hidden" id="cloudCommonControls">
+            <div class="form-check-row">
+              <label class="checkbox-label">
+                <input type="checkbox" id="ghAutoSyncCheck">
+                <span data-i18n="sync_label_auto">Автосинхронизация (отправка после изменений + авто-проверка с другого устройства)</span>
+              </label>
+            </div>
+
+            <div class="sync-buttons-row">
+              <button type="button" class="btn btn-accent" id="saveSyncSettingsBtn" data-i18n="sync_btn_save">Сохранить настройки</button>
+              <button type="button" class="btn btn-secondary" id="pushGistBtn" data-i18n="sync_btn_push_cloud">Отправить в облако ↑</button>
+              <button type="button" class="btn btn-secondary" id="pullGistBtn" data-i18n="sync_btn_pull_cloud">Загрузить из облака ↓</button>
+              <button type="button" class="btn btn-ghost" id="mergeCloudBtn" data-i18n="sync_btn_merge_cloud">Объединить с облаком ⇄</button>
+            </div>
           </div>
           <div class="sync-log" id="syncModalStatus"></div>
         </div>
@@ -865,6 +955,26 @@
     </div>
   </div>
 
+  <!-- МОДАЛКА: Пошаговая мини-инструкция подключения облака (?) -->
+  <div class="modal-backdrop" id="providerHelpModal" aria-hidden="true">
+    <div class="modal-box modal-box--xl" role="dialog" aria-modal="true" aria-labelledby="providerHelpTitle">
+      <div class="modal-header">
+        <h3 id="providerHelpTitle">Инструкция</h3>
+        <button type="button" class="modal-close" data-close-modal="providerHelpModal" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-form legal-modal-content">
+        <ol class="provider-guide-steps" id="providerHelpSteps"></ol>
+        <p class="form-hint" id="providerHelpNote"></p>
+        <div class="modal-actions modal-actions--split">
+          <a class="btn btn-accent btn-sm" id="providerHelpExtLink" href="#" target="_blank" rel="noopener noreferrer">Открыть ↗</a>
+          <div class="modal-actions-right">
+            <button type="button" class="btn btn-secondary btn-sm" data-close-modal="providerHelpModal" data-i18n="legal_btn_close">Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- МОДАЛКА: Онбординг-тур (показывается 1 раз на пустой базе) -->
   <div class="modal-backdrop" id="onboardingModal" aria-hidden="true">
     <div class="modal-box tour-box" role="dialog" aria-modal="true" aria-labelledby="tourSlideTitle">
@@ -904,6 +1014,7 @@
   <script src="js/config.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/sync.js"></script>
+  <script src="js/photos.js"></script>
   <script src="js/render.js"></script>
   <script src="js/app.js"></script>
 </body>

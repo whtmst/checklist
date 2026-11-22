@@ -142,7 +142,7 @@
       return;
     }
 
-    var sched = WM.utils.calcCreditSchedule(opts.startDate, opts.months, opts.monthlyPayment);
+    var sched = WM.utils.calcCreditSchedule(opts.startDate, opts.months, opts.monthlyPayment, opts.totalAmount);
     if (!sched) return;
 
     var wrap = el('div', 'credit-progress-wrap');
@@ -225,6 +225,15 @@
     document.getElementById('footerStats').textContent = isAllMode
       ? WM.i18n.t('footer_all_tabs', { t: state.tabs.length, i: totals.totalItemsCount })
       : WM.i18n.t('footer_tab_stats', { name: tab.name.toUpperCase(), c: tab.categories.length, i: tab.items.length });
+
+    var provEl = document.getElementById('footerProviderLabel');
+    if (provEl && WM.sync && WM.sync.getProvider) {
+      var prov = WM.sync.getProvider();
+      var suffix = prov === 'github' ? 'LOCAL + GITHUB GIST'
+        : (prov === 'gitlab' ? 'LOCAL + GITLAB SNIPPET'
+        : (prov === 'dropbox' ? 'LOCAL + DROPBOX' : 'LOCAL ONLY'));
+      provEl.textContent = 'WM_CHECKLIST // ' + suffix;
+    }
   }
 
   function renderFilterOptions(tab, filters, isAllMode, state) {

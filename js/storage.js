@@ -188,7 +188,7 @@
     if (!Array.isArray(arr)) return [];
     var out = [];
     for (var i = 0; i < arr.length && out.length < 3; i++) {
-      var u = WM.utils.sanitizeUrl(arr[i]);
+      var u = WM.utils.sanitizeImageUrl(arr[i]);
       if (u) out.push(u);
     }
     return out;
@@ -834,7 +834,7 @@
     state.creditBundles.forEach(function (b) {
       var details = getBundleDetails(b);
       var overpay = Math.round((b.totalAmount - details.baseSum) * 100) / 100;
-      var sched = b.type !== 'grace' ? WM.utils.calcCreditSchedule(b.startDate, b.months, b.monthlyPayment) : null;
+      var sched = b.type !== 'grace' ? WM.utils.calcCreditSchedule(b.startDate, b.months, b.monthlyPayment, b.totalAmount) : null;
       var grace = b.type === 'grace' ? WM.utils.calcGraceStatus(b.dueDate) : null;
       var remaining = sched ? sched.remainingAmount : b.totalAmount;
 
