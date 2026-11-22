@@ -1,7 +1,7 @@
 /* ==========================================================================
    WM_CHECKLIST — SERVICE WORKER (PWA ОФЛАЙН-РЕЖИМ)
    ========================================================================== */
-const CACHE_NAME = 'wm-checklist-v24-4';
+const CACHE_NAME = 'wm-checklist-v24-5';
 const APP_SHELL = [
   './',
   './index.html',

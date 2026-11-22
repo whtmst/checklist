@@ -514,5 +514,10 @@
   "sync_log_pulled_cloud": "Pulled from {provider} ({t})",
   "err_gh_401": "GitHub rejected the token (401). Check that it has not expired and has the \"gist\" scope.",
   "err_gh_404": "Gist not found (404). Clear the Gist ID field and click \"Find my Gist\".",
-  "sync_dbx_advanced_toggle": "Custom App Key (for developers & forks)"
+  "sync_dbx_advanced_toggle": "Custom App Key (for developers & forks)",
+  "sync_multidevice_toggle": "How to connect a second device or switch clouds",
+  "sync_multidevice_why": "WM_CHECKLIST has no backend server: login credentials are stored locally per device, so each device needs to be linked to the same cloud once.",
+  "sync_multidevice_s1": "On your first device, pick a cloud provider (GitHub, GitLab, or Dropbox), connect it, and click \"Push to cloud ↑\".",
+  "sync_multidevice_s2": "On your second device (e.g., your phone), open Settings → Sync, select the same provider, and sign in or paste your token.",
+  "sync_multidevice_s3": "Click \"Pull from cloud ↓\" (or \"Merge with cloud ⇄\" if you already made offline edits on that device). Auto-sync will take over from there."
 }

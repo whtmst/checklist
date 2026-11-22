@@ -3034,3 +3034,30 @@ a.badge-store-link:hover {
 .dbx-advanced-summary:hover {
   color: var(--text-secondary);
 }
+
+.sync-multidevice-details {
+  margin: 2px 0 4px;
+}
+
+.sync-multidevice-body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-elevated);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.sync-multidevice-body p {
+  margin: 0 0 6px;
+}
+
+.sync-multidevice-steps {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
