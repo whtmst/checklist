@@ -254,9 +254,83 @@
     return Promise.all(tasks);
   }
 
+  var UNSAVED_KEY = 'wm_dbx_unsaved_photos_v1';
+
+  function loadUnsavedRefs() {
+    try {
+      var raw = localStorage.getItem(UNSAVED_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(isDropboxPhoto) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveUnsavedRefs(arr) {
+    try {
+      if (!arr || arr.length === 0) localStorage.removeItem(UNSAVED_KEY);
+      else localStorage.setItem(UNSAVED_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  }
+
+  function trackUnsavedPhoto(ref) {
+    if (!isDropboxPhoto(ref)) return;
+    var arr = loadUnsavedRefs();
+    if (arr.indexOf(ref) === -1) {
+      arr.push(ref);
+      saveUnsavedRefs(arr);
+    }
+  }
+
+  function untrackUnsavedPhotos(refs) {
+    var list = Array.isArray(refs) ? refs : [refs];
+    if (list.length === 0) return;
+    var arr = loadUnsavedRefs().filter(function (r) {
+      return list.indexOf(r) === -1;
+    });
+    saveUnsavedRefs(arr);
+  }
+
+  /* При перезагрузке страницы автоматически удаляем «осиротевшие» фото от несохранённых черновиков */
+  function cleanupOrphanDraftPhotos(state) {
+    var unsaved = loadUnsavedRefs();
+    if (unsaved.length === 0) return Promise.resolve();
+    if (!WM.sync || !WM.sync.canUploadPhotos()) return Promise.resolve();
+
+    var usedSet = {};
+    if (state && Array.isArray(state.tabs)) {
+      state.tabs.forEach(function (t) {
+        (t.items || []).forEach(function (it) {
+          (it.images || []).forEach(function (u) {
+            if (isDropboxPhoto(u)) usedSet[u] = true;
+          });
+        });
+      });
+    }
+
+    var orphans = unsaved.filter(function (r) { return !usedSet[r]; });
+    var usedList = Object.keys(usedSet);
+    saveUnsavedRefs([]);
+    if (orphans.length === 0) return Promise.resolve();
+    return deletePhotosAndEmptyFolders(orphans, usedList);
+  }
+
   function deleteItemPhotos(item) {
     if (!item || !Array.isArray(item.images)) return Promise.resolve();
     return deletePhotosAndEmptyFolders(item.images, []);
+  }
+
+  function deleteItemsPhotos(items) {
+    var allRefs = [];
+    (Array.isArray(items) ? items : []).forEach(function (it) {
+      if (it && Array.isArray(it.images)) {
+        it.images.forEach(function (u) {
+          if (isDropboxPhoto(u)) allRefs.push(u);
+        });
+      }
+    });
+    if (allRefs.length === 0) return Promise.resolve();
+    return deletePhotosAndEmptyFolders(allRefs, []);
   }
 
   WM.photos = {
@@ -266,6 +340,10 @@
     resolvePhotoUrl: resolvePhotoUrl,
     deletePhoto: deletePhoto,
     deletePhotosAndEmptyFolders: deletePhotosAndEmptyFolders,
-    deleteItemPhotos: deleteItemPhotos
+    deleteItemPhotos: deleteItemPhotos,
+    deleteItemsPhotos: deleteItemsPhotos,
+    trackUnsavedPhoto: trackUnsavedPhoto,
+    untrackUnsavedPhotos: untrackUnsavedPhotos,
+    cleanupOrphanDraftPhotos: cleanupOrphanDraftPhotos
   };
 })(window);

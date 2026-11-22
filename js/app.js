@@ -82,6 +82,7 @@
         var removed = nextVals.splice(idx, 1)[0];
         setPhotoInputValues(nextVals);
         if (WM.photos && WM.photos.isDropboxPhoto(removed)) {
+          WM.photos.untrackUnsavedPhotos([removed]);
           WM.photos.deletePhotosAndEmptyFolders([removed], nextVals);
         }
         saveNewItemDraft();
@@ -1342,7 +1343,9 @@
         if (modalId === 'itemModal' && btn.classList.contains('btn-ghost')) {
           var isNewItem = !document.getElementById('itemIdInput').value;
           if (isNewItem && WM.photos) {
-            WM.photos.deletePhotosAndEmptyFolders(readPhotoInputValues(), []);
+            var cancelPhotos = readPhotoInputValues();
+            WM.photos.untrackUnsavedPhotos(cancelPhotos);
+            WM.photos.deletePhotosAndEmptyFolders(cancelPhotos, []);
           }
           clearNewItemDraft();
           closeModal(modalId);
@@ -1757,6 +1760,7 @@
       var tab = WM.storage.getActiveTab();
       var prevPhotos = readPhotoInputValues();
       if (WM.photos && prevPhotos.length > 0) {
+        WM.photos.untrackUnsavedPhotos(prevPhotos);
         WM.photos.deletePhotosAndEmptyFolders(prevPhotos, []);
       }
       clearNewItemDraft();
@@ -1878,6 +1882,9 @@
         checked: document.getElementById('itemCheckedInput').checked
       });
 
+      if (WM.photos && WM.photos.untrackUnsavedPhotos) {
+        WM.photos.untrackUnsavedPhotos(readPhotoInputValues());
+      }
       clearNewItemDraft();
       closeModal('itemModal');
       refreshUI();
@@ -1987,6 +1994,11 @@
       var id = document.getElementById('categoryIdInput').value;
       if (!id) return;
       if (confirm(WM.i18n.t('confirm_delete_cat'))) {
+        var tab = WM.storage.getActiveTab();
+        if (tab && WM.photos && WM.photos.deleteItemsPhotos) {
+          var catItems = (tab.items || []).filter(function (it) { return it.categoryId === id; });
+          WM.photos.deleteItemsPhotos(catItems);
+        }
         WM.storage.deleteCategory(id);
         closeModal('categoryModal');
         refreshUI();
@@ -2021,6 +2033,11 @@
       var id = document.getElementById('tabIdInput').value;
       if (!id) return;
       if (confirm(WM.i18n.t('confirm_delete_tab'))) {
+        var st = WM.storage.getState();
+        var targetTab = (st.tabs || []).find(function (t) { return t.id === id; });
+        if (targetTab && WM.photos && WM.photos.deleteItemsPhotos) {
+          WM.photos.deleteItemsPhotos(targetTab.items || []);
+        }
         WM.storage.deleteTab(id);
         closeModal('tabModal');
         resetFilters(false);
@@ -2060,6 +2077,9 @@
               break;
             }
             var res = await WM.photos.uploadItemPhoto(itemId, files[i]);
+            if (!existingId && WM.photos.trackUnsavedPhoto) {
+              WM.photos.trackUnsavedPhoto(res.ref);
+            }
             currentVals.push(res.ref);
             setPhotoInputValues(currentVals);
             saveNewItemDraft();
@@ -2272,6 +2292,13 @@
 
     document.getElementById('clearAllDataBtn').addEventListener('click', function () {
       if (confirm(WM.i18n.t('confirm_clear_all'))) {
+        if (WM.photos && WM.photos.deleteItemsPhotos) {
+          var allItems = [];
+          (WM.storage.getState().tabs || []).forEach(function (t) {
+            allItems = allItems.concat(t.items || []);
+          });
+          WM.photos.deleteItemsPhotos(allItems);
+        }
         WM.storage.resetAll();
         closeItemDrawer();
         resetFilters(false);
@@ -2330,6 +2357,9 @@
     });
 
     updateSyncTopbarBadge();
+    if (WM.photos && typeof WM.photos.cleanupOrphanDraftPhotos === 'function') {
+      WM.photos.cleanupOrphanDraftPhotos(WM.storage.getState());
+    }
     if (WM.sync.isConnected() && !(typeof navigator !== 'undefined' && navigator.onLine === false)) {
       if (!(oauthRes && oauthRes.connected)) {
         runAutoPull(true);
