@@ -22,7 +22,7 @@
 
   function createDefaultStores() {
     return [
-      { id: 'st_local', name: 'Местный рынок', hidden: false, builtin: true },
+      { id: 'st_local', name: 'Local market', hidden: false, builtin: true },
       { id: 'st_birmarket', name: 'Birmarket', hidden: false, builtin: true },
       { id: 'st_temu', name: 'Temu', hidden: false, builtin: true },
       { id: 'st_ozon', name: 'Ozon', hidden: false, builtin: true }
@@ -32,7 +32,7 @@
   function createDefaultPrefs() {
     return {
       currency: WM.CONFIG.CURRENCY || '₼',
-      lang: (WM.i18n && WM.i18n.getLang) ? WM.i18n.getLang() : 'ru',
+      lang: (WM.i18n && WM.i18n.getLang) ? WM.i18n.getLang() : 'en',
       backupReminderDays: 14,
       stores: createDefaultStores(),
       hiddenCreditTypes: [],
@@ -155,7 +155,7 @@
     var ts = nowIso();
     return {
       id: WM.utils.uid('tab'),
-      name: name || 'Основная',
+      name: name || 'Main',
       updatedAt: ts,
       categories: [],
       items: []
@@ -164,7 +164,7 @@
 
   function createDefaultState() {
     var ts = nowIso();
-    var mainTab = createEmptyTab('Основная');
+    var mainTab = createEmptyTab('Main');
     return {
       version: 4,
       updatedAt: ts,
@@ -215,7 +215,7 @@
   function sanitizeBundle(b, fallbackTs) {
     return {
       id: String(b.id || WM.utils.uid('bundle')),
-      name: String(b.name || 'Кредит').trim() || 'Кредит',
+      name: String(b.name || 'Credit').trim() || 'Credit',
       type: sanitizeCreditType(b.type),
       customType: String(b.customType || '').trim(),
       itemIds: Array.isArray(b.itemIds) ? b.itemIds.map(String) : [],
@@ -255,13 +255,13 @@
 
       return {
         id: String(t.id || WM.utils.uid('tab')),
-        name: String(t.name || 'Без названия').trim() || 'Без названия',
+        name: String(t.name || 'Untitled').trim() || 'Untitled',
         updatedAt: t.updatedAt || fallbackTs,
         categories: Array.isArray(t.categories)
           ? t.categories.map(function (c) {
               return {
                 id: String(c.id || WM.utils.uid('cat')),
-                name: String(c.name || 'Категория').trim() || 'Категория',
+                name: String(c.name || 'Category').trim() || 'Category',
                 collapsed: !!c.collapsed,
                 updatedAt: c.updatedAt || fallbackTs
               };
@@ -270,7 +270,7 @@
         items: Array.isArray(t.items)
           ? t.items.map(function (it) {
               var itemId = String(it.id || WM.utils.uid('item'));
-              var title = String(it.title || 'Без названия').trim() || 'Без названия';
+              var title = String(it.title || 'Untitled').trim() || 'Untitled';
               var price = WM.utils.toNumber(it.price);
 
               var alreadyBundled = globalBundles.some(function (b) {
@@ -542,7 +542,7 @@
     });
 
     if (mergedTabs.length === 0) {
-      mergedTabs = [createEmptyTab('Основная')];
+      mergedTabs = [createEmptyTab('Main')];
     }
 
     // 4. Объединяем глобальные кредиты
@@ -934,7 +934,7 @@
 
     getLang: function () {
       var p = state.prefs || createDefaultPrefs();
-      return p.lang || 'ru';
+      return p.lang || 'en';
     },
 
     setLang: function (lang) {
@@ -1272,7 +1272,7 @@
 
     addCategory: function (name) {
       var tab = getActiveTab();
-      var cat = { id: WM.utils.uid('cat'), name: name.trim() || 'Новая категория', collapsed: false, updatedAt: nowIso() };
+      var cat = { id: WM.utils.uid('cat'), name: name.trim() || 'New category', collapsed: false, updatedAt: nowIso() };
       tab.categories.push(cat);
       persist(false, false);
       return cat;
@@ -1389,7 +1389,7 @@
       var dstCatId = targetCatIdOrNew;
       if (!dstCatId || dstCatId === '__create_same__') {
         var srcCat = srcTab.categories.find(function (c) { return c.id === item.categoryId; });
-        var catName = srcCat ? srcCat.name : 'Общее';
+        var catName = srcCat ? srcCat.name : 'General';
         var existingDstCat = dstTab.categories.find(function (c) {
           return c.name.toLowerCase() === catName.toLowerCase();
         });
@@ -1521,7 +1521,7 @@
         state.creditBundles.push(bundle);
       }
 
-      var fallbackName = 'Кредит';
+      var fallbackName = 'Credit';
       if (selectedIds.length === 1) {
         var singleFound = findItemAcrossTabs(selectedIds[0]);
         if (singleFound) fallbackName = singleFound.item.title;

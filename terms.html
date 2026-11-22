@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -182,7 +182,7 @@
       } catch (e) {}
 
       var supported = ['ru', 'en', 'az'];
-      var lang = 'ru';
+      var lang = 'en';
       try {
         var savedLang = localStorage.getItem('wm_checklist_lang_v1');
         if (!savedLang) {
@@ -196,6 +196,7 @@
         else {
           var nav = String(navigator.language || '').toLowerCase();
           if (nav.indexOf('az') === 0) lang = 'az';
+          else if (nav.indexOf('ru') === 0) lang = 'ru';
           else if (nav.indexOf('en') === 0) lang = 'en';
         }
       } catch (e) {}
@@ -206,16 +207,16 @@
       var FOOT_T = { ru: 'Условия', en: 'Terms', az: 'Şərtlər' };
 
       document.documentElement.lang = lang;
-      document.title = TITLES[lang] || TITLES.ru;
+      document.title = TITLES[lang] || TITLES.en;
       document.querySelectorAll('[data-lang-block]').forEach(function (el) {
         el.classList.toggle('active', el.getAttribute('data-lang-block') === lang);
       });
       var back = document.getElementById('backLink');
-      if (back) back.textContent = BACK[lang] || BACK.ru;
+      if (back) back.textContent = BACK[lang] || BACK.en;
       var fp = document.getElementById('footPrivacy');
-      if (fp) fp.textContent = FOOT_P[lang] || FOOT_P.ru;
+      if (fp) fp.textContent = FOOT_P[lang] || FOOT_P.en;
       var ft = document.getElementById('footTerms');
-      if (ft) ft.textContent = FOOT_T[lang] || FOOT_T.ru;
+      if (ft) ft.textContent = FOOT_T[lang] || FOOT_T.en;
     })();
   </script>
 </body>

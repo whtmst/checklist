@@ -1,14 +1,14 @@
 {
-  "name": "WM_CHECKLIST — Личный чек-лист и учёт покупок",
+  "name": "WM_CHECKLIST — Personal Checklist & Purchase Tracker",
   "short_name": "WM_CHECKLIST",
-  "description": "Адаптивный офлайн-чеклист покупок и учёт кредитов с синхронизацией через GitHub Gist, GitLab Snippets или Dropbox.",
+  "description": "Offline-first checklist, purchase tracker, and credit manager (PWA) with GitHub Gist, GitLab Snippets, and Dropbox sync.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#141414",
   "theme_color": "#141414",
-  "lang": "ru",
+  "lang": "en",
   "icons": [
     {
       "src": "assets/icons/icon-192.png",

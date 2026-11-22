@@ -11,7 +11,7 @@
     SETTINGS_KEY: 'wm_checklist_settings_v1',
     THEME_KEY: 'wm_checklist_theme_v1',
     GIST_FILENAME: 'wm-checklist-data.json',
-    GIST_DESCRIPTION: 'WM_CHECKLIST — личный чек-лист (автосинхронизация)',
+    GIST_DESCRIPTION: 'WM_CHECKLIST — personal checklist (auto-sync)',
     GITLAB_SNIPPET_TITLE: 'WM_CHECKLIST Data',
     DROPBOX_APP_KEY: '5vk7g16mrabeyu7',
     DROPBOX_DATA_PATH: '/wm-checklist-data.json',
@@ -36,15 +36,15 @@
     AUTO_PULL_MIN_GAP_MS: 10000,
 
     PRIORITIES: [
-      { id: 'critical', label: 'Критично', rank: 1 },
-      { id: 'very_important', label: 'Очень важно', rank: 2 },
-      { id: 'medium', label: 'Средне', rank: 3 },
-      { id: 'desirable', label: 'Желательно', rank: 4 },
-      { id: 'optional', label: 'Можно обойтись', rank: 5 }
+      { id: 'critical', label: 'Critical', rank: 1 },
+      { id: 'very_important', label: 'Very important', rank: 2 },
+      { id: 'medium', label: 'Medium', rank: 3 },
+      { id: 'desirable', label: 'Desirable', rank: 4 },
+      { id: 'optional', label: 'Optional', rank: 5 }
     ],
 
     STORES: [
-      'Местный рынок',
+      'Local market',
       'Birmarket',
       'Temu',
       'Ozon'
@@ -53,10 +53,10 @@
     CUSTOM_STORE_VALUE: '__custom__',
 
     CREDIT_TYPES: [
-      { id: 'installment', label: 'Рассрочка', badge: 'Рассрочка' },
+      { id: 'installment', label: 'Installment', badge: 'Installment' },
       { id: 'ninja', label: 'Ninja', badge: 'Ninja' },
-      { id: 'grace', label: 'Льготный период', badge: 'Льготный' },
-      { id: 'custom', label: 'Свой вариант', badge: 'Кредит' }
+      { id: 'grace', label: 'Grace period', badge: 'Grace' },
+      { id: 'custom', label: 'Custom', badge: 'Credit' }
     ],
 
     REPO_URL: 'https://github.com/whtmst/checklist',
@@ -68,7 +68,7 @@
       { id: 'patreon', label: 'Patreon', url: 'https://patreon.com/whtmst' },
       { id: 'dalink', label: 'DaLink', url: 'https://dalink.to/whtmst' },
       { id: 'donationalerts', label: 'DonationAlerts', url: 'https://www.donationalerts.com/r/whtmst' },
-      { id: 'card', labelKey: 'donate_card_label', label: 'Перевод на карту (Leobank AZN)', url: 'https://github.com/whtmst/checklist/blob/main/DONATE.md' }
+      { id: 'card', labelKey: 'donate_card_label', label: 'Direct card transfer (Leobank AZN)', url: 'https://github.com/whtmst/checklist/blob/main/DONATE.md' }
     ]
   };
 
@@ -141,7 +141,7 @@
       for (var i = 0; i < list.length; i++) {
         if (list[i].id === type) return shortBadge ? list[i].badge : list[i].label;
       }
-      return 'Рассрочка';
+      return 'Installment';
     },
 
     formatTime: function (isoString) {
@@ -233,9 +233,9 @@
 
       var statusText = '';
       var tr = (WM.i18n && WM.i18n.t) ? WM.i18n.t : null;
-      if (diffDays > 0) statusText = tr ? tr('grace_days_left', { d: diffDays }) : ('осталось ' + diffDays + ' дн.');
-      else if (diffDays === 0) statusText = tr ? tr('grace_today') : 'срок сегодня!';
-      else statusText = tr ? tr('grace_overdue', { d: Math.abs(diffDays) }) : ('просрочено на ' + Math.abs(diffDays) + ' дн.');
+      if (diffDays > 0) statusText = tr ? tr('grace_days_left', { d: diffDays }) : (diffDays + ' d left');
+      else if (diffDays === 0) statusText = tr ? tr('grace_today') : 'due today!';
+      else statusText = tr ? tr('grace_overdue', { d: Math.abs(diffDays) }) : ('overdue by ' + Math.abs(diffDays) + ' d');
 
       return {
         dueDate: dueDateStr,
