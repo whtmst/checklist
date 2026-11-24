@@ -225,6 +225,8 @@
       startDate: sanitizeDate(b.startDate),
       dueDate: sanitizeDate(b.dueDate),
       checked: !!b.checked,
+      paidOff: !!b.paidOff,
+      paidOffAt: String(b.paidOffAt || ''),
       updatedAt: b.updatedAt || fallbackTs || nowIso()
     };
   }
@@ -655,9 +657,11 @@
     state.creditBundles.forEach(function (b) {
       plannedTotal += b.totalAmount;
       plannedCredit += b.totalAmount;
-      if (b.checked) {
+      if (b.checked || b.paidOff) {
         spentTotal += b.totalAmount;
         spentCredit += b.totalAmount;
+      }
+      if (b.checked && !b.paidOff) {
         activeCreditsCount++;
         if (b.type !== 'grace') {
           monthlyCreditTotal += b.monthlyPayment;
@@ -799,9 +803,11 @@
       plannedTotal += shareTotal;
       plannedCredit += shareTotal;
 
-      if (b.checked) {
+      if (b.checked || b.paidOff) {
         spentTotal += shareTotal;
         spentCredit += shareTotal;
+      }
+      if (b.checked && !b.paidOff) {
         activeCreditsCount++;
         if (b.type !== 'grace') {
           monthlyCreditTotal += shareMonthly;
@@ -830,13 +836,17 @@
     var nearestGrace = null;
     var totalDebtRemaining = 0;
     var activeCount = 0;
+    var paidOffCount = 0;
 
     state.creditBundles.forEach(function (b) {
       var details = getBundleDetails(b);
       var overpay = Math.round((b.totalAmount - details.baseSum) * 100) / 100;
       var sched = b.type !== 'grace' ? WM.utils.calcCreditSchedule(b.startDate, b.months, b.monthlyPayment, b.totalAmount) : null;
       var grace = b.type === 'grace' ? WM.utils.calcGraceStatus(b.dueDate) : null;
-      var remaining = sched ? sched.remainingAmount : b.totalAmount;
+      var isPaidOff = !!b.paidOff;
+      var remaining = isPaidOff ? 0 : (sched ? sched.remainingAmount : b.totalAmount);
+
+      if (isPaidOff) paidOffCount++;
 
       records.push({
         id: b.id,
@@ -846,6 +856,8 @@
         type: b.type,
         customType: b.customType,
         checked: !!b.checked,
+        paidOff: isPaidOff,
+        paidOffAt: b.paidOffAt || '',
         baseSum: details.baseSum,
         totalAmount: b.totalAmount,
         overpay: overpay,
@@ -859,7 +871,7 @@
         itemsList: details.items
       });
 
-      if (b.checked) {
+      if (b.checked && !isPaidOff) {
         activeCount++;
         totalDebtRemaining += remaining;
         if (b.type === 'grace') {
@@ -886,6 +898,7 @@
     return {
       records: records,
       activeCount: activeCount,
+      paidOffCount: paidOffCount,
       monthlyTotal: monthlySum,
       graceTotal: WM.utils.toNumber(graceTotal),
       nearestGrace: nearestGrace,
@@ -1516,6 +1529,8 @@
           startDate: '',
           dueDate: '',
           checked: true,
+          paidOff: false,
+          paidOffAt: '',
           updatedAt: ts
         };
         state.creditBundles.push(bundle);
@@ -1578,6 +1593,27 @@
         }
       });
       persist(false, false);
+    },
+
+    toggleBundlePaidOff: function (bundleId, paidOff) {
+      var bundle = state.creditBundles.find(function (b) { return b.id === bundleId; });
+      if (!bundle) return false;
+      var ts = nowIso();
+      bundle.paidOff = !!paidOff;
+      bundle.paidOffAt = paidOff ? ts : '';
+      if (bundle.paidOff) {
+        bundle.checked = true;
+        bundle.itemIds.forEach(function (id) {
+          var found = findItemAcrossTabs(id);
+          if (found) {
+            found.item.checked = true;
+            found.item.updatedAt = ts;
+          }
+        });
+      }
+      bundle.updatedAt = ts;
+      persist(false, false);
+      return true;
     },
 
     deleteCreditBundle: function (bundleId) {

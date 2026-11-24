@@ -519,5 +519,13 @@
   "sync_multidevice_why": "WM_CHECKLIST-in serveri yoxdur: giriş ayarları hər cihazda lokal saxlanılır, buna görə ikinci cihazı eyni buluda bir dəfə qoşmaq lazımdır.",
   "sync_multidevice_s1": "Birinci cihazda bulud xidmətini (GitHub, GitLab və ya Dropbox) seçib qoşulun və «Buluda göndər ↑» basın.",
   "sync_multidevice_s2": "İkinci cihazda (məsələn, telefonda) «Ayarlar → Sinxronizasiya» bölməsini açıb eyni xidməti seçin və daxil olun / tokeni yapışdırın.",
-  "sync_multidevice_s3": "«Buluddan yüklə ↓» (və ya telefonda yeni qeydlər varsa «Buludla birləşdir ⇄») basın. Bundan sonra avto-sinxronizasiya işləyəcək."
+  "sync_multidevice_s3": "«Buluddan yüklə ↓» (və ya telefonda yeni qeydlər varsa «Buludla birləşdir ⇄») basın. Bundan sonra avto-sinxronizasiya işləyəcək.",
+  "credits_filter_paid_off": "Ödənilmişlər",
+  "credits_empty_paid_off": "Hələ ödənilmiş kredit yoxdur.",
+  "credits_status_paid_off": "Ödənilib (arxivdə)",
+  "credits_status_paid_off_date": "Ödənilib · {date}",
+  "btn_mark_paid_off": "Kredit ödənilib",
+  "btn_return_active_credit": "Aktivlərə qaytar",
+  "toast_credit_paid_off": "Kredit ödənilmiş kimi işarələndi və arxivə köçürüldü",
+  "toast_credit_returned_active": "Kredit aktivlərə qaytarıldı"
 }

@@ -302,6 +302,7 @@
             <button type="button" class="tab-chip" data-ctype="ninja" data-i18n="credit_type_ninja">Ninja</button>
             <button type="button" class="tab-chip" data-ctype="grace" data-i18n="credit_type_grace_short">Grace</button>
             <button type="button" class="tab-chip" data-ctype="custom" data-i18n="credits_filter_custom">Custom</button>
+            <button type="button" class="tab-chip" data-ctype="paid_off" id="creditsFilterPaidOff" data-i18n="credits_filter_paid_off">Paid off</button>
           </div>
           <button type="button" class="btn btn-accent btn-sm" id="addBundleFromCreditsBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span data-i18n="btn_add_bundle">Add Credit</span></button>
         </div>
@@ -524,7 +525,10 @@
         </div>
 
         <div class="modal-actions modal-actions--split">
-          <button type="button" class="btn btn-danger hidden" id="deleteBundleBtn" data-i18n="btn_delete_credit">Delete credit</button>
+          <div class="modal-actions-left">
+            <button type="button" class="btn btn-danger hidden" id="deleteBundleBtn" data-i18n="btn_delete_credit">Delete credit</button>
+            <button type="button" class="btn btn-warning hidden" id="toggleBundlePaidOffBtn" data-i18n="btn_mark_paid_off">Mark as paid off</button>
+          </div>
           <div class="modal-actions-right">
             <button type="button" class="btn btn-ghost" data-close-modal="bundleModal" data-i18n="btn_cancel">Cancel</button>
             <button type="submit" class="btn btn-accent" data-i18n="btn_save_credit">Save credit</button>

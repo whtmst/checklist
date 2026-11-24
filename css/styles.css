@@ -717,6 +717,7 @@ code {
 .check-input {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -3060,4 +3061,43 @@ a.badge-store-link:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Погашенные кредиты и кнопка статуса погашения (v24.8) */
+.bundle-check-title > div {
+  min-width: 0;
+}
+
+.bundle-card.is-paid-off {
+  border-left-color: var(--text-muted);
+  opacity: 0.78;
+}
+
+.modal-actions-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-warning {
+  background-color: rgba(234, 179, 8, 0.14);
+  border: 1px solid rgba(234, 179, 8, 0.48);
+  color: #f5b942;
+}
+
+.btn-warning:hover {
+  background-color: rgba(234, 179, 8, 0.24);
+  border-color: #f5b942;
+}
+
+[data-theme="light"] .btn-warning {
+  background-color: rgba(217, 119, 6, 0.10);
+  border-color: rgba(217, 119, 6, 0.45);
+  color: #b45309;
+}
+
+[data-theme="light"] .btn-warning:hover {
+  background-color: rgba(217, 119, 6, 0.18);
+  border-color: #b45309;
 }

@@ -1003,6 +1003,16 @@
     document.getElementById('bundleGraceTotalInput').value = bundle ? bundle.totalAmount : '';
     document.getElementById('bundleCheckedInput').checked = bundle ? !!bundle.checked : true;
     document.getElementById('deleteBundleBtn').classList.toggle('hidden', !bundle);
+    var paidOffBtn = document.getElementById('toggleBundlePaidOffBtn');
+    if (paidOffBtn) {
+      paidOffBtn.classList.toggle('hidden', !bundle);
+      if (bundle) {
+        var isPaid = !!bundle.paidOff;
+        paidOffBtn.textContent = WM.i18n.t(isPaid ? 'btn_return_active_credit' : 'btn_mark_paid_off');
+        paidOffBtn.classList.toggle('btn-warning', !isPaid);
+        paidOffBtn.classList.toggle('btn-secondary', isPaid);
+      }
+    }
 
     currentEditingBundleId = bundle ? bundle.id : null;
     bundlePickerSelected = {};
@@ -1966,6 +1976,18 @@
         refreshUI();
         showToast(WM.i18n.t('toast_credit_deleted'));
       }
+    });
+
+    document.getElementById('toggleBundlePaidOffBtn').addEventListener('click', function () {
+      var id = document.getElementById('bundleIdInput').value;
+      if (!id) return;
+      var bundle = WM.storage.getState().creditBundles.find(function (b) { return b.id === id; });
+      if (!bundle) return;
+      var nextPaid = !bundle.paidOff;
+      WM.storage.toggleBundlePaidOff(id, nextPaid);
+      closeModal('bundleModal');
+      refreshUI();
+      showToast(WM.i18n.t(nextPaid ? 'toast_credit_paid_off' : 'toast_credit_returned_active'));
     });
 
     // Категория

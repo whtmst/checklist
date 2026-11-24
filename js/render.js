@@ -132,6 +132,17 @@
   }
 
   function appendScheduleOrGraceBlock(container, opts) {
+    if (opts.paidOff) {
+      var pWrap = el('div', 'credit-progress-wrap');
+      var paidDateStr = opts.paidOffAt ? WM.utils.formatDateRu(String(opts.paidOffAt).slice(0, 10)) : '';
+      var paidLabel = paidDateStr
+        ? WM.i18n.t('credits_status_paid_off_date', { date: paidDateStr })
+        : WM.i18n.t('credits_status_paid_off');
+      pWrap.appendChild(el('span', 'bundle-ok', paidLabel));
+      container.appendChild(pWrap);
+      return;
+    }
+
     if (opts.type === 'grace') {
       var grace = WM.utils.calcGraceStatus(opts.dueDate);
       if (!grace) return;
@@ -751,23 +762,31 @@
 
     document.getElementById('globalCreditRemaining').textContent = fmt(data.totalDebtRemaining);
 
+    var paidOffChip = document.getElementById('creditsFilterPaidOff');
+    if (paidOffChip) {
+      var baseLabel = WM.i18n.t('credits_filter_paid_off');
+      paidOffChip.textContent = data.paidOffCount > 0 ? (baseLabel + ' (' + data.paidOffCount + ')') : baseLabel;
+    }
+
     var listEl = document.getElementById('globalCreditsList');
     listEl.innerHTML = '';
 
     var filtered = data.records.filter(function (rec) {
+      if (typeFilter === 'paid_off') return !!rec.paidOff;
+      if (rec.paidOff) return false;
       return typeFilter === 'all' || rec.type === typeFilter;
     });
 
     if (filtered.length === 0) {
       var empty = el('div', 'empty-state');
       empty.style.gridColumn = '1 / -1';
-      empty.appendChild(el('p', '', WM.i18n.t('credits_empty')));
+      empty.appendChild(el('p', '', WM.i18n.t(typeFilter === 'paid_off' ? 'credits_empty_paid_off' : 'credits_empty')));
       listEl.appendChild(empty);
       return;
     }
 
     filtered.forEach(function (rec) {
-      var card = el('article', 'bundle-card' + (rec.checked ? ' is-active' : ''));
+      var card = el('article', 'bundle-card' + (rec.paidOff ? ' is-paid-off' : (rec.checked ? ' is-active' : '')));
 
       var top = el('div', 'bundle-card-top');
       var left = el('div', 'bundle-check-title');
@@ -775,10 +794,14 @@
       var cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'check-input';
-      cb.checked = !!rec.checked;
-      cb.addEventListener('change', function () {
-        handlers.onToggleBundle(rec.id, cb.checked);
-      });
+      cb.checked = !!rec.checked || !!rec.paidOff;
+      if (rec.paidOff) {
+        cb.disabled = true;
+      } else {
+        cb.addEventListener('change', function () {
+          handlers.onToggleBundle(rec.id, cb.checked);
+        });
+      }
 
       var info = el('div');
       var badges = el('div', 'item-badges');
@@ -790,7 +813,10 @@
       }
       info.appendChild(badges);
       info.appendChild(el('div', 'bundle-name', rec.title));
-      info.appendChild(el('div', 'item-price-sub', WM.i18n.t(rec.checked ? 'credits_status_active' : 'credits_status_planned')));
+      var statusText = rec.paidOff
+        ? WM.i18n.t('credits_status_paid_off')
+        : WM.i18n.t(rec.checked ? 'credits_status_active' : 'credits_status_planned');
+      info.appendChild(el('div', 'item-price-sub', statusText));
 
       left.appendChild(cb);
       left.appendChild(info);

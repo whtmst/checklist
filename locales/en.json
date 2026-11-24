@@ -519,5 +519,13 @@
   "sync_multidevice_why": "WM_CHECKLIST has no backend server: login credentials are stored locally per device, so each device needs to be linked to the same cloud once.",
   "sync_multidevice_s1": "On your first device, pick a cloud provider (GitHub, GitLab, or Dropbox), connect it, and click \"Push to cloud ↑\".",
   "sync_multidevice_s2": "On your second device (e.g., your phone), open Settings → Sync, select the same provider, and sign in or paste your token.",
-  "sync_multidevice_s3": "Click \"Pull from cloud ↓\" (or \"Merge with cloud ⇄\" if you already made offline edits on that device). Auto-sync will take over from there."
+  "sync_multidevice_s3": "Click \"Pull from cloud ↓\" (or \"Merge with cloud ⇄\" if you already made offline edits on that device). Auto-sync will take over from there.",
+  "credits_filter_paid_off": "Paid off",
+  "credits_empty_paid_off": "No paid-off credits yet.",
+  "credits_status_paid_off": "Paid off (archived)",
+  "credits_status_paid_off_date": "Paid off · {date}",
+  "btn_mark_paid_off": "Mark as paid off",
+  "btn_return_active_credit": "Return to active",
+  "toast_credit_paid_off": "Credit marked as paid off and archived",
+  "toast_credit_returned_active": "Credit returned to active"
 }
